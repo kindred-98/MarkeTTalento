@@ -1,10 +1,15 @@
 import os
 import sys
+import torch
 from typing import List, Optional
 from ultralytics import YOLO
 import cv2
 import numpy as np
 from datetime import datetime
+
+MODELO_RETAIL = "foduucom/product-detection-in-shelf-yolov8"
+
+torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
 
 
 class DeteccionProducto:
@@ -59,17 +64,15 @@ class VisionServicio:
         self.modelo = None
 
     def _cargar_modelo(self):
-        """Carga el modelo YOLOv8 (lazy loading)."""
+        """Carga el modelo YOLOv8 pre-entrenado para retail."""
         if self.modelo is not None:
             return
         
         try:
-            if os.path.exists(self.modelo_path):
-                self.modelo = YOLO(self.modelo_path)
-            else:
-                self.modelo = YOLO("yolov8n.pt")
+            print(f"Cargando modelo de retail: {MODELO_RETAIL}")
+            self.modelo = YOLO(MODELO_RETAIL)
         except Exception as e:
-            print(f"Error cargando modelo YOLO: {e}", file=sys.stderr)
+            print(f"Error cargando modelo: {e}", file=sys.stderr)
             self.modelo = YOLO("yolov8n.pt")
 
     def detectar_en_imagen(self, imagen_path: str, confianza_min: float = 0.25) -> ResultadoVision:

@@ -4,8 +4,25 @@ from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import time
 
 API_URL = "http://127.0.0.1:8002"
+
+# Esperar a que la API esté lista
+def esperar_api():
+    for _ in range(15):
+        try:
+            r = requests.get(f"{API_URL}/api/v1/salud", timeout=2)
+            if r.status_code == 200:
+                return True
+        except:
+            pass
+        time.sleep(1)
+    return False
+
+# Verificar conexión al inicio
+if 'api_conectada' not in st.session_state:
+    st.session_state.api_conectada = esperar_api()
 
 st.set_page_config(page_title="MarkeTTalento", page_icon="📦", layout="wide")
 
@@ -41,7 +58,11 @@ if not conectar_api():
     st.error("❌ No conectado a la API. Inicia 'python main.py' en otra terminal")
     st.stop()
 
-st.sidebar.success("✅ API Conectada")
+# Links en sidebar
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Links")
+st.sidebar.markdown("[📊 Dashboard](http://localhost:8501)")
+st.sidebar.markdown("[📚 API Docs](http://localhost:8002/docs)")
 
 menu = st.sidebar.selectbox(
     "Menú",
@@ -88,7 +109,7 @@ if menu == "Dashboard":
             }
         )
         fig.update_layout(showlegend=False, height=300)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.info("No hay datos suficientes")
     
@@ -119,7 +140,7 @@ elif menu == "Productos":
         productos = api_get("/api/v1/productos")
         if productos:
             df = pd.DataFrame(productos)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.info("No hay productos")
     
@@ -193,7 +214,7 @@ elif menu == "Inventario":
         if datos_tabla:
             df = pd.DataFrame(datos_tabla)
             
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
             
             # Gráfico de stock
             st.subheader("📈 Distribución de Stock")
@@ -207,7 +228,7 @@ elif menu == "Inventario":
                 title="Histograma de Stock"
             )
             fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     # Atualizar stock
     st.markdown("---")
@@ -240,7 +261,7 @@ elif menu == "Ventas":
         ventas = api_get("/api/v1/ventas")
         if ventas:
             df = pd.DataFrame(ventas)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.info("No hay ventas registradas")
     
@@ -318,36 +339,96 @@ elif menu == "Predicciones":
             title="Días hasta agotarse (Top 10)"
         )
         fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # Tabla de detalles
         st.subheader("📋 Detalles")
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width='stretch')
     else:
         st.info("Registra ventas para ver predicciones")
 
 
 elif menu == "Visión Artificial":
-    st.header("📸 Detección con YOLOv8")
+    st.header("📸 Detección con YOLOv8 + Inventario")
     
-    st.info("Sube una imagen de tu estantería para detectar productos")
+    st.info("Sube una imagen de tu estantería para detectar productos y actualizar el inventario")
     
     archivo = st.file_uploader("Seleccionar imagen", type=["jpg", "png", "jpeg"])
     
-    col1, col2 = st.columns(2)
+    # Opciones
+    col_opts1, col_opts2 = st.columns(2)
+    with col_opts1:
+        confianza = st.slider("Confianza mínima", 0.05, 0.5, 0.15)
+    with col_opts2:
+        actualizar = st.checkbox("Actualizar inventario automáticamente", value=True)
     
-    with col1:
-        if archivo:
-            st.image(archivo, caption="Imagen", use_container_width=True)
-    
-    with col2:
-        if archivo:
+    if archivo:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.image(archivo, caption="Imagen seleccionada", width='stretch')
+        
+        with col2:
             st.subheader("Análisis")
             
-            # Aquí iría la llamada a la API de visión
-            # Por ahora mensaje informativo
-            st.warning("Función en desarrollo...")
-            st.info("Próximamente: Detección automática de productos")
+            if st.button("🔍 Detectar y Actualizar", type="primary"):
+                with st.spinner("Analizando imagen..."):
+                    # Enviar a la API
+                    files = {"archivo": archivo}
+                    data = {
+                        "confianza_min": confianza,
+                        "actualizar_stock": actualizar
+                    }
+                    
+                    try:
+                        response = requests.post(
+                            f"{API_URL}/api/v1/vision/analizar-y-actualizar",
+                            files=files,
+                            data=data,
+                            timeout=30
+                        )
+                        
+                        if response.status_code == 200:
+                            resultado = response.json()
+                            
+                            # Mostrar detección
+                            deteccion = resultado.get("deteccion", {})
+                            st.success(f"Detectados {deteccion.get('total_objetos', 0)} objetos")
+                            
+                            objetos = deteccion.get("objetos", [])
+                            if objetos:
+                                st.write("**Objetos detectados:**")
+                                for obj in objetos:
+                                    st.write(f"  - {obj['nombre']}: {obj['confianza']*100:.1f}%")
+                            
+                            # Mostrar mapeo
+                            mapeo = resultado.get("mapeo", {})
+                            mapeados = mapeo.get("mapeados", [])
+                            no_encontrados = mapeo.get("no_encontrados", [])
+                            
+                            st.write(f"\n**Productos mapeados a BD:** {len(mapeados)}")
+                            
+                            if mapeados:
+                                for m in mapeados:
+                                    st.write(f"  ✓ {m['producto_nombre']}: {m['cantidad_detectada']} unidades")
+                            
+                            if no_encontrados:
+                                st.warning(f"\n**No encontrados en BD:** {len(no_encontrados)}")
+                                for ne in no_encontrados:
+                                    st.write(f"  ✗ {ne['objeto']}: {ne['cantidad']}")
+                            
+                            # Mostrar actualización
+                            if actualizar and "actualizacion" in resultado:
+                                act = resultado["actualizacion"]
+                                st.success(f"\n✅ Inventario actualizado: {act['total']} productos")
+                                for a in act["actualizados"]:
+                                    st.write(f"  {a['producto']}: {a['stock_anterior']} → {a['stock_nuevo']}")
+                            
+                        else:
+                            st.error(f"Error: {response.status_code}")
+                            
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
 
 st.markdown("---")
 st.caption("MarkeTTalento v1.0 - Sistema de Inventario Inteligente")

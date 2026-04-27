@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import sys
 
@@ -82,7 +82,7 @@ async def salud():
     """Estado de salud del sistema."""
     return {
         "estado": "saludable",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "servicios": [" FastAPI", "PostgreSQL", "YOLOv8"]
     }
 
@@ -254,7 +254,7 @@ async def actualizar_inventario(
     if inventario:
         inventario.cantidad = inventario_data.cantidad
         inventario.ubicacion = inventario_data.ubicacion
-        inventario.fecha_ultima_actualizacion = datetime.utcnow()
+        inventario.fecha_ultima_actualizacion = datetime.now(timezone.utc)
     else:
         inventario = Inventario(
             producto_id=producto_id,
@@ -362,7 +362,7 @@ async def registrar_venta(
         cantidad=venta.cantidad,
         precio_unitario=venta.precio_unitario,
        tipo_operacion=venta.tipo_operacion,
-        fecha=datetime.utcnow()
+        fecha=datetime.now(timezone.utc)
     )
     db.add(db_venta)
     
@@ -373,7 +373,7 @@ async def registrar_venta(
             inventario.cantidad -= venta.cantidad
         else:
             inventario.cantidad += venta.cantidad
-        inventario.fecha_ultima_actualizacion = datetime.utcnow()
+        inventario.fecha_ultima_actualizacion = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(db_venta)
@@ -453,11 +453,11 @@ async def pronostico_semanal(
 @app.post("/api/v1/vision/detectar")
 async def detectar_en_imagen(
     archivo: UploadFile = File(...),
-    confianza_min: float = 0.25
+    confianza_min: float = 0.15
 ):
     """Detecta productos en una imagen."""
     # Guardar archivo temporalmente
-    timestamp = datetime.utcnow().timestamp()
+    timestamp = datetime.now(timezone.utc).timestamp()
     ruta_temporal = f"temp_{timestamp}_{archivo.filename}"
     
     try:
@@ -473,6 +473,64 @@ async def detectar_en_imagen(
     
     finally:
         # Limpiar archivo temporal
+        if os.path.exists(ruta_temporal):
+            os.remove(ruta_temporal)
+
+
+@app.post("/api/v1/vision/analizar-y-actualizar")
+async def detectar_y_actualizar_inventario(
+    archivo: UploadFile = File(...),
+    confianza_min: float = 0.15,
+    actualizar_stock: bool = True
+):
+    """
+    Detecta productos en imagen y opcionalmente actualiza el inventario.
+    """
+    from src.aplicacion.servicios.inventario_vision import MapeoProducto, actualizar_inventario_desde_deteccion
+    
+    # Guardar archivo temporalmente
+    timestamp = datetime.now(timezone.utc).timestamp()
+    ruta_temporal = f"temp_{timestamp}_{archivo.filename}"
+    
+    try:
+        with open(ruta_temporal, "wb") as f:
+            contenido = await archivo.read()
+            f.write(contenido)
+        
+        # 1. Detectar objetos en la imagen
+        vision = VisionServicio()
+        resultado_vision = vision.detectar_en_imagen(ruta_temporal, confianza_min)
+        
+        # Obtener objetos detectados como lista de diccionarios
+        objetos_detectados = []
+        for det in resultado_vision.productos_detectados:
+            objetos_detectados.append({
+                "nombre": det.nombre,
+                "confianza": det.confianza,
+                "cantidad": det.cantidad
+            })
+        
+        # 2. Mapear objetos a productos de la BD
+        mapeo = MapeoProducto.mapear_todos(objetos_detectados)
+        
+        resultado = {
+            "deteccion": {
+                "total_objetos": resultado_vision.total_productos,
+                "objetos": objetos_detectados
+            },
+            "mapeo": mapeo
+        }
+        
+        # 3. Actualizar inventario si se solicita
+        if actualizar_stock and mapeo["mapeados"]:
+            resultado["actualizacion"] = actualizar_inventario_desde_deteccion(mapeo)
+        
+        return resultado
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
         if os.path.exists(ruta_temporal):
             os.remove(ruta_temporal)
 
