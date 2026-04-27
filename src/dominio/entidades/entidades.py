@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from src.core.database.database import Base
+from src.core.database.base import Base
 
 
 class Categoria(Base):

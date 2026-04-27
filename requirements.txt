@@ -6,6 +6,7 @@
 fastapi==0.136.1
 uvicorn==0.46.0
 pydantic==2.12.5
+pydantic-settings==2.8.2
 python-dotenv==1.2.2
 
 # Base de Datos
@@ -27,3 +28,8 @@ scikit-learn==1.8.0
 # Utilidades
 python-dateutil==2.9.0.post0
 tqdm==4.67.3
+
+# Testing
+pytest==8.3.5
+httpx==0.28.1
+python-multipart==0.0.27

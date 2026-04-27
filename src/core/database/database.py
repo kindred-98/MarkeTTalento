@@ -1,17 +1,27 @@
+import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import NullPool
-from src.core.config.config import settings
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from src.core.database.base import Base
+from src.dominio.entidades.entidades import Categoria, Proveedor, Producto, Inventario, Venta
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    poolclass=NullPool,
-    echo=False
-)
+URL_DATABASE = os.getenv("DATABASE_URL", "")
+
+if URL_DATABASE.startswith("postgresql"):
+    engine = create_engine(URL_DATABASE, poolclass=StaticPool, echo=False)
+else:
+    if URL_DATABASE.startswith("sqlite"):
+        engine = create_engine(URL_DATABASE, connect_args={"check_same_thread": False})
+    else:
+        if URL_DATABASE:
+            print(f"[WARN] SQLite - DATABASE_URL={URL_DATABASE}")
+        else:
+            print("[INFO] Modo desarrollo - SQLite archivo")
+        engine = create_engine("sqlite:///markettalento.db", connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+Base.metadata.create_all(bind=engine)
 
 
 def get_db():
@@ -23,5 +33,4 @@ def get_db():
 
 
 def init_db():
-    """Crea todas las tablas."""
     Base.metadata.create_all(bind=engine)

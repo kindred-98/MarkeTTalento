@@ -49,10 +49,10 @@ MarkeTTalento/
 ## Arquitectura (Clean Architecture)
 
 ```
-                    ┌─────────────────────┐
-                    │   presentation       │
+                    ┌────────────────────────┐
+                    │   presentation         │
                     │   (FastAPI + Streamlit)│
-                    └──────────┬──────────┘
+                    └──────────┬─────────────┘
                                │
                     ┌──────────▼──────────┐
                     │   aplicacion        │

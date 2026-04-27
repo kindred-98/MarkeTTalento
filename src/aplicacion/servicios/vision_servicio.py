@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import List, Optional
 from ultralytics import YOLO
 import cv2
@@ -13,7 +14,7 @@ class DeteccionProducto:
         self.nombre = nombre
         self.cantidad = cantidad
         self.confianza = confianza
-        self.bbox = bbox  # {x1, y1, x2, y2}
+        self.bbox = bbox
     
     def to_dict(self) -> dict:
         return {
@@ -56,44 +57,39 @@ class VisionServicio:
     def __init__(self, modelo_path: str = "yolov8n.pt"):
         self.modelo_path = modelo_path
         self.modelo = None
-        self._cargar_modelo()
 
     def _cargar_modelo(self):
-        """Carga el modelo YOLOv8."""
+        """Carga el modelo YOLOv8 (lazy loading)."""
+        if self.modelo is not None:
+            return
+        
         try:
             if os.path.exists(self.modelo_path):
                 self.modelo = YOLO(self.modelo_path)
-                print(f"✅ Modelo cargado: {self.modelo_path}")
             else:
-                # Usar modelo pre-entrenado de COCO
                 self.modelo = YOLO("yolov8n.pt")
-                print("⚠️ Modelo no encontrado, usando YOLOv8n pre-entrenado")
         except Exception as e:
-            print(f"❌ Error cargando modelo: {e}")
+            print(f"Error cargando modelo YOLO: {e}", file=sys.stderr)
             self.modelo = YOLO("yolov8n.pt")
 
     def detectar_en_imagen(self, imagen_path: str, confianza_min: float = 0.25) -> ResultadoVision:
         """Detecta productos en una imagen."""
+        self._cargar_modelo()
+        
         if not self.modelo:
             raise Exception("Modelo no cargado")
         
-        # Ejecutar detección
         resultados = self.modelo(imagen_path, conf=confianza_min, verbose=False)
         
-        # Procesar resultados
         productos_encontrados = []
         
         for resultado in resultados:
             boxes = resultado.boxes
             for box in boxes:
-                # Obtener clase y confianza
                 clase_id = int(box.cls[0])
                 confianza = float(box.conf[0])
-                
-                # Obtener nombre de clase
                 nombre = resultado.names[clase_id]
                 
-                # Obtener bbox
                 xyxy = box.xyxy[0].cpu().numpy()
                 bbox = {
                     "x1": int(xyxy[0]),
@@ -114,25 +110,14 @@ class VisionServicio:
     def detectar_en_imagen_con_mapeo(self, imagen_path: str, 
                                    mapeo_productos: dict,
                                    confianza_min: float = 0.25) -> ResultadoVision:
-        """Detecta productos y los mapea a nuestro inventario.
-        
-        Args:
-            imagen_path: Ruta a la imagen
-            mapeo_productos: Dict {nombre_yolo: nombre_inventario}
-            confianza_min: Umbral de confianza mínima
-        
-        Returns:
-            ResultadoVision con productos mapeados a nuestro inventario
-        """
+        """Detecta productos y los mapea a nuestro inventario."""
         resultado = self.detectar_en_imagen(imagen_path, confianza_min)
         
-        # Contar productos por tipo
         conteo = {}
         for producto in resultado.productos_detectados:
             nombre_inventario = mapeo_productos.get(producto.nombre, producto.nombre)
             if nombre_inventario in conteo:
                 conteo[nombre_inventario]["cantidad"] += 1
-                # Promediar confianza
                 confianza_anterior = conteo[nombre_inventario]["confianza"]
                 conteo[nombre_inventario]["confianza"] = (confianza_anterior + producto.confianza) / 2
             else:
@@ -142,7 +127,6 @@ class VisionServicio:
                     "bbox": producto.bbox
                 }
         
-        # Crear nuevos resultados mapeados
         productos_mapeados = []
         for nombre, datos in conteo.items():
             productos_mapeados.append(DeteccionProducto(
@@ -155,42 +139,38 @@ class VisionServicio:
         return ResultadoVision(imagen_path, productos_mapeados)
 
     def contar_en_imagen(self, imagen_path: str, clase_objetivo: str) -> int:
-        """Cuenta productos de una clase específica en una imagen."""
+        """Cuenta productos de una clase específica."""
         resultado = self.detectar_en_imagen(imagen_path)
         return sum(1 for p in resultado.productos_detectados if p.nombre == clase_objetivo)
 
     def detectar_desde_camara(self, camara_index: int = 0) -> None:
         """Detecta productos en tiempo real desde cámara web."""
+        self._cargar_modelo()
+        
         if not self.modelo:
             raise Exception("Modelo no cargado")
         
         cap = cv2.VideoCapture(camara_index)
         
         if not cap.isOpened():
-            raise Exception("No se pudo abrir la cámara")
+            raise Exception("No se pudo abrir la camara")
         
-        print("🎥 Presiona 'q' para salir")
+        print("Presiona 'q' para salir")
         
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
             
-            # Detectar en frame
             resultados = self.modelo(frame, verbose=False)
             
-            # Mostrar resultados
             for resultado in resultados:
                 frame = resultado.plot()
             
-            cv2.imshow("YOLOv8 - Detección en tiempo real", frame)
+            cv2.imshow("YOLOv8 - Deteccion en tiempo real", frame)
             
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         
         cap.release()
         cv2.destroyAllWindows()
-
-
-# Instancia global del servicio
-vision_servicio = VisionServicio()
