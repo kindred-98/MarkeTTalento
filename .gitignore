@@ -1,9 +1,65 @@
-# Dependencies
-.psci_modules
-.spago
-bower_components
-node_modules
+# ===============================
+# Python
+# ===============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Generated files
-.psci
-output
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ===============================
+# Environment / Config
+# ===============================
+.env
+.env.local
+*.log
+
+# ===============================
+# Testing
+# ===============================
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# ===============================
+# Modelos YOLOv8 / ML
+# ===============================
+*.pt
+*.weights
+models/
+runs/
+
+# ===============================
+# Streamlit
+# ===============================
+.streamlit/

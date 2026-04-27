@@ -1,0 +1,29 @@
+# ===============================
+# MarkeTTalento - Requisitos
+# ===============================
+
+# Core Web
+fastapi==0.136.1
+uvicorn==0.46.0
+pydantic==2.12.5
+python-dotenv==1.2.2
+
+# Base de Datos
+sqlalchemy==2.0.48
+psycopg2-binary==2.9.12
+
+# Frontend / Dashboard
+streamlit==1.56.0
+plotly==6.7.0
+pandas==3.0.1
+
+# Visión Artificial
+ultralytics==8.0.43
+opencv-python==4.11.0.86
+
+# Machine Learning
+scikit-learn==1.8.0
+
+# Utilidades
+python-dateutil==2.9.0.post0
+tqdm==4.67.3
