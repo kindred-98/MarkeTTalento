@@ -193,16 +193,7 @@ elif menu == "Inventario":
         if datos_tabla:
             df = pd.DataFrame(datos_tabla)
             
-            # Color por estado
-            def color_estado(val):
-                if val == "BAJO":
-                    return "background-color: #ffcccc; color: #cc0000"
-                return "background-color: #ccffcc; color: #006600"
-            
-            st.dataframe(
-                df.style.applymap(color_estado, subset=["Estado"]),
-                use_container_width=True
-            )
+            st.dataframe(df, use_container_width=True)
             
             # Gráfico de stock
             st.subheader("📈 Distribución de Stock")
