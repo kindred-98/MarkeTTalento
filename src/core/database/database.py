@@ -9,15 +9,14 @@ URL_DATABASE = os.getenv("DATABASE_URL", "")
 
 if URL_DATABASE.startswith("postgresql"):
     engine = create_engine(URL_DATABASE, poolclass=StaticPool, echo=False)
+elif URL_DATABASE.startswith("sqlite"):
+    engine = create_engine(URL_DATABASE, connect_args={"check_same_thread": False})
 else:
-    if URL_DATABASE.startswith("sqlite"):
-        engine = create_engine(URL_DATABASE, connect_args={"check_same_thread": False})
+    if URL_DATABASE:
+        print(f"[WARN] SQLite - DATABASE_URL={URL_DATABASE}")
     else:
-        if URL_DATABASE:
-            print(f"[WARN] SQLite - DATABASE_URL={URL_DATABASE}")
-        else:
-            print("[INFO] Modo desarrollo - SQLite archivo")
-        engine = create_engine("sqlite:///markettalento.db", connect_args={"check_same_thread": False})
+        print("[INFO] SQLite en data/")
+    engine = create_engine("sqlite:///data/markettalento.db", connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

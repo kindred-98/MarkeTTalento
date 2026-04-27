@@ -292,14 +292,44 @@ async def productos_bajo_stock(
 
 
 @app.get("/api/v1/inventario/resumen")
-async def resumen_inventario(
-    producto_repo: ProductoRepositorio = Depends(get_producto_repo),
-    inventario_repo: InventarioRepositorio = Depends(get_inventario_repo),
-    venta_repo: VentaRepositorio = Depends(get_venta_repo)
-):
+async def resumen_inventario(db = Depends(get_db)):
     """Obtiene resumen completo del inventario."""
-    servicio = InventarioServicio(inventario_repo, venta_repo)
-    return servicio.obtener_resumen()
+    try:
+        from src.dominio.entidades.entidades import Producto, Inventario
+        
+        productos = db.query(Producto).filter(Producto.activo == True).all()
+        inventarios = db.query(Inventario).all()
+        
+        total_productos = len(productos)
+        total_unidades = sum(i.cantidad for i in inventarios)
+        productos_criticos = 0
+        productos_bajos = 0
+        productos_adecuados = 0
+        valor_total = 0.0
+        
+        for inv in inventarios:
+            prod = next((p for p in productos if p.id == inv.producto_id), None)
+            if prod:
+                if inv.cantidad < prod.stock_minimo:
+                    if inv.cantidad <= prod.stock_minimo * 0.3:
+                        productos_criticos += 1
+                    else:
+                        productos_bajos += 1
+                else:
+                    productos_adecuados += 1
+                valor_total += inv.cantidad * prod.precio_venta
+        
+        return {
+            "total_productos": total_productos,
+            "total_unidades": total_unidades,
+            "productos_criticos": productos_criticos,
+            "productos_bajos": productos_bajos,
+            "productos_adecuados": productos_adecuados,
+            "valor_total": round(valor_total, 2),
+            "recomendaciones": []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/v1/inventario/recomendaciones")
