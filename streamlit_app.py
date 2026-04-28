@@ -6,6 +6,10 @@ import plotly.graph_objects as go
 import pandas as pd
 import time
 import base64
+from io import BytesIO
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 API_URL = "http://127.0.0.1:8002"
 
@@ -49,6 +53,55 @@ def conectar_api():
 if not conectar_api():
     st.error("❌ No conectado a la API. Inicia 'python iniciar.py'")
     st.stop()
+
+def to_excel(df):
+    if df is None or df.empty:
+        return b""
+    
+    output = BytesIO()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    
+    try:
+        ws.title = "Datos"
+    except:
+        pass
+    
+    header_fill = PatternFill(start_color="00f0ff", end_color="00f0ff", fill_type="solid")
+    header_font = Font(bold=True, color="000000")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for r in dataframe_to_rows(df, index=False, header=True):
+        ws.append(r)
+    
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = thin_border
+    
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+        for cell in row:
+            cell.border = thin_border
+    
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column].width = min(max_length + 2, 30)
+    
+    wb.save(output)
+    return output.getvalue()
 
 st.markdown("""
 <style>
@@ -351,6 +404,52 @@ with st.sidebar:
 
 # Dashboard principal
 if menu == "🏠 Dashboard":
+    st.markdown("<h2>🏠 Dashboard</h2>", unsafe_allow_html=True)
+    
+    # Buscador
+    busqueda = st.text_input("🔍 Buscar producto", placeholder="Escribe nombre o SKU...")
+    
+    if busqueda:
+        productos = api_get("/api/v1/productos")
+        inventarios = api_get("/api/v1/inventario")
+        
+        busq_lower = busqueda.lower()
+        productos_encontrados = [
+            p for p in productos 
+            if busq_lower in p.get("nombre", "").lower() or busq_lower in p.get("sku", "").lower()
+        ]
+        
+        if productos_encontrados:
+            st.markdown(f"""
+            <div style="padding: 10px 15px; background: rgba(0, 240, 255, 0.1); border-radius: 10px; margin-bottom: 15px;">
+                <span style="color: #00f0ff; font-weight: 600;">{len(productos_encontrados)}</span>
+                <span style="color: #94a3b8;"> resultados para "{busqueda}"</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for p in productos_encontrados:
+                inv = next((i for i in inventarios if i.get("producto_id") == p.get("id")), None)
+                stock = inv.get("cantidad", 0) if inv else 0
+                min_s = p.get("stock_minimo", 0) or 0
+                
+                if stock <= 0:
+                    estado = "🔴 Crítico"
+                elif stock < min_s:
+                    estado = "🟡 Bajo"
+                else:
+                    estado = "🟢 OK"
+                
+                col_prod, col_stock, col_estado = st.columns([3, 1, 1])
+                with col_prod:
+                    st.markdown(f"**{p.get('nombre')}**")
+                with col_stock:
+                    st.markdown(f"Stock: **{stock}**")
+                with col_estado:
+                    st.markdown(estado)
+            st.markdown("---")
+        else:
+            st.warning(f"No se encontraron productos con '{busqueda}'")
+    
     col1, col2, col3, col4 = st.columns(4)
     
     resumen = api_get("/api/v1/inventario/resumen")
@@ -449,6 +548,51 @@ if menu == "🏠 Dashboard":
             )
             st.plotly_chart(fig, width='stretch')
     
+    # Gráfico de barras - stock por producto
+    st.markdown("")
+    st.markdown("""
+    <div class="metric-card">
+        <h3 style="margin-bottom: 15px;">📦 Stock por Producto</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    inventarios = api_get("/api/v1/inventario")
+    productos = api_get("/api/v1/productos")
+    
+    datos_stock = []
+    for inv in inventarios:
+        prod = next((p for p in productos if p.get("id") == inv.get("producto_id")), None)
+        if prod:
+            datos_stock.append({
+                "Producto": prod.get("nombre", "Producto")[:20],
+                "Stock": inv.get("cantidad", 0)
+            })
+    
+    if datos_stock:
+        df_stock = pd.DataFrame(datos_stock)
+        df_stock = df_stock.sort_values("Stock", ascending=True).tail(15)
+        
+        fig_bar = px.bar(
+            df_stock,
+            x="Stock",
+            y="Producto",
+            orientation="h",
+            color="Stock",
+            color_continuous_scale=["#ef4444", "#f59e0b", "#10b981"]
+        )
+        
+        fig_bar.update_layout(
+            height=400,
+            paper_bgcolor="#0a0e17",
+            plot_bgcolor="#0a0e17",
+            font=dict(color="white"),
+            xaxis=dict(color="white", gridcolor="#1a2332"),
+            yaxis=dict(color="white"),
+            margin=dict(l=10, r=10, t=10, b=40)
+        )
+        
+        st.plotly_chart(fig_bar, width='stretch')
+    
     with col_chart2:
         st.markdown("""
         <div class="metric-card">
@@ -514,13 +658,126 @@ if menu == "🏠 Dashboard":
 elif menu == "📦 Productos":
     st.markdown("<h2>Gestión de Productos</h2>", unsafe_allow_html=True)
     
+    productos = api_get("/api/v1/productos")
+    inventarios = api_get("/api/v1/inventario")
+    categorias = api_get("/api/v1/categorias")
+    proveedores = api_get("/api/v1/proveedores")
+    
+    # === BUSCADOR Y FILTROS ===
+    st.markdown("""
+    <style>
+        .filtros-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filtro-search {
+            flex: 2;
+            min-width: 200px;
+        }
+        .filtro-select {
+            flex: 1;
+            min-width: 150px;
+        }
+        .stTextInput > div > div > input {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            color: white;
+            border-radius: 10px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    col_busq1, col_busq2, col_busq3 = st.columns([2, 1, 1])
+    
+    with col_busq1:
+        busqueda = st.text_input("🔍 Buscar por nombre o SKU", placeholder="Escribe para buscar...", key="busqueda_prod")
+    
+    with col_busq2:
+        cat_options = ["Todas"] + [c.get("nombre", "Sin categoría") for c in categorias]
+        cat_filtro = st.selectbox("Categoría", cat_options, key="filtro_cat")
+    
+    with col_busq3:
+        estado_options = ["Todos", "OK", "Bajo", "Crítico"]
+        estado_filtro = st.selectbox("Estado stock", estado_options, key="filtro_estado")
+    
+    # Función para obtener stock y estado
+    def get_prod_stock(pid):
+        for inv in inventarios:
+            if inv.get("producto_id") == pid:
+                return inv.get("cantidad", 0)
+        return 0
+    
+    def get_prod_estado(pid, stock):
+        stock = stock or 0
+        for p in productos:
+            if p.get("id") == pid:
+                min_s = p.get("stock_minimo", 0) or 0
+                if stock <= 0:
+                    return "Crítico"
+                elif stock < min_s:
+                    if min_s > 0 and stock <= min_s * 0.3:
+                        return "Crítico"
+                    return "Bajo"
+                return "OK"
+        return "OK"
+    
+    # Filtrar productos
+    productos_filtrados = productos
+    
+    if busqueda:
+        busq_lower = busqueda.lower()
+        productos_filtrados = [p for p in productos_filtrados if 
+            busq_lower in p.get("nombre", "").lower() or 
+            busq_lower in p.get("sku", "").lower()]
+    
+    if cat_filtro != "Todas":
+        cat_id = next((c.get("id") for c in categorias if c.get("nombre") == cat_filtro), None)
+        productos_filtrados = [p for p in productos_filtrados if p.get("categoria_id") == cat_id]
+    
+    if estado_filtro != "Todos":
+        productos_filtrados = [p for p in productos_filtrados if get_prod_estado(p.get("id"), get_prod_stock(p.get("id"))) == estado_filtro]
+    
+    # Mostrar contador
+    total_msg = f" de {len(productos)}" if len(productos_filtrados) != len(productos) else ""
+    st.markdown(f"""
+    <div style="padding: 10px 15px; background: rgba(0, 240, 255, 0.1); border-radius: 10px; margin-bottom: 15px;">
+        <span style="color: #00f0ff; font-weight: 600;">{len(productos_filtrados)}</span>
+        <span style="color: #94a3b8;"> productos{total_msg}</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Exportar Excel
+    if productos_filtrados:
+        df = pd.DataFrame([{
+            "ID": p.get("id"),
+            "Nombre": p.get("nombre"),
+            "SKU": p.get("sku"),
+            "Precio": p.get("precio"),
+            "Stock": p.get("stock"),
+            "Stock Mín": p.get("stock_minimo"),
+            "Stock Máx": p.get("stock_maximo"),
+            "Categoría": next((c.get("nombre") for c in categorias if c.get("id") == p.get("categoria_id")), ""),
+            "Proveedor": next((pr.get("nombre") for pr in proveedores if pr.get("id") == p.get("proveedor_id")), ""),
+            "Estado": get_prod_estado(p.get("id"), p.get("stock"))
+        } for p in productos_filtrados])
+        
+        excel_data = to_excel(df)
+        col_exp, _ = st.columns([1, 3])
+        with col_exp:
+            st.download_button(
+                "📥 Exportar Excel",
+                data=excel_data,
+                file_name="productos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+    
     tab1, tab2 = st.tabs(["📋 Catálogo", "➕ Nuevo"])
     
     with tab1:
-        productos = api_get("/api/v1/productos")
-        categorias = api_get("/api/v1/categorias")
-        
-        if productos:
+        if productos_filtrados:
             st.markdown("""
             <style>
                 .producto-card {
@@ -541,48 +798,36 @@ elif menu == "📦 Productos":
                     color: var(--accent-cyan);
                     margin-bottom: 8px;
                 }
-                .producto-info {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 10px;
+                .progress-container {
+                    background: rgba(0, 0, 0, 0.4);
+                    border-radius: 10px;
+                    height: 12px;
                     margin-top: 12px;
+                    overflow: hidden;
+                    position: relative;
                 }
-                .producto-info-item {
-                    background: rgba(0, 0, 0, 0.3);
-                    padding: 10px;
-                    border-radius: 8px;
-                    text-align: center;
+                .progress-bar {
+                    height: 100%;
+                    border-radius: 10px;
+                    transition: width 0.5s ease;
                 }
-                .producto-info-label {
-                    font-size: 0.75rem;
-                    color: var(--text-secondary);
-                    text-transform: uppercase;
-                }
-                .producto-info-valor {
-                    font-size: 1rem;
-                    font-weight: 600;
-                    color: var(--text-primary);
+                .progress-label {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.7rem;
+                    color: #94a3b8;
                     margin-top: 4px;
-                }
-                .codigo-sku {
-                    background: rgba(139, 92, 246, 0.2);
-                    padding: 4px 12px;
-                    border-radius: 20px;
-                    font-size: 0.85rem;
-                    color: var(--accent-purple);
                 }
             </style>
             """, unsafe_allow_html=True)
             
-            # Obtener nombre de categoría
             def get_cat_name(cat_id):
                 for c in categorias:
                     if c.get("id") == cat_id:
                         return c.get("nombre", "Sin categoría")
                 return "Sin categoría"
             
-            for prod in productos:
-                # Limpiar fecha
+            for prod in productos_filtrados:
                 fecha_str = prod.get("fecha_creacion", "")
                 if fecha_str:
                     try:
@@ -591,7 +836,6 @@ elif menu == "📦 Productos":
                     except:
                         fecha_str = "Fecha desconocida"
                 
-                # Obtener inventario
                 inv = api_get(f"/api/v1/inventario")
                 stock = 0
                 for i in inv:
@@ -599,42 +843,60 @@ elif menu == "📦 Productos":
                         stock = i.get("cantidad", 0)
                         break
                 
-                st.markdown(f"""
+                # Calcular barra de progreso
+                min_s = prod.get("stock_minimo", 1)
+                max_s = prod.get("stock_maximo", min_s * 2)
+                pct = min((stock / max_s) * 100, 100) if max_s > 0 else 0
+                
+                # Color según estado
+                if stock <= 0:
+                    bar_color = "#ef4444"
+                    estado_bar = "Vacío"
+                elif stock < min_s:
+                    bar_color = "#f59e0b"
+                    estado_bar = "Bajo"
+                elif stock >= min_s and stock < max_s:
+                    bar_color = "#10b981"
+                    estado_bar = "OK"
+                else:
+                    bar_color = "#3b82f6"
+                    estado_bar = "Sobran"
+                
+                barra_progreso = """
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: """ + str(pct) + """%; background: """ + bar_color + """;"></div>
+                </div>
+                <div class="progress-label">
+                    <span>""" + str(stock) + """ / """ + str(max_s) + """ (""" + f"{pct:.0f}" + """%) - """ + estado_bar + """</span>
+                </div>
+                """
+            
+            card_html = """
                 <div class="producto-card">
                     <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div class="producto-nombre">{prod.get("nombre", "Producto")}</div>
-                        <span class="codigo-sku">SKU: {prod.get("sku", "N/A")}</span>
+                        <div class="producto-nombre">""" + prod.get("nombre", "Producto") + """</div>
+                        <span class="codigo-sku">SKU: """ + prod.get("sku", "N/A") + """</span>
                     </div>
                     <div class="producto-info">
                         <div class="producto-info-item">
                             <div class="producto-info-label">Precio Venta</div>
-                            <div class="producto-info-valor">€{prod.get("precio_venta", 0):.2f}</div>
+                            <div class="producto-info-valor">€""" + f"{prod.get('precio_venta', 0):.2f}" + """</div>
                         </div>
                         <div class="producto-info-item">
                             <div class="producto-info-label">Stock</div>
-                            <div class="producto-info-valor">{stock} {prod.get("unidad", "uds")}</div>
+                            <div class="producto-info-valor">""" + str(stock) + """ """ + prod.get("unidad", "uds") + """</div>
                         </div>
                         <div class="producto-info-item">
                             <div class="producto-info-label">Categoría</div>
-                            <div class="producto-info-valor">{get_cat_name(prod.get("categoria_id"))}</div>
+                            <div class="producto-info-valor">""" + get_cat_name(prod.get("categoria_id")) + """</div>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;">
-                        <div class="producto-info-item">
-                            <div class="producto-info-label">Stock Mín</div>
-                            <div class="producto-info-valor">{prod.get("stock_minimo", 0)}</div>
-                        </div>
-                        <div class="producto-info-item">
-                            <div class="producto-info-label">Stock Máx</div>
-                            <div class="producto-info-valor">{prod.get("stock_maximo", 0)}</div>
-                        </div>
-                        <div class="producto-info-item">
-                            <div class="producto-info-label">Creado</div>
-                            <div class="producto-info-valor" style="font-size: 0.85rem;">{fecha_str}</div>
-                        </div>
-                    </div>
+                    
+                    """ + barra_progreso + """
                 </div>
-                """, unsafe_allow_html=True)
+            """
+            
+            st.markdown(card_html, unsafe_allow_html=True)
         else:
             st.info("No hay productos en el catálogo")
     
@@ -690,6 +952,102 @@ elif menu == "📊 Inventario":
     inventarios = api_get("/api/v1/inventario")
     productos = api_get("/api/v1/productos")
     
+    # === ACTUALIZAR STOCK ===
+    st.markdown("<h3>✏️ Actualizar stock</h3>", unsafe_allow_html=True)
+    with st.form("actualizar_stock"):
+        col1, col2, col3 = st.columns([1, 1, 2])
+        with col1:
+            prod_id = st.number_input("ID del producto", min_value=1, key="prod_id")
+        with col2:
+            nueva_cantidad = st.number_input("Nueva cantidad", min_value=0, key="nueva_cant")
+        with col3:
+            ubicacion = st.text_input("Ubicación")
+        
+        if st.form_submit_button("🔄 Actualizar"):
+            result = api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": nueva_cantidad, "ubicacion": ubicacion})
+            if result:
+                st.success("✅ Stock actualizado")
+            else:
+                st.error("❌ Error")
+    
+    st.markdown("---")
+    
+    # === FILTROS ===
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        filtro_estado_inv = st.selectbox("Filtrar por estado", ["Todos", "Crítico", "Bajo", "OK"], key="filtro_inv_estado")
+    with col_f2:
+        ordenar_inv = st.selectbox("Ordenar por", ["Producto (A-Z)", "Stock (mayor)", "Stock (menor)"], key="ordenar_inv")
+    
+    # Filtrar
+    def get_estado_inv(stock, min_s):
+        if stock <= 0:
+            return "Crítico"
+        elif stock < min_s:
+            if stock <= min_s * 0.3:
+                return "Crítico"
+            return "Bajo"
+        return "OK"
+    
+    datos_inv = []
+    for inv in inventarios:
+        prod = next((p for p in productos if p.get("id") == inv.get("producto_id")), None)
+        if prod:
+            stock = inv.get("cantidad", 0)
+            min_s = prod.get("stock_minimo", 0)
+            estado = get_estado_inv(stock, min_s)
+            datos_inv.append({
+                "producto": prod,
+                "stock": stock,
+                "min_s": min_s,
+                "estado": estado,
+                "ubicacion": inv.get("ubicacion", "N/A"),
+                "max_s": prod.get("stock_maximo", 0)
+            })
+    
+    # Aplicar filtro
+    if filtro_estado_inv != "Todos":
+        datos_inv = [d for d in datos_inv if d["estado"] == filtro_estado_inv]
+    
+    # Ordenar
+    if ordenar_inv == "Producto (A-Z)":
+        datos_inv = sorted(datos_inv, key=lambda x: x["producto"].get("nombre", ""))
+    elif ordenar_inv == "Stock (mayor)":
+        datos_inv = sorted(datos_inv, key=lambda x: x["stock"], reverse=True)
+    elif ordenar_inv == "Stock (menor)":
+        datos_inv = sorted(datos_inv, key=lambda x: x["stock"])
+    
+    # Contador
+    st.markdown(f"""
+    <div style="padding: 10px 15px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; margin-bottom: 15px;">
+        <span style="color: #10b981; font-weight: 600;">{len(datos_inv)}</span>
+        <span style="color: #94a3b8;"> productos</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Exportar Excel
+    if datos_inv:
+        df_inv = pd.DataFrame([{
+            "Producto": d["producto"].get("nombre"),
+            "SKU": d["producto"].get("sku"),
+            "Stock": d["stock"],
+            "Stock Mín": d["min_s"],
+            "Stock Máx": d["max_s"],
+            "Ubicación": d["ubicacion"],
+            "Estado": d["estado"]
+        } for d in datos_inv])
+        
+        excel_inv = to_excel(df_inv)
+        col_exp, _ = st.columns([1, 3])
+        with col_exp:
+            st.download_button(
+                "📥 Exportar Excel",
+                data=excel_inv,
+                file_name="inventario.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+    
     st.markdown("""
     <style>
         .inventario-card {
@@ -743,27 +1101,20 @@ elif menu == "📊 Inventario":
     </style>
     """, unsafe_allow_html=True)
     
-    if inventarios and productos:
-        for inv in inventarios:
-            prod = next((p for p in productos if p.get("id") == inv.get("producto_id")), None)
-            if prod:
-                stock = inv.get("cantidad", 0)
-                min_s = prod.get("stock_minimo", 0)
-                
-                if stock < min_s:
-                    if stock <= min_s * 0.3:
-                        estado = "CRÍTICO"
-                        cls_estado = "critico"
-                        badge = "estado-critico"
-                    else:
-                        estado = "BAJO"
-                        cls_estado = "bajo"
-                        badge = "estado-bajo"
-                else:
-                    estado = "OK"
-                    cls_estado = "ok"
-                    badge = "estado-ok"
-                
+    if datos_inv:
+        for d in datos_inv:
+            prod = d["producto"]
+            stock = d["stock"]
+            min_s = d["min_s"]
+            estado = d["estado"]
+            
+            cls_estado = {"Crítico": "critico", "Bajo": "bajo", "OK": "ok"}.get(estado, "ok")
+            badge = {"Crítico": "estado-critico", "Bajo": "estado-bajo", "OK": "estado-ok"}.get(estado, "estado-ok")
+            
+            prod_id = prod.get("id")
+            
+            col_card, col_btns = st.columns([4, 1])
+            with col_card:
                 st.markdown(f"""
                 <div class="inventario-card {cls_estado}">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -781,36 +1132,32 @@ elif menu == "📊 Inventario":
                         </div>
                         <div class="inventario-info-item">
                             <div class="inventario-info-label">Máximo</div>
-                            <div class="inventario-info-valor">{prod.get("stock_maximo", 0)}</div>
+                            <div class="inventario-info-valor">{d.get('max_s', 0)}</div>
                         </div>
                         <div class="inventario-info-item">
                             <div class="inventario-info-label">Ubicación</div>
-                            <div class="inventario-info-valor" style="font-size: 0.95rem;">{inv.get("ubicacion", "N/A")}</div>
+                            <div class="inventario-info-valor" style="font-size: 0.95rem;">{d.get('ubicacion', 'N/A')}</div>
                         </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+            with col_btns:
+                nuevo_stock = stock
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button("−", key=f"menos_{prod_id}", help="Reducir 1"):
+                        nuevo_stock = max(0, stock - 1)
+                with c2:
+                    if st.button("+", key=f"mas_{prod_id}", help="Aumentar 1"):
+                        nuevo_stock = stock + 1
+                
+                if nuevo_stock != stock:
+                    result = api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": nuevo_stock, "ubicacion": d.get("ubicacion", "")})
+                    if result:
+                        st.success("✓ Actualizado")
+                    else:
+                        st.error("✗ Error")
     
-    # Formulario de actualización
-    st.markdown("---")
-    st.markdown("<h3>✏️ Actualizar stock</h3>", unsafe_allow_html=True)
-    
-    with st.form("actualizar_stock"):
-        col1, col2, col3 = st.columns([1, 1, 2])
-        with col1:
-            prod_id = st.number_input("ID del producto", min_value=1, key="prod_id")
-        with col2:
-            nueva_cantidad = st.number_input("Nueva cantidad", min_value=0, key="nueva_cant")
-        with col3:
-            ubicacion = st.text_input("Ubicación")
-        
-        if st.form_submit_button("🔄 Actualizar"):
-            result = api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": nueva_cantidad, "ubicacion": ubicacion})
-            if result:
-                st.success("✅ Stock actualizado")
-            else:
-                st.error("❌ Error")
-
 
 elif menu == "💰 Ventas":
     st.markdown("<h2>Gestión de Ventas</h2>", unsafe_allow_html=True)
@@ -820,6 +1167,27 @@ elif menu == "💰 Ventas":
     with tab1:
         ventas = api_get("/api/v1/ventas")
         productos = api_get("/api/v1/productos")
+        
+        # Exportar Excel
+        if ventas:
+            df_ventas = pd.DataFrame([{
+                "Fecha": v.get("fecha", "")[:10],
+                "Producto": get_prod_name(v.get("producto_id")),
+                "Cantidad": v.get("cantidad"),
+                "Precio Unit.": v.get("precio_unitario"),
+                "Total": v.get("cantidad", 0) * v.get("precio_unitario", 0)
+            } for v in ventas])
+            
+            excel_ventas = to_excel(df_ventas)
+            col_exp, _ = st.columns([1, 3])
+            with col_exp:
+                st.download_button(
+                    "📥 Exportar Excel",
+                    data=excel_ventas,
+                    file_name="ventas.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
         
         if ventas:
             # Función para obtener nombre del producto
