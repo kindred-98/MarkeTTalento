@@ -346,6 +346,7 @@ with st.sidebar:
     btn_ventas = st.button("💰 Ventas", use_container_width=True)
     btn_predicciones = st.button("🔮 Predicciones", use_container_width=True)
     btn_vision = st.button("📸 Visión AI", use_container_width=True)
+    btn_barcode = st.button("🔍 Barcode", use_container_width=True)
     
     st.markdown("---")
     
@@ -396,10 +397,21 @@ with st.sidebar:
     elif btn_inventario: menu = "📊 Inventario"
     elif btn_ventas: menu = "💰 Ventas"
     elif btn_predicciones: menu = "🔮 Predicciones"
-    elif btn_vision: menu = "📸 Visión AI"
+    elif btn_vision: 
+        menu = "📸 Visión AI"
+        st.session_state['menu_activo'] = menu
+    elif btn_barcode: 
+        menu = "🔍 Barcode"
+        st.session_state['menu_activo'] = menu
+    elif 'navegar' in st.session_state and st.session_state.get('navegar'):
+        menu = st.session_state['navegar']
+        st.session_state['navegar'] = None
+    
+    if 'menu_activo' not in st.session_state:
+        st.session_state['menu_activo'] = "🏠 Dashboard"
     
     if menu is None:
-        menu = "🏠 Dashboard"
+        menu = st.session_state['menu_activo']
 
 
 # Dashboard principal
@@ -450,54 +462,53 @@ if menu == "🏠 Dashboard":
         else:
             st.warning(f"No se encontraron productos con '{busqueda}'")
     
+    resumen = api_get("/api/v1/inventario/resumen")
     col1, col2, col3, col4 = st.columns(4)
     
-    resumen = api_get("/api/v1/inventario/resumen")
-    
     with col1:
-        st.markdown(f"""
-        <div class="metric-card glow-card">
-            <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 5px;">PRODUCTOS</div>
-            <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-cyan); text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);">
-                {resumen.get("total_productos", 0)}
+        st.markdown("""
+        <div class="metric-card glow-card" style="padding: 20px; text-align: center; cursor: pointer;" onclick="window.location.href='#productos'">
+            <div style="color: #94a3b8; font-size: 0.9rem;">PRODUCTOS</div>
+            <div style="font-size: 2.5rem; font-weight: 700; color: #00f0ff; text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);">
+                """ + str(resumen.get('total_productos', 0)) + """
             </div>
-            <div style="color: var(--text-secondary); font-size: 0.8rem;">en catálogo</div>
+            <div style="color: #94a3b8; font-size: 0.8rem;">en catálogo</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown(f"""
-        <div class="metric-card glow-card">
-            <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 5px;">STOCK TOTAL</div>
-            <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-purple); text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);">
-                {resumen.get("total_unidades", 0)}
+        st.markdown("""
+        <div class="metric-card glow-card" style="padding: 20px; text-align: center; cursor: pointer;">
+            <div style="color: #94a3b8; font-size: 0.9rem;">STOCK TOTAL</div>
+            <div style="font-size: 2.5rem; font-weight: 700; color: #8b5cf6; text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);">
+                """ + str(resumen.get('total_unidades', 0)) + """
             </div>
-            <div style="color: var(--text-secondary); font-size: 0.8rem;">unidades</div>
+            <div style="color: #94a3b8; font-size: 0.8rem;">unidades</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
         criticos = resumen.get("productos_criticos", 0)
-        color = "var(--accent-red)" if criticos > 0 else "var(--accent-green)"
+        color = "#ef4444" if criticos > 0 else "#10b981"
         st.markdown(f"""
-        <div class="metric-card glow-card">
-            <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 5px;">CRÍTICOS</div>
-            <div style="font-size: 2.5rem; font-weight: 700; color: {color}; text-shadow: 0 0 20px {color.replace('var(', 'rgba(').replace(')', ', 0.5)')};">
+        <div class="metric-card glow-card" style="padding: 20px; text-align: center; cursor: pointer;">
+            <div style="color: #94a3b8; font-size: 0.9rem;">CRÍTICOS</div>
+            <div style="font-size: 2.5rem; font-weight: 700; color: {color}; text-shadow: 0 0 20px {color}40;">
                 {criticos}
             </div>
-            <div style="color: var(--text-secondary); font-size: 0.8rem;">requieren atención</div>
+            <div style="color: #94a3b8; font-size: 0.8rem;">requieren atención</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
         valor = resumen.get("valor_total", 0)
         st.markdown(f"""
-        <div class="metric-card glow-card">
-            <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 5px;">VALOR TOTAL</div>
-            <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-green); text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);">
+        <div class="metric-card glow-card" style="padding: 20px; text-align: center; cursor: pointer;">
+            <div style="color: #94a3b8; font-size: 0.9rem;">VALOR TOTAL</div>
+            <div style="font-size: 2.5rem; font-weight: 700; color: #10b981; text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);">
                 €{valor:.0f}
             </div>
-            <div style="color: var(--text-secondary); font-size: 0.8rem;">en inventario</div>
+            <div style="color: #94a3b8; font-size: 0.8rem;">en inventario</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -1438,6 +1449,136 @@ elif menu == "📸 Visión AI":
                             st.error(f"Error: {response.status_code}")
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
+
+
+elif menu == "🔍 Barcode":
+    st.markdown("<h2>🔍 Búsqueda por Código de Barras</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: var(--text-secondary);'>Busca productos en la base de datos OpenFoodFacts</p>", unsafe_allow_html=True)
+    
+    if 'barcode_value' not in st.session_state:
+        st.session_state.barcode_value = ""
+    
+    col_busq1, col_busq2 = st.columns([2, 1])
+    with col_busq1:
+        barcode = st.text_input("📊 Ingresa el código de barras", placeholder="Ej: 7622210449283", key="barcode_input", value=st.session_state.barcode_value)
+    with col_busq2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        buscar_btn = st.button("🔍 Buscar", use_container_width=True)
+    
+    if barcode:
+        st.session_state.barcode_value = barcode
+    
+    if buscar_btn and barcode:
+        with st.spinner("Buscando en OpenFoodFacts..."):
+            try:
+                headers = {
+                    'User-Agent': 'MarkeTTalento/1.0 (Streamlit Inventory App)',
+                    'Accept': 'application/json'
+                }
+                response = requests.get(
+                    f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json",
+                    timeout=15,
+                    headers=headers
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    st.write(f"Debug: Status {response.status_code}, Data: {data.get('status')}")  # Debug
+                    if data.get("status") == 1:
+                        product = data.get("product", {})
+                        
+                        st.session_state.barcode_product = product
+                        st.session_state.mostrar_formulario = True
+                        
+                        st.markdown("---")
+                        
+                        col_prod1, col_prod2 = st.columns([1, 2])
+                        
+                        with col_prod1:
+                            if product.get("image_url"):
+                                st.image(product.get("image_url"), width=200)
+                            else:
+                                st.markdown("""
+                                <div style="width: 200px; height: 200px; background: var(--bg-card); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                    <span style="font-size: 3rem;">📦</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        with col_prod2:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <h3 style="color: var(--accent-cyan); margin-bottom: 10px;">{product.get("product_name", "Producto")}</h3>
+                                <p style="color: var(--text-secondary);">Marca: {product.get("brands", "N/A")}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if 'form_key' not in st.session_state:
+                                st.session_state.form_key = 0
+                            
+                            key_form = f"prod_form_{st.session_state.form_key}"
+                            
+                            with st.form(key=key_form):
+                                nombre_prod = st.text_input("Nombre", value=product.get("product_name", ""))
+                                
+                                cat_options = ["General", "Bebidas", "Lácteos", "Frutas", "Verduras", "Panadería", "Carnes", "Snacks"]
+                                categoria = st.selectbox("Categoría", cat_options)
+                                
+                                col_pre1, col_pre2, col_pre3 = st.columns(3)
+                                with col_pre1:
+                                    precio_venta = st.number_input("Precio venta", min_value=0.01, value=10.0)
+                                with col_pre2:
+                                    precio_coste = st.number_input("Precio coste", min_value=0.0, value=5.0)
+                                with col_pre3:
+                                    stock_min = st.number_input("Stock mínimo", min_value=1, value=5)
+                                
+                                sku = f"OFF-{barcode[:6]}"
+                                
+                                submitted = st.form_submit_button("➕ Agregar", type="primary", use_container_width=True)
+                                
+                                if submitted:
+                                    categoria_map = {"General": 1, "Bebidas": 2, "Lácteos": 3, "Frutas": 4, "Verduras": 5, "Panadería": 6, "Carnes": 7, "Snacks": 8}
+                                    cat_id = categoria_map.get(categoria, 1)
+                                    
+                                    nuevo_producto = {
+                                        "sku": sku,
+                                        "codigo_barras": barcode,
+                                        "nombre": nombre_prod[:200] if nombre_prod else "Producto",
+                                        "descripcion": f"Importado. Marca: {product.get('brands', 'N/A')}",
+                                        "precio_venta": float(precio_venta),
+                                        "precio_coste": float(precio_coste) if precio_coste > 0 else None,
+                                        "unidad": "unidad",
+                                        "stock_minimo": int(stock_min),
+                                        "stock_maximo": 50,
+                                        "tiempo_reposicion": 3,
+                                        "categoria_id": cat_id,
+                                        "proveedor_id": None,
+                                        "imagen_url": product.get("image_url")
+                                    }
+                                    
+                                    resp = requests.post(f"{API_URL}/api/v1/productos", json=nuevo_producto, timeout=15)
+                                    if resp.status_code in [200, 201]:
+                                        st.success(f"✓ '{nombre_prod}' agregado!")
+                                        st.balloons()
+                                        st.session_state.form_key += 1
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Error: {resp.status_code}")
+                    else:
+                        st.error("❌ Producto no encontrado en la base de datos")
+                else:
+                    st.error(f"Error al conectar con OpenFoodFacts (código: {response.status_code})")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    
+    if not barcode or not buscar_btn:
+        st.markdown("""
+        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+            <p style="font-size: 4rem; margin: 0;">📊</p>
+            <p>Ingresa un código de barras para buscar información del producto</p>
+            <p style="font-size: 0.85rem; color: var(--accent-purple);">Base de datos: OpenFoodFacts</p>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 st.markdown("""
 <div style="text-align: center; padding: 20px 0; color: var(--text-secondary); border-top: 1px solid rgba(0, 240, 255, 0.1); margin-top: 30px;">
