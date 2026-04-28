@@ -32,8 +32,27 @@ from src.aplicacion.schemas.schemas import (
 
 app = FastAPI(
     title="MarkeTTalento API",
-    description="Sistema de Inventario Inteligente con Visión Artificial y ML",
+    description="""
+## Sistema de Inventario Inteligente
+
+### Características
+- **Gestión de Productos**: CRUD completo de productos, categorías y proveedores
+- **Control de Inventario**: Seguimiento de stock en tiempo real con alertas
+- **Ventas**: Registro y seguimiento de ventas
+- **Predicciones ML**: Predicción de demanda basada en historial
+- **Visión Artificial**: Detección de productos con YOLOv8 + actualización automática de inventario
+
+### Autenticación
+Por ahora en modo desarrollo (sin autenticación).
+
+### Notas
+- Base de datos: SQLite (desarrollo)
+- Puerto: 8002
+- Dashboard: http://localhost:8501
+    """,
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 app.add_middleware(
@@ -77,17 +96,17 @@ async def raiz():
     }
 
 
-@app.get("/api/v1/salud")
+@app.get("/api/v1/salud", tags=["Sistema"])
 async def salud():
     """Estado de salud del sistema."""
     return {
         "estado": "saludable",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "servicios": [" FastAPI", "PostgreSQL", "YOLOv8"]
+        "servicios": ["FastAPI", "SQLite", "YOLOv8"]
     }
 
 
-@app.post("/api/v1/categorias", response_model=CategoriaResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/v1/categorias", response_model=CategoriaResponse, status_code=status.HTTP_201_CREATED, tags=["Categorías"])
 async def crear_categoria(
     categoria: CategoriaCreate,
     db = Depends(get_db)
@@ -100,13 +119,13 @@ async def crear_categoria(
     return db_categoria
 
 
-@app.get("/api/v1/categorias", response_model=List[CategoriaResponse])
+@app.get("/api/v1/categorias", response_model=List[CategoriaResponse], tags=["Categorías"])
 async def listar_categorias(db = Depends(get_db)):
     """Lista todas las categorías."""
     return db.query(Categoria).filter(Categoria.activo == True).all()
 
 
-@app.post("/api/v1/proveedores", response_model=ProveedorResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/v1/proveedores", response_model=ProveedorResponse, status_code=status.HTTP_201_CREATED, tags=["Proveedores"])
 async def crear_proveedor(
     proveedor: ProveedorCreate,
     db = Depends(get_db)
@@ -119,13 +138,13 @@ async def crear_proveedor(
     return db_proveedor
 
 
-@app.get("/api/v1/proveedores", response_model=List[ProveedorResponse])
+@app.get("/api/v1/proveedores", response_model=List[ProveedorResponse], tags=["Proveedores"])
 async def listar_proveedores(db = Depends(get_db)):
     """Lista todos los proveedores."""
     return db.query(Proveedor).filter(Proveedor.activo == True).all()
 
 
-@app.post("/api/v1/productos", response_model=ProductoResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/v1/productos", response_model=ProductoResponse, status_code=status.HTTP_201_CREATED, tags=["Productos"])
 async def crear_producto(
     producto: ProductoCreate,
     db = Depends(get_db)
@@ -147,7 +166,7 @@ async def crear_producto(
     return db_producto
 
 
-@app.get("/api/v1/productos", response_model=List[ProductoResponse])
+@app.get("/api/v1/productos", response_model=List[ProductoResponse], tags=["Productos"])
 async def listar_productos(
     categoria_id: Optional[int] = None,
     db = Depends(get_db)
@@ -161,7 +180,7 @@ async def listar_productos(
     return query.all()
 
 
-@app.get("/api/v1/productos/{producto_id}", response_model=ProductoResponse)
+@app.get("/api/v1/productos/{producto_id}", response_model=ProductoResponse, tags=["Productos"])
 async def obtener_producto(producto_id: int, db = Depends(get_db)):
     """Obtiene un producto por ID."""
     producto = db.query(Producto).filter(
@@ -178,7 +197,7 @@ async def obtener_producto(producto_id: int, db = Depends(get_db)):
     return producto
 
 
-@app.get("/api/v1/productos/sku/{sku}", response_model=ProductoResponse)
+@app.get("/api/v1/productos/sku/{sku}", response_model=ProductoResponse, tags=["Productos"])
 async def obtener_producto_por_sku(sku: str, db = Depends(get_db)):
     """Obtiene un producto por SKU."""
     producto = db.query(Producto).filter(
@@ -195,7 +214,7 @@ async def obtener_producto_por_sku(sku: str, db = Depends(get_db)):
     return producto
 
 
-@app.put("/api/v1/productos/{producto_id}", response_model=ProductoResponse)
+@app.put("/api/v1/productos/{producto_id}", response_model=ProductoResponse, tags=["Productos"])
 async def actualizar_producto(
     producto_id: int,
     producto_data: ProductoCreate,
@@ -218,7 +237,7 @@ async def actualizar_producto(
     return db_producto
 
 
-@app.delete("/api/v1/productos/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/v1/productos/{producto_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Productos"])
 async def eliminar_producto(producto_id: int, db = Depends(get_db)):
     """Elimina (soft delete) un producto."""
     db_producto = db.query(Producto).filter(Producto.id == producto_id).first()
@@ -234,7 +253,7 @@ async def eliminar_producto(producto_id: int, db = Depends(get_db)):
     return None
 
 
-@app.post("/api/v1/inventario/{producto_id}", response_model=InventarioResponse)
+@app.post("/api/v1/inventario/{producto_id}", response_model=InventarioResponse, tags=["Inventario"])
 async def actualizar_inventario(
     producto_id: int,
     inventario_data: InventarioCreate,
@@ -268,13 +287,13 @@ async def actualizar_inventario(
     return inventario
 
 
-@app.get("/api/v1/inventario", response_model=List[InventarioResponse])
+@app.get("/api/v1/inventario", response_model=List[InventarioResponse], tags=["Inventario"])
 async def listar_inventario(db = Depends(get_db)):
     """Lista todo el inventario."""
     return db.query(Inventario).all()
 
 
-@app.get("/api/v1/inventario/bajo-stock", response_model=List[InventarioResponse])
+@app.get("/api/v1/inventario/bajo-stock", response_model=List[InventarioResponse], tags=["Inventario"])
 async def productos_bajo_stock(
     limite: int = 10,
     db = Depends(get_db)
@@ -291,7 +310,7 @@ async def productos_bajo_stock(
     return resultados[:limite]
 
 
-@app.get("/api/v1/inventario/resumen")
+@app.get("/api/v1/inventario/resumen", tags=["Inventario"])
 async def resumen_inventario(db = Depends(get_db)):
     """Obtiene resumen completo del inventario."""
     try:
@@ -332,7 +351,7 @@ async def resumen_inventario(db = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/inventario/recomendaciones")
+@app.get("/api/v1/inventario/recomendaciones", tags=["Inventario"])
 async def recomendaciones(
     producto_repo: ProductoRepositorio = Depends(get_producto_repo),
     inventario_repo: InventarioRepositorio = Depends(get_inventario_repo),
@@ -343,7 +362,7 @@ async def recomendaciones(
     return servicio.generar_recomendaciones()
 
 
-@app.post("/api/v1/ventas", response_model=VentaResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/v1/ventas", response_model=VentaResponse, status_code=status.HTTP_201_CREATED, tags=["Ventas"])
 async def registrar_venta(
     venta: VentaCreate,
     db = Depends(get_db)
@@ -380,7 +399,7 @@ async def registrar_venta(
     return db_venta
 
 
-@app.get("/api/v1/ventas", response_model=List[VentaResponse])
+@app.get("/api/v1/ventas", response_model=List[VentaResponse], tags=["Ventas"])
 async def listar_ventas(
     limite: int = 100,
     db = Depends(get_db)
@@ -389,7 +408,7 @@ async def listar_ventas(
     return db.query(Venta).order_by(Venta.fecha.desc()).limit(limite).all()
 
 
-@app.get("/api/v1/ventas/producto/{producto_id}", response_model=List[VentaResponse])
+@app.get("/api/v1/ventas/producto/{producto_id}", response_model=List[VentaResponse], tags=["Ventas"])
 async def ventas_por_producto(
     producto_id: int,
     limite: int = 30,
@@ -401,7 +420,7 @@ async def ventas_por_producto(
     ).order_by(Venta.fecha.desc()).limit(limite).all()
 
 
-@app.get("/api/v1/predicccion/{producto_id}")
+@app.get("/api/v1/predicccion/{producto_id}", tags=["Predicciones"])
 async def predecir_demanda(
     producto_id: int,
     venta_repo: VentaRepositorio = Depends(get_venta_repo)
@@ -420,7 +439,7 @@ async def predecir_demanda(
     }
 
 
-@app.get("/api/v1/prediccion/todos")
+@app.get("/api/v1/prediccion/todos", tags=["Predicciones"])
 async def predecir_todos(
     venta_repo: VentaRepositorio = Depends(get_venta_repo)
 ):
@@ -440,7 +459,7 @@ async def predecir_todos(
     ]
 
 
-@app.get("/api/v1/prediccion/semanal/{producto_id}")
+@app.get("/api/v1/prediccion/semanal/{producto_id}", tags=["Predicciones"])
 async def pronostico_semanal(
     producto_id: int,
     venta_repo: VentaRepositorio = Depends(get_venta_repo)
@@ -450,7 +469,7 @@ async def pronostico_semanal(
     return servicio.generar_pronostico_semanal(producto_id)
 
 
-@app.post("/api/v1/vision/detectar")
+@app.post("/api/v1/vision/detectar", tags=["Visión Artificial"])
 async def detectar_en_imagen(
     archivo: UploadFile = File(...),
     confianza_min: float = 0.15
@@ -477,7 +496,7 @@ async def detectar_en_imagen(
             os.remove(ruta_temporal)
 
 
-@app.post("/api/v1/vision/analizar-y-actualizar")
+@app.post("/api/v1/vision/analizar-y-actualizar", tags=["Visión Artificial"])
 async def detectar_y_actualizar_inventario(
     archivo: UploadFile = File(...),
     confianza_min: float = 0.15,
@@ -535,7 +554,7 @@ async def detectar_y_actualizar_inventario(
             os.remove(ruta_temporal)
 
 
-@app.get("/api/v1/analisis/completo")
+@app.get("/api/v1/analisis/completo", tags=["Análisis"])
 async def analisis_completo(
     producto_repo: ProductoRepositorio = Depends(get_producto_repo),
     inventario_repo: InventarioRepositorio = Depends(get_inventario_repo),
