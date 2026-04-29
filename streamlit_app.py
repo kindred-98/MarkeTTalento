@@ -914,12 +914,13 @@ if menu == "🏠 Dashboard":
 
 
 elif menu == "📦 Productos":
-    st.markdown("<h2>Gestión de Productos</h2>", unsafe_allow_html=True)
-    
     productos = api_get("/api/v1/productos")
     inventarios = api_get("/api/v1/inventario")
     categorias = api_get("/api/v1/categorias")
     proveedores = api_get("/api/v1/proveedores")
+    
+    # Header con título
+    st.markdown("<h2>Gestión de Productos</h2>", unsafe_allow_html=True)
     
     # === BUSCADOR Y FILTROS ===
     st.markdown("""
@@ -985,6 +986,74 @@ elif menu == "📦 Productos":
                 return "Saludable"
         return "Saludable"
     
+    # Línea divisoria
+    st.markdown("---")
+    
+    # Inicializar tab activo en session_state si no existe
+    if 'producto_tab_activo' not in st.session_state:
+        st.session_state.producto_tab_activo = 0  # 0 = Catálogo, 1 = Nuevo, 2 = Edición
+    
+    # Botones de navegación estilo sidebar
+    col_nav1, col_nav2, col_nav3 = st.columns(3)
+    
+    with col_nav1:
+        btn_catalogo = st.button("📋 Catálogo", use_container_width=True, 
+                                   type="primary" if st.session_state.producto_tab_activo == 0 else "secondary",
+                                   key="btn_nav_catalogo")
+        if btn_catalogo:
+            st.session_state.producto_tab_activo = 0
+            st.rerun()
+    
+    with col_nav2:
+        btn_nuevo = st.button("➕ Nuevo", use_container_width=True,
+                              type="primary" if st.session_state.producto_tab_activo == 1 else "secondary",
+                              key="btn_nav_nuevo")
+        if btn_nuevo:
+            st.session_state.producto_tab_activo = 1
+            st.rerun()
+    
+    with col_nav3:
+        btn_edicion = st.button("✏️ Edición", use_container_width=True,
+                                type="primary" if st.session_state.producto_tab_activo == 2 else "secondary",
+                                key="btn_nav_edicion")
+        if btn_edicion:
+            st.session_state.producto_tab_activo = 2
+            st.rerun()
+    
+    # Botones de exportar debajo, a los lados
+    if productos:
+        col_exp_izq, col_exp_centro, col_exp_der = st.columns([1, 2, 1])
+        with col_exp_izq:
+            df_export = pd.DataFrame([{
+                "ID": p.get("id"),
+                "Nombre": p.get("nombre"),
+                "SKU": p.get("sku"),
+                "Codigo Barras": p.get("codigo_barras"),
+                "Precio Venta": p.get("precio_venta"),
+                "Precio Coste": p.get("precio_coste"),
+                "Stock": get_prod_stock(p.get("id")),
+                "Categoría": next((c.get("nombre") for c in categorias if c.get("id") == p.get("categoria_id")), ""),
+                "Proveedor": next((pr.get("nombre") for pr in proveedores if pr.get("id") == p.get("proveedor_id")), ""),
+            } for p in productos])
+            
+            excel_data = to_excel(df_export)
+            st.download_button(
+                "📊 Excel",
+                data=excel_data,
+                file_name="productos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        with col_exp_der:
+            json_data = df_export.to_json(orient='records', indent=2)
+            st.download_button(
+                "📄 JSON",
+                data=json_data,
+                file_name="productos.json",
+                mime="application/json",
+                use_container_width=True
+            )
+    
     # Filtrar productos
     productos_filtrados = productos
     
@@ -1010,35 +1079,10 @@ elif menu == "📦 Productos":
     </div>
     """, unsafe_allow_html=True)
     
-    # Exportar Excel
-    if productos_filtrados:
-        df = pd.DataFrame([{
-            "ID": p.get("id"),
-            "Nombre": p.get("nombre"),
-            "SKU": p.get("sku"),
-            "Precio": p.get("precio"),
-            "Stock": p.get("stock"),
-            "Stock Mín": p.get("stock_minimo"),
-            "Stock Máx": p.get("stock_maximo"),
-            "Categoría": next((c.get("nombre") for c in categorias if c.get("id") == p.get("categoria_id")), ""),
-            "Proveedor": next((pr.get("nombre") for pr in proveedores if pr.get("id") == p.get("proveedor_id")), ""),
-            "Estado": get_prod_estado(p.get("id"), p.get("stock"))
-        } for p in productos_filtrados])
-        
-        excel_data = to_excel(df)
-        col_exp, _ = st.columns([1, 3])
-        with col_exp:
-            st.download_button(
-                "📥 Exportar Excel",
-                data=excel_data,
-                file_name="productos.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+    st.markdown("---")
     
-    tab1, tab2, tab3 = st.tabs(["📋 Catálogo", "➕ Nuevo", "✏️ Edición"])
-    
-    with tab1:
+    # Mostrar contenido según tab activo
+    if st.session_state.producto_tab_activo == 0:
         if productos_filtrados:
             st.markdown("""
             <style>
@@ -1219,12 +1263,21 @@ elif menu == "📦 Productos":
                         st.caption(desc_corta)
                     
                     with col_info:
-                        col_nom, col_edit = st.columns([4, 1])
-                        with col_nom:
-                            st.markdown(f"### {prod.get('nombre', 'Producto')}")
-                        with col_edit:
-                            if st.button("✏️", key=f"edit_prod_{prod.get('id')}"):
+                        # Botón para seleccionar producto a editar (estilo limpio)
+                        col_name, col_arrow = st.columns([4, 1])
+                        with col_name:
+                            st.markdown(f"""
+                            <div style="font-size: 1.3rem; font-weight: 600; color: #00f0ff; 
+                                        cursor: pointer; padding: 8px 0;
+                                        text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);">
+                                {prod.get('nombre', 'Producto')}
+                            </div>
+                            """, unsafe_allow_html=True)
+                        with col_arrow:
+                            if st.button("✏️", key=f"select_prod_{prod.get('id')}", help="Editar producto"):
                                 st.session_state['editar_producto'] = prod.get('id')
+                                st.session_state.producto_tab_activo = 2
+                                st.rerun()
                         
                         st.markdown(f"### €{prod.get('precio_venta', 0):.2f}")
                         
@@ -1247,7 +1300,7 @@ elif menu == "📦 Productos":
         else:
             st.info("No hay productos en el catálogo")
     
-    with tab2:
+    elif st.session_state.producto_tab_activo == 1:
         if 'form_version' not in st.session_state:
             st.session_state['form_version'] = 0
         
@@ -1257,112 +1310,300 @@ elif menu == "📦 Productos":
         
         form_version = st.session_state.get('form_version', 0)
         
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(139, 92, 246, 0.1)); 
+                    padding: 15px; border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.3); margin-bottom: 20px;">
+            <h4 style="margin: 0; color: #00f0ff;">➕ Nuevo Producto</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col1, col2 = st.columns(2)
         with col1:
-            sku = st.text_input("Código SKU", key=f"new_sku_{form_version}")
-            nombre = st.text_input("Nombre del producto", key=f"new_nombre_{form_version}")
-            precio = st.number_input("Precio de venta (€)", min_value=0.0, value=0.0, key=f"new_precio_{form_version}")
+            sku = st.text_input("Código SKU *", key=f"new_sku_{form_version}", placeholder="Ej: PROD-001")
+            nombre = st.text_input("Nombre del producto *", key=f"new_nombre_{form_version}", placeholder="Ej: Leche Entera")
+            codigo_barras = st.text_input("Código de barras", key=f"new_codigo_barras_{form_version}", placeholder="Ej: 7622210449283")
+            precio = st.number_input("Precio de venta (€) *", min_value=0.0, value=0.0, key=f"new_precio_{form_version}")
+            
         with col2:
-            unidad = st.selectbox("Unidad de medida", ["unidad", "kg", "litro", "paquete", "caja", "botella"], key=f"new_unidad_{form_version}")
-            stock_min = st.number_input("Stock mínimo", min_value=0, value=5, key=f"new_stock_min_{form_version}")
-            stock_max = st.number_input("Stock máximo", min_value=0, value=50, key=f"new_stock_max_{form_version}")
-        
-        col3, col4 = st.columns(2)
-        with col3:
+            unidad = st.selectbox("Unidad de medida *", ["unidad", "kg", "litro", "paquete", "caja", "botella"], key=f"new_unidad_{form_version}")
             precio_coste = st.number_input("Precio de coste (€)", min_value=0.0, value=0.0, key=f"new_precio_coste_{form_version}")
             tiempo_repo = st.number_input("Días de reposición", min_value=1, value=3, key=f"new_tiempo_{form_version}")
-        with col4:
-            cat_options = {c.get("nombre"): c.get("id") for c in categorias}
-            categoria_nombre = st.selectbox("Categoría", list(cat_options.keys()), key=f"new_cat_{form_version}")
-            categoria_id = cat_options.get(categoria_nombre)
+            
+            # Proveedor
+            prov_list = api_get("/api/v1/proveedores")
+            prov_options = {p.get("nombre", "Sin nombre"): p.get("id") for p in prov_list}
+            prov_options["Sin proveedor"] = None
+            proveedor_nombre = st.selectbox("Proveedor", list(prov_options.keys()), key=f"new_proveedor_{form_version}")
+            proveedor_id = prov_options.get(proveedor_nombre)
         
-        descripcion = st.text_area("Descripción del producto", key=f"new_descripcion_{form_version}", height=2)
+        st.markdown("---")
+        st.markdown("<h5 style='color: #00f0ff; margin-bottom: 15px;'>📦 Configuración de Stock</h5>", unsafe_allow_html=True)
+        
+        col_stock1, col_stock2, col_stock3 = st.columns(3)
+        with col_stock1:
+            unidad_ingreso = st.number_input("Unidad de ingreso", min_value=1, value=10, key=f"new_unidad_ingreso_{form_version}",
+                                            help="Cuánto entra al reabastecer")
+            
+        with col_stock2:
+            stock_actual = st.number_input("Stock actual *", min_value=0, value=0, key=f"new_stock_actual_{form_version}",
+                                          help="Cantidad que tienes ahora")
+            
+        with col_stock3:
+            stock_max = st.number_input("Stock máximo *", min_value=0, value=100, key=f"new_stock_max_{form_version}",
+                                       help="Capacidad ideal del almacén")
+        
+        # Stock mínimo bloqueado en 0 (a todo lo largo)
+        st.markdown("""
+        <div style="background: rgba(30, 41, 59, 0.6); padding: 15px; border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.2); margin-top: 15px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <label style="color: #94a3b8; font-size: 0.9rem;">🔒 Stock mínimo</label>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #64748b;">0</div>
+                </div>
+                <small style="color: #64748b;">Límite de alerta (bloqueado)</small>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        stock_min = 0
+        
+        st.markdown("---")
+        col3, col4 = st.columns(2)
+        with col3:
+            cat_options = {c.get("nombre"): c.get("id") for c in categorias}
+            categoria_nombre = st.selectbox("Categoría *", list(cat_options.keys()), key=f"new_cat_{form_version}")
+            categoria_id = cat_options.get(categoria_nombre)
+            
+            descripcion = st.text_area("Descripción del producto", key=f"new_descripcion_{form_version}", height=100, 
+                                       placeholder="Describe el producto...")
+        
+        with col4:
+            st.markdown("""
+            <div style="margin-top: 8px;">
+                <label style="color: #94a3b8; font-size: 0.9rem;">📷 Foto del producto</label>
+            </div>
+            """, unsafe_allow_html=True)
+            imagen_subida = st.file_uploader("Subir imagen", type=['png', 'jpg', 'jpeg'], key=f"new_imagen_{form_version}")
+            
+            if imagen_subida is not None:
+                st.image(imagen_subida, width=150, caption="Vista previa")
+                st.success("✅ Imagen cargada")
+        
+        st.markdown("<small style='color: #64748b;'>* Campos obligatorios</small>", unsafe_allow_html=True)
         
         if st.button("💾 Crear producto", type="primary", use_container_width=True, key="btn_crear_prod"):
             if not sku or not nombre:
-                st.error("❌ SKU y Nombre son obligatorio")
+                st.error("❌ SKU y Nombre son obligatorios")
             elif nombre.lower() in nombres_existentes:
                 st.error("❌ Ya existe un producto con ese nombre")
             else:
+                # Guardar imagen si se subió
+                imagen_url = None
+                if imagen_subida is not None:
+                    # Crear directorio si no existe
+                    import os
+                    os.makedirs("docs/productos", exist_ok=True)
+                    
+                    # Guardar imagen con nombre único
+                    extension = imagen_subida.name.split('.')[-1]
+                    nombre_imagen = f"{sku.replace(' ', '_').replace('/', '_')}_{form_version}.{extension}"
+                    ruta_imagen = f"docs/productos/{nombre_imagen}"
+                    
+                    with open(ruta_imagen, "wb") as f:
+                        f.write(imagen_subida.getbuffer())
+                    
+                    imagen_url = ruta_imagen
+                    st.success(f"✅ Imagen guardada: {nombre_imagen}")
+                
                 data = {
                     "sku": sku,
                     "nombre": nombre,
+                    "codigo_barras": codigo_barras if codigo_barras else None,
                     "precio_venta": precio,
-                    "precio_coste": precio_coste,
+                    "precio_coste": precio_coste if precio_coste > 0 else None,
                     "unidad": unidad,
                     "stock_minimo": stock_min,
                     "stock_maximo": stock_max,
+                    "unidad_ingreso": unidad_ingreso,
                     "tiempo_reposicion": tiempo_repo,
                     "categoria_id": categoria_id,
-                    "descripcion": descripcion
+                    "proveedor_id": proveedor_id,
+                    "descripcion": descripcion,
+                    "imagen_url": imagen_url
                 }
                 result = api_post("/api/v1/productos", data)
                 if result:
                     st.success("✅ Producto añadido al catálogo")
                     prod_id = result.get("id")
-                    api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": stock_min, "ubicacion": "Almacén A"})
+                    # Crear inventario inicial con el stock actual especificado
+                    api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": stock_actual, "ubicacion": "Almacén A"})
                     st.session_state['form_version'] = form_version + 1
                     st.rerun()
                 else:
                     st.error("❌ Error al crear el producto. Revisa los datos.")
     
-    with tab3:
+    elif st.session_state.producto_tab_activo == 2:
         if 'editar_producto' in st.session_state and st.session_state['editar_producto']:
             prod_id_edit = st.session_state['editar_producto']
             producto_edit = next((p for p in productos if p.get('id') == prod_id_edit), None)
             categorias = api_get("/api/v1/categorias")
+            proveedores = api_get("/api/v1/proveedores")
+            inv_list = api_get("/api/v1/inventario")
             
             if producto_edit:
-                st.markdown("### ✏️ Editar Producto")
+                # Obtener stock actual del producto
+                inv_actual = next((i for i in inv_list if i.get('producto_id') == prod_id_edit), None)
+                stock_actual_val = inv_actual.get('cantidad', 0) if inv_actual else 0
+                
+                # Header con estilo luminoso
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(139, 92, 246, 0.15)); 
+                            padding: 25px; border-radius: 15px; border: 1px solid rgba(0, 240, 255, 0.4);
+                            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), inset 0 0 20px rgba(0, 240, 255, 0.05);
+                            margin-bottom: 25px; text-align: center;">
+                    <h2 style="margin: 0; color: #00f0ff; text-shadow: 0 0 15px rgba(0, 240, 255, 0.6); font-size: 1.8rem;">
+                        ✏️ Editando: {producto_edit.get('nombre', '')}
+                    </h2>
+                    <div style="width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00f0ff, transparent); 
+                                margin-top: 15px; box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);"></div>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
-                    edit_nombre = st.text_input("Nombre", value=producto_edit.get('nombre', ''), key="edit_nombre")
-                    edit_precio = st.number_input("Precio venta (€)", value=float(producto_edit.get('precio_venta', 0)), key="edit_precio")
-                    edit_coste = st.number_input("Precio coste (€)", value=float(producto_edit.get('precio_coste') or 0), key="edit_coste")
+                    st.markdown(f"""
+                    <div style="margin-bottom: 15px;">
+                        <label style="color: #94a3b8; font-size: 0.9rem;">SKU</label>
+                        <div style="background: rgba(30, 41, 59, 0.8); padding: 10px 15px; border-radius: 8px; 
+                                    border: 1px solid rgba(0, 240, 255, 0.2); color: #64748b; font-weight: 600;">
+                            {producto_edit.get('sku', 'N/A')}
+                        </div>
+                        <small style="color: #64748b;">El SKU no se puede modificar</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    edit_nombre = st.text_input("Nombre del producto *", value=producto_edit.get('nombre', ''), key="edit_nombre")
+                    edit_codigo_barras = st.text_input("Código de barras", value=producto_edit.get('codigo_barras') or '', key="edit_codigo_barras")
+                    edit_precio = st.number_input("Precio de venta (€) *", value=float(producto_edit.get('precio_venta', 0)), key="edit_precio")
+                    
                 with col_e2:
-                    edit_unidad = st.selectbox("Unidad", ["unidad", "kg", "litro", "paquete", "caja", "botella"], 
+                    edit_unidad = st.selectbox("Unidad de medida *", ["unidad", "kg", "litro", "paquete", "caja", "botella"], 
                         index=["unidad", "kg", "litro", "paquete", "caja", "botella"].index(producto_edit.get('unidad', 'unidad')) if producto_edit.get('unidad') in ["unidad", "kg", "litro", "paquete", "caja", "botella"] else 0, key="edit_unidad")
-                    edit_stock_min = st.number_input("Stock mínimo", value=int(producto_edit.get('stock_minimo', 5)), key="edit_stock_min")
-                    edit_stock_max = st.number_input("Stock máximo", value=int(producto_edit.get('stock_maximo', 50)), key="edit_stock_max")
+                    edit_coste = st.number_input("Precio de coste (€)", value=float(producto_edit.get('precio_coste') or 0), key="edit_coste")
+                    edit_tiempo = st.number_input("Días de reposición", value=int(producto_edit.get('tiempo_reposicion', 3)), key="edit_tiempo")
+                    
+                    # Proveedor
+                    prov_options = {p.get("nombre", "Sin nombre"): p.get("id") for p in proveedores}
+                    prov_options["Sin proveedor"] = None
+                    prov_actual = producto_edit.get('proveedor_id')
+                    prov_nombres = list(prov_options.keys())
+                    prov_index = next((i for i, (nom, pid) in enumerate(prov_options.items()) if pid == prov_actual), len(prov_nombres) - 1)
+                    edit_prov_nombre = st.selectbox("Proveedor", prov_nombres, index=prov_index, key="edit_proveedor")
+                    edit_prov_id = prov_options.get(edit_prov_nombre)
                 
+                st.markdown("---")
+                st.markdown("<h5 style='color: #00f0ff; margin-bottom: 15px;'>📦 Configuración de Stock</h5>", unsafe_allow_html=True)
+                
+                col_stock1, col_stock2, col_stock3 = st.columns(3)
+                with col_stock1:
+                    edit_unidad_ingreso = st.number_input("Unidad de ingreso", min_value=1, 
+                                                          value=int(producto_edit.get('unidad_ingreso', 10)), key="edit_unidad_ingreso")
+                    
+                with col_stock2:
+                    edit_stock_actual = st.number_input("Stock actual *", min_value=0, value=int(stock_actual_val), key="edit_stock_actual")
+                    
+                with col_stock3:
+                    edit_stock_max = st.number_input("Stock máximo *", min_value=0, value=int(producto_edit.get('stock_maximo', 100)), key="edit_stock_max")
+                
+                # Stock mínimo bloqueado en 0 (a todo lo largo)
+                st.markdown("""
+                <div style="background: rgba(30, 41, 59, 0.6); padding: 15px; border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.2); margin-top: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <label style="color: #94a3b8; font-size: 0.9rem;">🔒 Stock mínimo</label>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #64748b;">0</div>
+                        </div>
+                        <small style="color: #64748b;">Límite de alerta (bloqueado)</small>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                edit_stock_min = 0
+                
+                st.markdown("---")
                 col_e3, col_e4 = st.columns(2)
                 with col_e3:
-                    edit_tiempo = st.number_input("Días reposición", value=int(producto_edit.get('tiempo_reposicion', 3)), key="edit_tiempo")
-                with col_e4:
-                    edit_cat = st.selectbox("Categoría", [c.get('nombre') for c in categorias], 
+                    edit_cat = st.selectbox("Categoría *", [c.get('nombre') for c in categorias], 
                         index=next((i for i, c in enumerate(categorias) if c.get('id') == producto_edit.get('categoria_id')), 0), key="edit_cat")
                     edit_cat_id = next((c.get('id') for c in categorias if c.get('nombre') == edit_cat), 1)
+                    
+                    edit_descripcion = st.text_area("Descripción del producto", value=producto_edit.get('descripcion') or '', key="edit_descripcion", height=100)
+                    
+                with col_e4:
+                    # Imagen actual y opción para cambiar
+                    st.markdown("""
+                    <div style="margin-top: 8px;">
+                        <label style="color: #94a3b8; font-size: 0.9rem;">📷 Foto del producto</label>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Mostrar imagen actual si existe
+                    img_actual = producto_edit.get('imagen_url')
+                    if img_actual:
+                        try:
+                            st.image(img_actual, width=150, caption="Imagen actual")
+                        except:
+                            st.info("No se puede mostrar la imagen actual")
+                    
+                    edit_imagen = st.file_uploader("Cambiar imagen", type=['png', 'jpg', 'jpeg'], key="edit_imagen")
+                    if edit_imagen is not None:
+                        st.image(edit_imagen, width=150, caption="Nueva imagen")
+                        st.success("✅ Nueva imagen cargada")
                 
-                edit_descripcion = st.text_area("Descripción", value=producto_edit.get('descripcion') or '', key="edit_descripcion", height=2)
+                st.markdown("<small style='color: #64748b;'>* Campos obligatorios</small>", unsafe_allow_html=True)
                 
                 col_btns = st.columns(2)
                 with col_btns[0]:
-                    if st.button("💾 Guardar cambios", type="primary", key="guardar_prod"):
+                    if st.button("💾 Guardar cambios", type="primary", key="guardar_prod", use_container_width=True):
+                        # Guardar nueva imagen si se subió
+                        nueva_imagen_url = producto_edit.get('imagen_url')
+                        if edit_imagen is not None:
+                            import os
+                            os.makedirs("docs/productos", exist_ok=True)
+                            extension = edit_imagen.name.split('.')[-1]
+                            nombre_imagen = f"{producto_edit.get('sku', 'prod').replace(' ', '_').replace('/', '_')}_edit.{extension}"
+                            ruta_imagen = f"docs/productos/{nombre_imagen}"
+                            with open(ruta_imagen, "wb") as f:
+                                f.write(edit_imagen.getbuffer())
+                            nueva_imagen_url = ruta_imagen
+                        
                         data_edit = {
                             "nombre": edit_nombre,
+                            "codigo_barras": edit_codigo_barras if edit_codigo_barras else None,
                             "precio_venta": edit_precio,
                             "precio_coste": edit_coste if edit_coste > 0 else None,
                             "unidad": edit_unidad,
                             "stock_minimo": edit_stock_min,
                             "stock_maximo": edit_stock_max,
+                            "unidad_ingreso": edit_unidad_ingreso,
                             "tiempo_reposicion": edit_tiempo,
                             "categoria_id": edit_cat_id,
-                            "descripcion": edit_descripcion
+                            "proveedor_id": edit_prov_id,
+                            "descripcion": edit_descripcion,
+                            "imagen_url": nueva_imagen_url
                         }
                         result_edit = api_put(f"/api/v1/productos/{prod_id_edit}", data_edit)
                         if result_edit:
+                            # Actualizar stock en inventario
+                            api_post(f"/api/v1/inventario/{prod_id_edit}", {"cantidad": edit_stock_actual, "ubicacion": "Almacén A"})
                             st.success("✅ Producto actualizado")
                             del st.session_state['editar_producto']
                             st.rerun()
                         else:
                             st.error("❌ Error al actualizar")
                 with col_btns[1]:
-                    if st.button("❌ Cancelar", key="cancelar_edit"):
+                    if st.button("❌ Cancelar", key="cancelar_edit", use_container_width=True):
                         del st.session_state['editar_producto']
                         st.rerun()
         else:
-            st.info("👆 Selecciona un producto del catálogo y haz clic en el botón ✏️ para editarlo")
+            st.info("👆 Selecciona un producto del catálogo para editarlo")
 
 
 elif menu == "📊 Inventario":
