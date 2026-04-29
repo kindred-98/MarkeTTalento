@@ -616,6 +616,24 @@ if menu == "🏠 Dashboard":
     </div>
     """, unsafe_allow_html=True)
     
+    # Filtros para Stock por Producto
+    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+    col_filtro1, col_filtro2, col_filtro3, col_filtro4 = st.columns([1, 1, 1, 1])
+    with col_filtro1:
+        filtro_stock_agotados = st.checkbox("⚫ Agotados", value=filtro_agotados, key="stock_filtro_agotados")
+    with col_filtro2:
+        filtro_stock_criticos = st.checkbox("🔴 Críticos", value=filtro_criticos, key="stock_filtro_criticos")
+    with col_filtro3:
+        filtro_stock_bajos = st.checkbox("🟡 Bajos", value=filtro_bajos, key="stock_filtro_bajos")
+    with col_filtro4:
+        filtro_stock_saludables = st.checkbox("🟢 Saludables", value=filtro_saludables, key="stock_filtro_saludables")
+    
+    # Sincronizar filtros con los de arriba
+    st.session_state.filtro_agotados = filtro_stock_agotados
+    st.session_state.filtro_criticos = filtro_stock_criticos
+    st.session_state.filtro_bajos = filtro_stock_bajos
+    st.session_state.filtro_saludables = filtro_stock_saludables
+    
     inventarios = api_get("/api/v1/inventario")
     productos = api_get("/api/v1/productos")
     
@@ -654,13 +672,13 @@ if menu == "🏠 Dashboard":
     datos_stock_filtrados = []
     for d in datos_stock:
         estado = d["Estado"]
-        if estado == "Agotados" and filtro_agotados:
+        if estado == "Agotados" and filtro_stock_agotados:
             datos_stock_filtrados.append(d)
-        elif estado == "Críticos" and filtro_criticos:
+        elif estado == "Críticos" and filtro_stock_criticos:
             datos_stock_filtrados.append(d)
-        elif estado == "Bajos" and filtro_bajos:
+        elif estado == "Bajos" and filtro_stock_bajos:
             datos_stock_filtrados.append(d)
-        elif estado == "Saludables" and filtro_saludables:
+        elif estado == "Saludables" and filtro_stock_saludables:
             datos_stock_filtrados.append(d)
     
     if datos_stock_filtrados:
