@@ -427,51 +427,16 @@ with st.sidebar:
 # Dashboard principal
 if menu == "🏠 Dashboard":
     st.markdown("<h2>🏠 Dashboard</h2>", unsafe_allow_html=True)
-    
-    # Buscador
-    busqueda = st.text_input("🔍 Buscar producto", placeholder="Escribe nombre o SKU...")
-    
-    if busqueda:
-        productos = api_get("/api/v1/productos")
-        inventarios = api_get("/api/v1/inventario")
-        
-        busq_lower = busqueda.lower()
-        productos_encontrados = [
-            p for p in productos 
-            if busq_lower in p.get("nombre", "").lower() or busq_lower in p.get("sku", "").lower()
-        ]
-        
-        if productos_encontrados:
-            st.markdown(f"""
-            <div style="padding: 10px 15px; background: rgba(0, 240, 255, 0.1); border-radius: 10px; margin-bottom: 15px;">
-                <span style="color: #00f0ff; font-weight: 600;">{len(productos_encontrados)}</span>
-                <span style="color: #94a3b8;"> resultados para "{busqueda}"</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for p in productos_encontrados:
-                inv = next((i for i in inventarios if i.get("producto_id") == p.get("id")), None)
-                stock = inv.get("cantidad", 0) if inv else 0
-                min_s = p.get("stock_minimo", 0) or 0
-                
-                if stock <= 0:
-                    estado = "🔴 Crítico"
-                elif stock < min_s:
-                    estado = "🟡 Bajo"
-                else:
-                    estado = "🟢 OK"
-                
-                col_prod, col_stock, col_estado = st.columns([3, 1, 1])
-                with col_prod:
-                    st.markdown(f"**{p.get('nombre')}**")
-                with col_stock:
-                    st.markdown(f"Stock: **{stock}**")
-                with col_estado:
-                    st.markdown(estado)
-            st.markdown("---")
-        else:
-            st.warning(f"No se encontraron productos con '{busqueda}'")
-    
+
+    if 'filtro_agotados' not in st.session_state:
+        st.session_state.filtro_agotados = True
+    if 'filtro_criticos' not in st.session_state:
+        st.session_state.filtro_criticos = True
+    if 'filtro_bajos' not in st.session_state:
+        st.session_state.filtro_bajos = True
+    if 'filtro_saludables' not in st.session_state:
+        st.session_state.filtro_saludables = True
+
     resumen = api_get("/api/v1/inventario/resumen")
     col1, col2, col3, col4 = st.columns(4)
     
@@ -534,19 +499,79 @@ if menu == "🏠 Dashboard":
         </div>
         """, unsafe_allow_html=True)
         
+        # Calcular estados basados en porcentajes del STOCK MÁXIMO
+        inventarios_calc = api_get("/api/v1/inventario")
+        productos_calc = api_get("/api/v1/productos")
+        
+        agotados = 0
+        criticos = 0
+        bajos = 0
+        saludables = 0
+        
+        for inv in inventarios_calc:
+            prod = next((p for p in productos_calc if p.get("id") == inv.get("producto_id")), None)
+            if prod:
+                stock = inv.get("cantidad", 0)
+                max_s = prod.get("stock_maximo", 100) or 100
+                
+                if stock <= 0:
+                    agotados += 1
+                elif max_s > 0:
+                    pct = (stock / max_s) * 100
+                    if pct <= 25:
+                        criticos += 1
+                    elif pct <= 59:
+                        bajos += 1
+                    else:
+                        saludables += 1
+                else:
+                    saludables += 1
+        
         datos = [
-            {"Estado": "Críticos", "Cantidad": resumen.get("productos_criticos", 0), "Color": "#ef4444"},
-            {"Estado": "Bajos", "Cantidad": resumen.get("productos_bajos", 0), "Color": "#f59e0b"},
-            {"Estado": "Adecuados", "Cantidad": resumen.get("productos_adecuados", 0), "Color": "#10b981"},
+            {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
+            {"Estado": "Críticos", "Cantidad": criticos, "Color": "#ef4444"},
+            {"Estado": "Bajos", "Cantidad": bajos, "Color": "#f59e0b"},
+            {"Estado": "Saludables", "Cantidad": saludables, "Color": "#10b981"},
         ]
         
-        if any(d["Cantidad"] > 0 for d in datos):
+        if 'filtro_agotados' not in st.session_state:
+            st.session_state.filtro_agotados = True
+        if 'filtro_criticos' not in st.session_state:
+            st.session_state.filtro_criticos = True
+        if 'filtro_bajos' not in st.session_state:
+            st.session_state.filtro_bajos = True
+        if 'filtro_saludables' not in st.session_state:
+            st.session_state.filtro_saludables = True
+        
+        col_f1, col_f2, col_f3, col_f4 = st.columns([1, 1, 1, 1])
+        with col_f1:
+            filtro_agotados = st.checkbox("Agotados", value=st.session_state.filtro_agotados, key="f_check_agotados")
+        with col_f2:
+            filtro_criticos = st.checkbox("Críticos", value=st.session_state.filtro_criticos, key="f_check_criticos")
+        with col_f3:
+            filtro_bajos = st.checkbox("Bajos", value=st.session_state.filtro_bajos, key="f_check_bajos")
+        with col_f4:
+            filtro_saludables = st.checkbox("Saludables", value=st.session_state.filtro_saludables, key="f_check_saludables")
+        
+        st.session_state.filtro_agotados = filtro_agotados
+        st.session_state.filtro_criticos = filtro_criticos
+        st.session_state.filtro_bajos = filtro_bajos
+        st.session_state.filtro_saludables = filtro_saludables
+        
+        datos_filtrados = [d for d in datos if (
+            (d["Estado"] == "Agotados" and filtro_agotados) or
+            (d["Estado"] == "Críticos" and filtro_criticos) or
+            (d["Estado"] == "Bajos" and filtro_bajos) or
+            (d["Estado"] == "Saludables" and filtro_saludables)
+        )]
+        
+        if datos_filtrados:
             fig = go.Figure()
             
             fig.add_trace(go.Pie(
-                labels=[d["Estado"] for d in datos],
-                values=[d["Cantidad"] for d in datos],
-                marker=dict(colors=[d["Color"] for d in datos]),
+                labels=[d["Estado"] for d in datos_filtrados],
+                values=[d["Cantidad"] for d in datos_filtrados],
+                marker=dict(colors=[d["Color"] for d in datos_filtrados]),
                 hole=0.6,
                 hovertemplate="<b>%{label}</b><br>Cantidad: %{value}<extra></extra>"
             ))
@@ -567,52 +592,144 @@ if menu == "🏠 Dashboard":
                 font=dict(color="white"),
                 margin=dict(l=20, r=20, t=20, b=60)
             )
+            
             st.plotly_chart(fig, width='stretch')
     
-    # Gráfico de barras - stock por producto
+    # Gráfico de barras futurista - stock por producto
     st.markdown("")
     st.markdown("""
-    <div class="metric-card">
-        <h3 style="margin-bottom: 15px;">📦 Stock por Producto</h3>
+    <div style="background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(139, 92, 246, 0.1)); 
+                padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 240, 255, 0.3);
+                box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);">
+        <h3 style="margin: 0; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);">
+            📦 Stock por Producto
+        </h3>
+        <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.85rem;">
+            Visualización en tiempo real del inventario
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
     inventarios = api_get("/api/v1/inventario")
     productos = api_get("/api/v1/productos")
     
+    def get_estado_producto(prod_id, inv_list):
+        for inv in inv_list:
+            if inv.get("producto_id") == prod_id:
+                stock = inv.get("cantidad", 0)
+                prod = next((p for p in productos if p.get("id") == prod_id), None)
+                max_s = prod.get("stock_maximo", 100) or 100 if prod else 100
+                
+                if stock <= 0:
+                    return "Agotados"
+                elif max_s > 0:
+                    pct = (stock / max_s) * 100
+                    if pct <= 25:
+                        return "Críticos"
+                    elif pct <= 59:
+                        return "Bajos"
+                    else:
+                        return "Saludables"
+                else:
+                    return "Saludables"
+        return "Agotados"
+    
     datos_stock = []
     for inv in inventarios:
         prod = next((p for p in productos if p.get("id") == inv.get("producto_id")), None)
         if prod:
+            estado = get_estado_producto(prod.get("id"), inventarios)
             datos_stock.append({
-                "Producto": prod.get("nombre", "Producto")[:20],
-                "Stock": inv.get("cantidad", 0)
+                "Producto": prod.get("nombre", "Producto"),
+                "Stock": inv.get("cantidad", 0),
+                "Estado": estado
             })
     
-    if datos_stock:
-        df_stock = pd.DataFrame(datos_stock)
-        df_stock = df_stock.sort_values("Stock", ascending=True).tail(15)
+    datos_stock_filtrados = []
+    for d in datos_stock:
+        estado = d["Estado"]
+        if estado == "Agotados" and filtro_agotados:
+            datos_stock_filtrados.append(d)
+        elif estado == "Críticos" and filtro_criticos:
+            datos_stock_filtrados.append(d)
+        elif estado == "Bajos" and filtro_bajos:
+            datos_stock_filtrados.append(d)
+        elif estado == "Saludables" and filtro_saludables:
+            datos_stock_filtrados.append(d)
+    
+    if datos_stock_filtrados:
+        df_stock = pd.DataFrame(datos_stock_filtrados)
+        df_stock = df_stock.sort_values("Stock", ascending=True)
         
-        fig_bar = px.bar(
-            df_stock,
-            x="Stock",
-            y="Producto",
-            orientation="h",
-            color="Stock",
-            color_continuous_scale=["#ef4444", "#f59e0b", "#10b981"]
+        color_map = {"Agotados": "#6b7280", "Críticos": "#ef4444", "Bajos": "#f59e0b", "Saludables": "#10b981"}
+        
+        fig_futurista = go.Figure()
+        
+        for estado in ["Agotados", "Críticos", "Bajos", "Saludables"]:
+            df_estado = df_stock[df_stock["Estado"] == estado]
+            if not df_estado.empty:
+                fig_futurista.add_trace(go.Bar(
+                    name=estado,
+                    x=df_estado["Stock"],
+                    y=df_estado["Producto"],
+                    orientation='h',
+                    marker=dict(
+                        color=color_map[estado],
+                        line=dict(color='rgba(255,255,255,0.5)', width=2),
+                        opacity=1.0
+                    ),
+                    text=df_estado["Stock"].astype(str),
+                    textposition='outside',
+                    textfont=dict(color='white', size=14, family='Arial Black'),
+                    hovertemplate='<b>%{y}</b><br>Stock: %{x}<br>Estado: ' + estado + '<extra></extra>'
+                ))
+        
+        altura_dinamica = max(400, len(df_stock) * 32)
+        
+        fig_futurista.update_layout(
+            barmode='group',
+            height=altura_dinamica,
+            paper_bgcolor="rgba(10, 14, 23, 0)",
+            plot_bgcolor="rgba(10, 14, 23, 0.3)",
+            font=dict(color="white", family="Segoe UI, sans-serif"),
+            xaxis=dict(
+                title=dict(text="Unidades en Stock", font=dict(color="#94a3b8")),
+                color="white",
+                gridcolor="rgba(148, 163, 184, 0.1)",
+                zerolinecolor="rgba(148, 163, 184, 0.2)",
+                showline=True,
+                linecolor="rgba(0, 240, 255, 0.3)"
+            ),
+            yaxis=dict(
+                color="white",
+                gridcolor="rgba(148, 163, 184, 0.05)",
+                showline=True,
+                linecolor="rgba(0, 240, 255, 0.3)"
+            ),
+            margin=dict(l=150, r=50, t=20, b=40),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.12,
+                xanchor="center",
+                x=0.5,
+                font=dict(color="white", size=12),
+                bgcolor="rgba(10, 14, 23, 0.8)",
+                bordercolor="rgba(0, 240, 255, 0.3)",
+                borderwidth=1
+            ),
+            bargap=0.25,
+            hoverlabel=dict(
+                bgcolor="rgba(10, 14, 23, 0.95)",
+                font=dict(color="white"),
+                bordercolor="rgba(0, 240, 255, 0.5)"
+            )
         )
         
-        fig_bar.update_layout(
-            height=400,
-            paper_bgcolor="#0a0e17",
-            plot_bgcolor="#0a0e17",
-            font=dict(color="white"),
-            xaxis=dict(color="white", gridcolor="#1a2332"),
-            yaxis=dict(color="white"),
-            margin=dict(l=10, r=10, t=10, b=40)
-        )
-        
-        st.plotly_chart(fig_bar, width='stretch')
+        st.plotly_chart(fig_futurista, use_container_width=True)
+    else:
+        st.info("ℹ️ No hay productos para mostrar con los filtros seleccionados")
     
     with col_chart2:
         st.markdown("""
@@ -643,8 +760,8 @@ if menu == "🏠 Dashboard":
         if criticos == 0 and bajas == 0:
             st.markdown("""
             <div style="padding: 15px; background: rgba(16, 185, 129, 0.2); border-left: 3px solid #10b981; border-radius: 0 12px 12px 0;">
-                <div style="color: #10b981; font-weight: 600;">✓ Todo OK</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Inventario saludable</div>
+                <div style="color: #10b981; font-weight: 600;">✓ Saludable</div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem;">Inventario en óptimas condiciones</div>
             </div>
             """, unsafe_allow_html=True)
     
@@ -720,7 +837,7 @@ elif menu == "📦 Productos":
         cat_filtro = st.selectbox("Categoría", cat_options, key="filtro_cat")
     
     with col_busq3:
-        estado_options = ["Todos", "OK", "Bajo", "Crítico"]
+        estado_options = ["Todos", "Agotado", "Crítico", "Bajo", "Saludable"]
         estado_filtro = st.selectbox("Estado stock", estado_options, key="filtro_estado")
     
     # Función para obtener stock y estado
@@ -734,15 +851,19 @@ elif menu == "📦 Productos":
         stock = stock or 0
         for p in productos:
             if p.get("id") == pid:
-                min_s = p.get("stock_minimo", 0) or 0
+                max_s = p.get("stock_maximo", 100) or 100
                 if stock <= 0:
-                    return "Crítico"
-                elif stock < min_s:
-                    if min_s > 0 and stock <= min_s * 0.3:
+                    return "Agotado"
+                elif max_s > 0:
+                    pct = (stock / max_s) * 100
+                    if pct <= 25:
                         return "Crítico"
-                    return "Bajo"
-                return "OK"
-        return "OK"
+                    elif pct <= 59:
+                        return "Bajo"
+                    else:
+                        return "Saludable"
+                return "Saludable"
+        return "Saludable"
     
     # Filtrar productos
     productos_filtrados = productos
@@ -864,22 +985,33 @@ elif menu == "📦 Productos":
                         stock = i.get("cantidad", 0)
                         break
                 
-                min_s = prod.get("stock_minimo", 1)
-                max_s = prod.get("stock_maximo", min_s * 2)
-                pct = min((stock / max_s) * 100, 100) if max_s > 0 else 0
+                min_s = prod.get("stock_minimo", 0)
+                max_s = prod.get("stock_maximo", 100) or 100
+                
+                # Fórmula para ESTADO (color del botón): usar stock MÁXIMO
+                if max_s > 0:
+                    pct_estado = (stock / max_s) * 100
+                else:
+                    pct_estado = 100 if stock > 0 else 0
+                
+                # Fórmula para BARRA (visual): usar stock MÁXIMO
+                if max_s > 0:
+                    pct_barra = min((stock / max_s) * 100, 100)
+                else:
+                    pct_barra = 100 if stock > 0 else 0
                 
                 if stock <= 0:
                     estado_color = "#6b7280"
-                    estado_texto = "⚫ Producto agotado"
-                elif pct <= 24:
+                    estado_texto = "⚫ Agotado"
+                elif pct_estado <= 25:
                     estado_color = "#ef4444"
-                    estado_texto = "🔴 Stock crítico"
-                elif pct <= 49:
+                    estado_texto = "🔴 Crítico"
+                elif pct_estado <= 59:
                     estado_color = "#f59e0b"
-                    estado_texto = "🟡 Stock bajo"
+                    estado_texto = "🟡 Bajo"
                 else:
                     estado_color = "#10b981"
-                    estado_texto = "🟢 Stock saludable"
+                    estado_texto = "🟢 Saludable"
                 
                 categoria_nom = get_cat_name(prod.get("categoria_id"))
                 
@@ -981,8 +1113,8 @@ elif menu == "📦 Productos":
                         
                         st.write(f"📊 **Stock:** {stock} {prod.get('unidad', 'uds')}")
                         
-                        st.progress(pct / 100)
-                        st.caption(f"{pct:.0f}% disponible")
+                        st.progress(pct_barra / 100)
+                        st.caption(f"{pct_barra:.0f}% del máximo")
                         
                         st.markdown(f"""
                         <div style="padding: 8px 16px; border-radius: 8px; text-align: center; 
@@ -1142,34 +1274,38 @@ elif menu == "📊 Inventario":
     # === FILTROS ===
     col_f1, col_f2 = st.columns(2)
     with col_f1:
-        filtro_estado_inv = st.selectbox("Filtrar por estado", ["Todos", "Crítico", "Bajo", "OK"], key="filtro_inv_estado")
+        filtro_estado_inv = st.selectbox("Filtrar por estado", ["Todos", "Agotado", "Crítico", "Bajo", "Saludable"], key="filtro_inv_estado")
     with col_f2:
         ordenar_inv = st.selectbox("Ordenar por", ["Producto (A-Z)", "Stock (mayor)", "Stock (menor)"], key="ordenar_inv")
     
     # Filtrar
-    def get_estado_inv(stock, min_s):
+    def get_estado_inv(stock, max_s):
         if stock <= 0:
-            return "Crítico"
-        elif stock < min_s:
-            if stock <= min_s * 0.3:
+            return "Agotado"
+        elif max_s > 0:
+            pct = (stock / max_s) * 100
+            if pct <= 25:
                 return "Crítico"
-            return "Bajo"
-        return "OK"
+            elif pct <= 59:
+                return "Bajo"
+            else:
+                return "Saludable"
+        return "Saludable"
     
     datos_inv = []
     for inv in inventarios:
         prod = next((p for p in productos if p.get("id") == inv.get("producto_id")), None)
         if prod:
             stock = inv.get("cantidad", 0)
-            min_s = prod.get("stock_minimo", 0)
-            estado = get_estado_inv(stock, min_s)
+            max_s = prod.get("stock_maximo", 100) or 100
+            estado = get_estado_inv(stock, max_s)
             datos_inv.append({
                 "producto": prod,
                 "stock": stock,
-                "min_s": min_s,
+                "min_s": prod.get("stock_minimo", 0),
                 "estado": estado,
                 "ubicacion": inv.get("ubicacion", "N/A"),
-                "max_s": prod.get("stock_maximo", 0)
+                "max_s": max_s
             })
     
     # Aplicar filtro
@@ -1264,7 +1400,7 @@ elif menu == "📊 Inventario":
         }
         .estado-critico { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .estado-bajo { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
-        .estado-ok { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .estado-saludable { background: rgba(16, 185, 129, 0.2); color: #10b981; }
     </style>
     """, unsafe_allow_html=True)
     
@@ -1275,8 +1411,8 @@ elif menu == "📊 Inventario":
             min_s = d["min_s"]
             estado = d["estado"]
             
-            cls_estado = {"Crítico": "critico", "Bajo": "bajo", "OK": "ok"}.get(estado, "ok")
-            badge = {"Crítico": "estado-critico", "Bajo": "estado-bajo", "OK": "estado-ok"}.get(estado, "estado-ok")
+            cls_estado = {"Crítico": "critico", "Bajo": "bajo", "Saludable": "saludable"}.get(estado, "saludable")
+            badge = {"Crítico": "estado-critico", "Bajo": "estado-bajo", "Saludable": "estado-saludable"}.get(estado, "estado-saludable")
             
             prod_id = prod.get("id")
             
