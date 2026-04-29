@@ -437,6 +437,41 @@ if menu == "🏠 Dashboard":
     if 'filtro_saludables' not in st.session_state:
         st.session_state.filtro_saludables = True
 
+    # Calcular estados basados en porcentajes del STOCK MÁXIMO (antes de las métricas)
+    inventarios_calc = api_get("/api/v1/inventario")
+    productos_calc = api_get("/api/v1/productos")
+    
+    agotados = 0
+    criticos = 0
+    bajos = 0
+    saludables = 0
+    
+    for inv in inventarios_calc:
+        prod = next((p for p in productos_calc if p.get("id") == inv.get("producto_id")), None)
+        if prod:
+            stock = inv.get("cantidad", 0)
+            max_s = prod.get("stock_maximo", 100) or 100
+            
+            if stock <= 0:
+                agotados += 1
+            elif max_s > 0:
+                pct = (stock / max_s) * 100
+                if pct <= 25:
+                    criticos += 1
+                elif pct <= 59:
+                    bajos += 1
+                else:
+                    saludables += 1
+            else:
+                saludables += 1
+    
+    # Guardar en session_state para uso en otras partes
+    st.session_state.dashboard_agotados = agotados
+    st.session_state.dashboard_criticos = criticos
+    st.session_state.dashboard_bajos = bajos
+    st.session_state.dashboard_saludables = saludables
+    
+    # Obtener resumen del API (para métricas que no dependen de estados)
     resumen = api_get("/api/v1/inventario/resumen")
     col1, col2, col3, col4 = st.columns(4)
     
@@ -463,7 +498,6 @@ if menu == "🏠 Dashboard":
         """, unsafe_allow_html=True)
     
     with col3:
-        criticos = resumen.get("productos_criticos", 0)
         color = "#ef4444" if criticos > 0 else "#10b981"
         st.markdown(f"""
         <div class="metric-card glow-card" style="padding: 20px; text-align: center; cursor: pointer;">
@@ -498,34 +532,6 @@ if menu == "🏠 Dashboard":
             <h3 style="margin-bottom: 15px;">📊 Estado del Inventario</h3>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Calcular estados basados en porcentajes del STOCK MÁXIMO
-        inventarios_calc = api_get("/api/v1/inventario")
-        productos_calc = api_get("/api/v1/productos")
-        
-        agotados = 0
-        criticos = 0
-        bajos = 0
-        saludables = 0
-        
-        for inv in inventarios_calc:
-            prod = next((p for p in productos_calc if p.get("id") == inv.get("producto_id")), None)
-            if prod:
-                stock = inv.get("cantidad", 0)
-                max_s = prod.get("stock_maximo", 100) or 100
-                
-                if stock <= 0:
-                    agotados += 1
-                elif max_s > 0:
-                    pct = (stock / max_s) * 100
-                    if pct <= 25:
-                        criticos += 1
-                    elif pct <= 59:
-                        bajos += 1
-                    else:
-                        saludables += 1
-                else:
-                    saludables += 1
         
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
@@ -658,76 +664,162 @@ if menu == "🏠 Dashboard":
             datos_stock_filtrados.append(d)
     
     if datos_stock_filtrados:
+        # Crear DataFrame ordenado por estado y nombre
         df_stock = pd.DataFrame(datos_stock_filtrados)
-        df_stock = df_stock.sort_values("Stock", ascending=True)
         
-        color_map = {"Agotados": "#6b7280", "Críticos": "#ef4444", "Bajos": "#f59e0b", "Saludables": "#10b981"}
+        # Ordenar: Críticos primero, luego Agotados, Bajos, Saludables
+        estado_orden = {"Críticos": 0, "Agotados": 1, "Bajos": 2, "Saludables": 3}
+        df_stock['orden'] = df_stock['Estado'].map(estado_orden)
+        df_stock = df_stock.sort_values(['orden', 'Producto']).reset_index(drop=True)
         
-        fig_futurista = go.Figure()
+        # Obtener productos con stock máximo para calcular porcentaje
+        inv_list = api_get("/api/v1/inventario")
+        prod_list = api_get("/api/v1/productos")
         
-        for estado in ["Agotados", "Críticos", "Bajos", "Saludables"]:
-            df_estado = df_stock[df_stock["Estado"] == estado]
-            if not df_estado.empty:
-                fig_futurista.add_trace(go.Bar(
-                    name=estado,
-                    x=df_estado["Stock"],
-                    y=df_estado["Producto"],
-                    orientation='h',
-                    marker=dict(
-                        color=color_map[estado],
-                        line=dict(color='rgba(255,255,255,0.5)', width=2),
-                        opacity=1.0
-                    ),
-                    text=df_estado["Stock"].astype(str),
-                    textposition='outside',
-                    textfont=dict(color='white', size=14, family='Arial Black'),
-                    hovertemplate='<b>%{y}</b><br>Stock: %{x}<br>Estado: ' + estado + '<extra></extra>'
-                ))
+        # CONFIGURACIÓN DE PAGINACIÓN
+        productos_por_pagina = 25
+        total_productos = len(df_stock)
+        total_paginas = (total_productos + productos_por_pagina - 1) // productos_por_pagina
         
-        altura_dinamica = max(400, len(df_stock) * 32)
+        # Inicializar página en session_state si no existe
+        if 'pagina_stock' not in st.session_state:
+            st.session_state.pagina_stock = 1
         
-        fig_futurista.update_layout(
-            barmode='group',
-            height=altura_dinamica,
-            paper_bgcolor="rgba(10, 14, 23, 0)",
-            plot_bgcolor="rgba(10, 14, 23, 0.3)",
-            font=dict(color="white", family="Segoe UI, sans-serif"),
-            xaxis=dict(
-                title=dict(text="Unidades en Stock", font=dict(color="#94a3b8")),
-                color="white",
-                gridcolor="rgba(148, 163, 184, 0.1)",
-                zerolinecolor="rgba(148, 163, 184, 0.2)",
-                showline=True,
-                linecolor="rgba(0, 240, 255, 0.3)"
-            ),
-            yaxis=dict(
-                color="white",
-                gridcolor="rgba(148, 163, 184, 0.05)",
-                showline=True,
-                linecolor="rgba(0, 240, 255, 0.3)"
-            ),
-            margin=dict(l=150, r=50, t=20, b=40),
-            showlegend=True,
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=-0.12,
-                xanchor="center",
-                x=0.5,
-                font=dict(color="white", size=12),
-                bgcolor="rgba(10, 14, 23, 0.8)",
-                bordercolor="rgba(0, 240, 255, 0.3)",
-                borderwidth=1
-            ),
-            bargap=0.25,
-            hoverlabel=dict(
-                bgcolor="rgba(10, 14, 23, 0.95)",
-                font=dict(color="white"),
-                bordercolor="rgba(0, 240, 255, 0.5)"
-            )
-        )
+        # Calcular índices para la página actual
+        inicio = (st.session_state.pagina_stock - 1) * productos_por_pagina
+        fin = min(inicio + productos_por_pagina, total_productos)
         
-        st.plotly_chart(fig_futurista, use_container_width=True)
+        # Crear tabla visual con Streamlit
+        st.markdown("""
+        <style>
+        .stock-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+        .stock-row {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .stock-row:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: translateX(5px);
+        }
+        .stock-cell {
+            padding: 16px 20px;
+            vertical-align: middle;
+        }
+        .product-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+        .stock-numbers {
+            font-size: 1rem;
+            color: #94a3b8;
+            font-family: 'Courier New', monospace;
+        }
+        .progress-container {
+            width: 200px;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Crear filas de la tabla SOLO para la página actual
+        df_pagina = df_stock.iloc[inicio:fin]
+        
+        for idx, row in df_pagina.iterrows():
+            prod = next((p for p in prod_list if p.get('nombre') == row['Producto']), None)
+            inv = next((i for i in inv_list if i.get('producto_id') == prod.get('id')), None) if prod else None
+            
+            stock = row['Stock']
+            max_s = prod.get('stock_maximo', 100) if prod else 100
+            pct = min((stock / max_s) * 100, 100) if max_s > 0 else 0
+            
+            # Color según estado
+            color_map = {
+                "Agotados": {"bg": "#6b7280", "text": "⚫ Agotado"},
+                "Críticos": {"bg": "#ef4444", "text": "🔴 Crítico"},
+                "Bajos": {"bg": "#f59e0b", "text": "🟡 Bajo"},
+                "Saludables": {"bg": "#10b981", "text": "🟢 Saludable"}
+            }
+            
+            estado_info = color_map.get(row['Estado'], color_map["Saludables"])
+            
+            # Crear fila HTML
+            st.markdown(f"""
+            <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.6); 
+                        border-radius: 12px; padding: 16px 20px; margin-bottom: 10px;
+                        border-left: 4px solid {estado_info['bg']};
+                        transition: all 0.3s ease;">
+                <div style="flex: 2; min-width: 150px;">
+                    <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">{row['Producto']}</div>
+                </div>
+                <div style="flex: 1; text-align: center;">
+                    <span style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; font-family: 'Courier New', monospace;">
+                        {stock}
+                    </span>
+                    <span style="font-size: 0.85rem; color: #64748b;">/ {max_s}</span>
+                </div>
+                <div style="flex: 1.5; padding: 0 20px;">
+                    <div style="width: 100%; height: 12px; background: rgba(0, 0, 0, 0.4); border-radius: 6px; overflow: hidden;">
+                        <div style="width: {pct}%; height: 100%; background: {estado_info['bg']}; border-radius: 6px;"></div>
+                    </div>
+                    <div style="text-align: center; font-size: 0.75rem; color: #64748b; margin-top: 4px;">{pct:.0f}%</div>
+                </div>
+                <div style="flex: 1; text-align: right;">
+                    <span style="padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+                                background: {estado_info['bg']}30; color: {estado_info['bg']}; border: 1px solid {estado_info['bg']};">
+                        {estado_info['text']}
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # CONTROLES DE PAGINACIÓN
+        st.markdown("---")
+        col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
+        
+        with col_pag1:
+            if st.session_state.pagina_stock > 1:
+                if st.button("⬅️ Anterior", key="btn_prev_stock", use_container_width=True):
+                    st.session_state.pagina_stock -= 1
+                    st.rerun()
+        
+        with col_pag2:
+            st.markdown(f"""
+            <div style="text-align: center; color: #94a3b8; padding: 10px;">
+                Página <span style="color: #00f0ff; font-weight: 700; font-size: 1.1rem;">{st.session_state.pagina_stock}</span> 
+                de <span style="color: #00f0ff; font-weight: 700; font-size: 1.1rem;">{total_paginas if total_paginas > 0 else 1}</span>
+                <br>
+                <span style="font-size: 0.85rem;">Mostrando {inicio + 1}-{fin} de {total_productos} productos</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col_pag3:
+            if st.session_state.pagina_stock < total_paginas:
+                if st.button("Siguiente ➡️", key="btn_next_stock", use_container_width=True):
+                    st.session_state.pagina_stock += 1
+                    st.rerun()
     else:
         st.info("ℹ️ No hay productos para mostrar con los filtros seleccionados")
     
@@ -738,26 +830,36 @@ if menu == "🏠 Dashboard":
         </div>
         """, unsafe_allow_html=True)
         
-        bajas = resumen.get("productos_bajos", 0)
-        criticos = resumen.get("productos_criticos", 0)
+        # Usar los valores calculados del Dashboard (con stock máximo)
+        alert_agotados = st.session_state.get('dashboard_agotados', 0)
+        alert_criticos = st.session_state.get('dashboard_criticos', 0)
+        alert_bajos = st.session_state.get('dashboard_bajos', 0)
         
-        if criticos > 0:
+        if alert_criticos > 0:
             st.markdown(f"""
             <div style="padding: 15px; background: rgba(239, 68, 68, 0.2); border-left: 3px solid #ef4444; border-radius: 0 12px 12px 0; margin-bottom: 10px;">
-                <div style="color: #ef4444; font-weight: 600;">{criticos} Críticos</div>
+                <div style="color: #ef4444; font-weight: 600;">{alert_criticos} Críticos</div>
                 <div style="color: var(--text-secondary); font-size: 0.8rem;">Reposición urgente</div>
             </div>
             """, unsafe_allow_html=True)
         
-        if bajas > 0:
+        if alert_bajos > 0:
             st.markdown(f"""
             <div style="padding: 15px; background: rgba(245, 158, 11, 0.2); border-left: 3px solid #f59e0b; border-radius: 0 12px 12px 0; margin-bottom: 10px;">
-                <div style="color: #f59e0b; font-weight: 600;">{bajas} Bajos</div>
+                <div style="color: #f59e0b; font-weight: 600;">{alert_bajos} Bajos</div>
                 <div style="color: var(--text-secondary); font-size: 0.8rem;">Revisar pronto</div>
             </div>
             """, unsafe_allow_html=True)
         
-        if criticos == 0 and bajas == 0:
+        if alert_agotados > 0:
+            st.markdown(f"""
+            <div style="padding: 15px; background: rgba(107, 114, 128, 0.2); border-left: 3px solid #6b7280; border-radius: 0 12px 12px 0; margin-bottom: 10px;">
+                <div style="color: #6b7280; font-weight: 600;">{alert_agotados} Agotados</div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem;">Sin existencias</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        if alert_criticos == 0 and alert_bajos == 0 and alert_agotados == 0:
             st.markdown("""
             <div style="padding: 15px; background: rgba(16, 185, 129, 0.2); border-left: 3px solid #10b981; border-radius: 0 12px 12px 0;">
                 <div style="color: #10b981; font-weight: 600;">✓ Saludable</div>
