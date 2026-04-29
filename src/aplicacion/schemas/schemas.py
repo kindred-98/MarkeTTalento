@@ -75,7 +75,7 @@ class InventarioBase(BaseModel):
 
 
 class InventarioCreate(InventarioBase):
-    producto_id: int
+    producto_id: Optional[int] = None
 
 
 class InventarioResponse(InventarioBase):

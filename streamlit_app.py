@@ -32,15 +32,32 @@ st.set_page_config(page_title="MarkeTTalento", page_icon="📦", layout="wide")
 def api_get(endpoint):
     try:
         r = requests.get(f"{API_URL}{endpoint}", timeout=5)
-        return r.json() if r.status_code == 200 else {}
+        return r.json() if r.status_code == 200 else []
     except:
-        return {}
+        return []
 
 def api_post(endpoint, data):
     try:
         r = requests.post(f"{API_URL}{endpoint}", json=data, timeout=5)
-        return r.json() if r.status_code in [200, 201] else {}
-    except:
+        if r.status_code in [200, 201]:
+            return r.json()
+        else:
+            print(f"API Error: {r.status_code} - {r.text}")
+            return {}
+    except Exception as e:
+        print(f"API Exception: {e}")
+        return {}
+
+def api_put(endpoint, data):
+    try:
+        r = requests.put(f"{API_URL}{endpoint}", json=data, timeout=5)
+        if r.status_code in [200, 201]:
+            return r.json()
+        else:
+            print(f"API Error: {r.status_code} - {r.text}")
+            return {}
+    except Exception as e:
+        print(f"API Exception: {e}")
         return {}
 
 def conectar_api():
@@ -323,7 +340,7 @@ with st.sidebar:
         .txt-green { color: #10b981; }
         .txt-orange { color: #f59e0b; }
         .txt-pink { color: #ec4899; }
-        .txt-blue { color: #3b82f6; }
+.txt-blue { color: #3b82f6; }
         .txt-white { color: #f1f5f9; }
     </style>
     """, unsafe_allow_html=True)
@@ -340,13 +357,33 @@ with st.sidebar:
     
     st.markdown("---")
     
-    btn_dashboard = st.button("🏠 Dashboard", use_container_width=True)
-    btn_productos = st.button("📦 Productos", use_container_width=True)
-    btn_inventario = st.button("📊 Inventario", use_container_width=True)
-    btn_ventas = st.button("💰 Ventas", use_container_width=True)
-    btn_predicciones = st.button("🔮 Predicciones", use_container_width=True)
-    btn_vision = st.button("📸 Visión AI", use_container_width=True)
-    btn_barcode = st.button("🔍 Barcode", use_container_width=True)
+    if 'menu_activo' not in st.session_state:
+        st.session_state['menu_activo'] = "🏠 Dashboard"
+    
+    btn_dashboard = st.button("🏠 Dashboard", use_container_width=True, key="btn_dash")
+    btn_productos = st.button("📦 Productos", use_container_width=True, key="btn_prod")
+    btn_inventario = st.button("📊 Inventario", use_container_width=True, key="btn_inv")
+    btn_ventas = st.button("💰 Ventas", use_container_width=True, key="btn_vent")
+    btn_predicciones = st.button("🔮 Predicciones", use_container_width=True, key="btn_pred")
+    btn_vision = st.button("📸 Visión AI", use_container_width=True, key="btn_vis")
+    btn_barcode = st.button("🔍 Barcode", use_container_width=True, key="btn_bar")
+    
+    if btn_dashboard:
+        st.session_state['menu_activo'] = "🏠 Dashboard"
+    elif btn_productos:
+        st.session_state['menu_activo'] = "📦 Productos"
+    elif btn_inventario:
+        st.session_state['menu_activo'] = "📊 Inventario"
+    elif btn_ventas:
+        st.session_state['menu_activo'] = "💰 Ventas"
+    elif btn_predicciones:
+        st.session_state['menu_activo'] = "🔮 Predicciones"
+    elif btn_vision:
+        st.session_state['menu_activo'] = "📸 Visión AI"
+    elif btn_barcode:
+        st.session_state['menu_activo'] = "🔍 Barcode"
+    
+    menu = st.session_state['menu_activo']
     
     st.markdown("---")
     
@@ -381,37 +418,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     st.markdown("""
-    <a href="http://localhost:8501" target="_blank" style="display: block; padding: 10px; background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(0, 0, 0, 0.1)); border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.2); text-decoration: none; text-align: center; margin-bottom: 8px;">
-        <span style="color: #00f0ff;">📊 Dashboard</span>
-    </a>
     <a href="http://localhost:8002/docs" target="_blank" style="display: block; padding: 10px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(0, 0, 0, 0.1)); border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.2); text-decoration: none; text-align: center;">
         <span style="color: #8b5cf6;">📚 API Docs</span>
     </a>
     """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    menu = None
-    if btn_dashboard: menu = "🏠 Dashboard"
-    elif btn_productos: menu = "📦 Productos"
-    elif btn_inventario: menu = "📊 Inventario"
-    elif btn_ventas: menu = "💰 Ventas"
-    elif btn_predicciones: menu = "🔮 Predicciones"
-    elif btn_vision: 
-        menu = "📸 Visión AI"
-        st.session_state['menu_activo'] = menu
-    elif btn_barcode: 
-        menu = "🔍 Barcode"
-        st.session_state['menu_activo'] = menu
-    elif 'navegar' in st.session_state and st.session_state.get('navegar'):
-        menu = st.session_state['navegar']
-        st.session_state['navegar'] = None
-    
-    if 'menu_activo' not in st.session_state:
-        st.session_state['menu_activo'] = "🏠 Dashboard"
-    
-    if menu is None:
-        menu = st.session_state['menu_activo']
 
 
 # Dashboard principal
@@ -785,7 +795,7 @@ elif menu == "📦 Productos":
                 use_container_width=True
             )
     
-    tab1, tab2 = st.tabs(["📋 Catálogo", "➕ Nuevo"])
+    tab1, tab2, tab3 = st.tabs(["📋 Catálogo", "➕ Nuevo", "✏️ Edición"])
     
     with tab1:
         if productos_filtrados:
@@ -829,8 +839,8 @@ elif menu == "📦 Productos":
                     color: #94a3b8;
                     margin-top: 4px;
                 }
-            </style>
-            """, unsafe_allow_html=True)
+</style>
+""", unsafe_allow_html=True)
             
             def get_cat_name(cat_id):
                 for c in categorias:
@@ -854,89 +864,174 @@ elif menu == "📦 Productos":
                         stock = i.get("cantidad", 0)
                         break
                 
-                # Calcular barra de progreso
                 min_s = prod.get("stock_minimo", 1)
                 max_s = prod.get("stock_maximo", min_s * 2)
                 pct = min((stock / max_s) * 100, 100) if max_s > 0 else 0
                 
-                # Color según estado
                 if stock <= 0:
-                    bar_color = "#ef4444"
-                    estado_bar = "Vacío"
-                elif stock < min_s:
-                    bar_color = "#f59e0b"
-                    estado_bar = "Bajo"
-                elif stock >= min_s and stock < max_s:
-                    bar_color = "#10b981"
-                    estado_bar = "OK"
+                    estado_color = "#6b7280"
+                    estado_texto = "⚫ Producto agotado"
+                elif pct <= 24:
+                    estado_color = "#ef4444"
+                    estado_texto = "🔴 Stock crítico"
+                elif pct <= 49:
+                    estado_color = "#f59e0b"
+                    estado_texto = "🟡 Stock bajo"
                 else:
-                    bar_color = "#3b82f6"
-                    estado_bar = "Sobran"
+                    estado_color = "#10b981"
+                    estado_texto = "🟢 Stock saludable"
                 
-                barra_progreso = """
-                <div class="progress-container">
-                    <div class="progress-bar" style="width: """ + str(pct) + """%; background: """ + bar_color + """;"></div>
-                </div>
-                <div class="progress-label">
-                    <span>""" + str(stock) + """ / """ + str(max_s) + """ (""" + f"{pct:.0f}" + """%) - """ + estado_bar + """</span>
-                </div>
-                """
-            
-            card_html = """
-                <div class="producto-card">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div class="producto-nombre">""" + prod.get("nombre", "Producto") + """</div>
-                        <span class="codigo-sku">SKU: """ + prod.get("sku", "N/A") + """</span>
-                    </div>
-                    <div class="producto-info">
-                        <div class="producto-info-item">
-                            <div class="producto-info-label">Precio Venta</div>
-                            <div class="producto-info-valor">€""" + f"{prod.get('precio_venta', 0):.2f}" + """</div>
-                        </div>
-                        <div class="producto-info-item">
-                            <div class="producto-info-label">Stock</div>
-                            <div class="producto-info-valor">""" + str(stock) + """ """ + prod.get("unidad", "uds") + """</div>
-                        </div>
-                        <div class="producto-info-item">
-                            <div class="producto-info-label">Categoría</div>
-                            <div class="producto-info-valor">""" + get_cat_name(prod.get("categoria_id")) + """</div>
-                        </div>
-                    </div>
+                categoria_nom = get_cat_name(prod.get("categoria_id"))
+                
+                cat_emoji = {
+                    "Lácteos": "🥛", "Lacteos": "🥛", "Bebidas": "🥤", "Frutas": "🍎", "Verduras": "🥬",
+                    "Panadería": "🥐", "Panaderia": "🥐", "Carnes": "🥩", "Snacks": "🍿", "General": "📦"
+                }
+                emoji = cat_emoji.get(categoria_nom, "📦")
+                
+                img_url = prod.get("imagen_url") or ""
+                
+                imagenes_locales = {
+                    "leche": "docs/lecheIMG.jpg",
+                    "Leche": "docs/lecheIMG.jpg",
+                }
+                img_local = imagenes_locales.get(prod.get("nombre", "").lower().split()[0], "")
+                
+                with st.container():
+                    col_img, col_info = st.columns([1, 3])
                     
-                    """ + barra_progreso + """
-                </div>
-            """
-            
-            st.markdown(card_html, unsafe_allow_html=True)
+                    with col_img:
+                        if img_url:
+                            try:
+                                st.image(img_url, width=180)
+                            except:
+                                if img_local:
+                                    try:
+                                        st.image(img_local, width=180)
+                                    except:
+                                        st.markdown(f"""
+                                        <div style="width: 180px; height: 180px; background: rgba(0, 240, 255, 0.1); 
+                                            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                                            font-size: 3rem;">
+                                            {emoji}
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f"""
+                                    <div style="width: 180px; height: 180px; background: rgba(0, 240, 255, 0.1); 
+                                        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                                        font-size: 3rem;">
+                                        {emoji}
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                        elif img_local:
+                            try:
+                                st.image(img_local, width=180)
+                            except:
+                                st.markdown(f"""
+                                <div style="width: 180px; height: 180px; background: rgba(0, 240, 255, 0.1); 
+                                    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                                    font-size: 3rem;">
+                                    {emoji}
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                            <div style="width: 180px; height: 180px; background: rgba(0, 240, 255, 0.1); 
+                                border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                                font-size: 3rem;">
+                                {emoji}
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        desc = prod.get("descripcion", "")
+                        if not desc:
+                            descripciones = {
+                                "leche": "Leche entera UHT 1.5L clásica de Central Lechera Asturiana, rica en calcio y vitaminas esenciales, perfecta para el desayuno de toda la familia. Formato cómodo con tapón antigoteo, envase reciclable",
+                                "huevos": "Docena de huevos frescos de gallinas criadas en libertad, ideales para cualquier receta culinaria. Huevos de categoría A, frescos y nutritivos, perfecta fuente de proteínas",
+                                "pan": "Pan artesanal recién horneado cada día con harina de trigo selecta, crujiente por fuera y suave por dentro. Perfecto para sandwiches, tostadas o acompanar cualquier comida",
+                                "agua": "Agua mineral natural de fuente pura, sin gases ni impurezas, parfait para hidratarse durante todo el día. Envase plástico reciclable, origen sostenible",
+                                "cafe": "Café molido premium de tueste natural con aroma intenso y sabor equilibrado, ideal para empezar el día con energía. Paquete sellado para preservar frescura",
+                                "arroz": "Arroz blanco de grano largo tipo basmati, perfecto para arroces tres delicals, paellas y guarniciones. Grano independientes que no se pegan",
+                                "aceite": "Aceite de oliva virgen extra de primera presión en frío, color dorado y saborFruit intense, ideal para ensaladas, frituras y aliños. Envase de vidrio oscuro",
+                                "azucar": "Azúcar blanco refinado de caña de alta pureza, perfecto para endulzar bebidas calientes frías y recetas de repostería. Textura fina de disolución rápida",
+                                "harina": "Harina de trigo multiuso para repostería y panadería, textura suave y esponjosa. Ideal para cakes, pastas,pasteles y panes caseros",
+                                "galletas": "Galletas dulces crujientes tipo snack con sabor clásico, ideales para merendar con leche o café. Paquete familiar con cierre hermético para preservar crocancia",
+                                "cereal": "Cereal de desayuno integral rico en fibra y vitaminas, fuente de energía natural para la mañana. Crujiente y delicioso con leche",
+                            }
+                            nombre_prod = prod.get("nombre", "").lower()
+                            desc = descripciones.get(nombre_prod, f"Producto de {categoria_nom} de alta calidad, elaborado con los mejores ingredientes para garantizar frescura y sabor excepcional en cada consumo")
+                        
+                        palabras = desc.split()[:50]
+                        desc_corta = " ".join(palabras)
+                        st.caption(desc_corta)
+                    
+                    with col_info:
+                        col_nom, col_edit = st.columns([4, 1])
+                        with col_nom:
+                            st.markdown(f"### {prod.get('nombre', 'Producto')}")
+                        with col_edit:
+                            if st.button("✏️", key=f"edit_prod_{prod.get('id')}"):
+                                st.session_state['editar_producto'] = prod.get('id')
+                        
+                        st.markdown(f"### €{prod.get('precio_venta', 0):.2f}")
+                        
+                        st.caption(f"📦 SKU: {prod.get('sku', 'N/A')}")
+                        st.caption(f"🏷️ {categoria_nom}")
+                        
+                        st.write(f"📊 **Stock:** {stock} {prod.get('unidad', 'uds')}")
+                        
+                        st.progress(pct / 100)
+                        st.caption(f"{pct:.0f}% disponible")
+                        
+                        st.markdown(f"""
+                        <div style="padding: 8px 16px; border-radius: 8px; text-align: center; 
+                            background: {estado_color}; color: white; font-weight: 600;">
+                            {estado_texto}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
         else:
             st.info("No hay productos en el catálogo")
     
     with tab2:
-        categorias = api_get("/api/v1/categorias")
+        if 'form_version' not in st.session_state:
+            st.session_state['form_version'] = 0
         
-        with st.form("crear_producto"):
-            col1, col2 = st.columns(2)
-            with col1:
-                sku = st.text_input("Código SKU")
-                nombre = st.text_input("Nombre del producto")
-                precio = st.number_input("Precio de venta (€)", min_value=0.0)
-            with col2:
-                unidad = st.selectbox("Unidad de medida", ["unidad", "kg", "litro", "paquete", "caja", "botella"])
-                stock_min = st.number_input("Stock mínimo", min_value=0, value=5)
-                stock_max = st.number_input("Stock máximo", min_value=0, value=50)
-            
-            col3, col4 = st.columns(2)
-            with col3:
-                precio_coste = st.number_input("Precio de coste (€)", min_value=0.0)
-                tiempo_repo = st.number_input("Días de reposición", min_value=1, value=3)
-            with col4:
-                cat_options = {c.get("nombre"): c.get("id") for c in categorias}
-                categoria_nombre = st.selectbox("Categoría", list(cat_options.keys()))
-                categoria_id = cat_options.get(categoria_nombre)
-            
-            submit = st.form_submit_button("💾 Crear producto")
-            
-            if submit:
+        categorias = api_get("/api/v1/categorias")
+        productos = api_get("/api/v1/productos")
+        nombres_existentes = [p.get('nombre', '').lower() for p in productos]
+        
+        form_version = st.session_state.get('form_version', 0)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            sku = st.text_input("Código SKU", key=f"new_sku_{form_version}")
+            nombre = st.text_input("Nombre del producto", key=f"new_nombre_{form_version}")
+            precio = st.number_input("Precio de venta (€)", min_value=0.0, value=0.0, key=f"new_precio_{form_version}")
+        with col2:
+            unidad = st.selectbox("Unidad de medida", ["unidad", "kg", "litro", "paquete", "caja", "botella"], key=f"new_unidad_{form_version}")
+            stock_min = st.number_input("Stock mínimo", min_value=0, value=5, key=f"new_stock_min_{form_version}")
+            stock_max = st.number_input("Stock máximo", min_value=0, value=50, key=f"new_stock_max_{form_version}")
+        
+        col3, col4 = st.columns(2)
+        with col3:
+            precio_coste = st.number_input("Precio de coste (€)", min_value=0.0, value=0.0, key=f"new_precio_coste_{form_version}")
+            tiempo_repo = st.number_input("Días de reposición", min_value=1, value=3, key=f"new_tiempo_{form_version}")
+        with col4:
+            cat_options = {c.get("nombre"): c.get("id") for c in categorias}
+            categoria_nombre = st.selectbox("Categoría", list(cat_options.keys()), key=f"new_cat_{form_version}")
+            categoria_id = cat_options.get(categoria_nombre)
+        
+        descripcion = st.text_area("Descripción del producto", key=f"new_descripcion_{form_version}", height=2)
+        
+        if st.button("💾 Crear producto", type="primary", use_container_width=True, key="btn_crear_prod"):
+            if not sku or not nombre:
+                st.error("❌ SKU y Nombre son obligatorio")
+            elif nombre.lower() in nombres_existentes:
+                st.error("❌ Ya existe un producto con ese nombre")
+            else:
                 data = {
                     "sku": sku,
                     "nombre": nombre,
@@ -946,15 +1041,76 @@ elif menu == "📦 Productos":
                     "stock_minimo": stock_min,
                     "stock_maximo": stock_max,
                     "tiempo_reposicion": tiempo_repo,
-                    "categoria_id": categoria_id
+                    "categoria_id": categoria_id,
+                    "descripcion": descripcion
                 }
                 result = api_post("/api/v1/productos", data)
                 if result:
                     st.success("✅ Producto añadido al catálogo")
                     prod_id = result.get("id")
                     api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": stock_min, "ubicacion": "Almacén A"})
+                    st.session_state['form_version'] = form_version + 1
+                    st.rerun()
                 else:
-                    st.error("❌ Error al crear el producto")
+                    st.error("❌ Error al crear el producto. Revisa los datos.")
+    
+    with tab3:
+        if 'editar_producto' in st.session_state and st.session_state['editar_producto']:
+            prod_id_edit = st.session_state['editar_producto']
+            producto_edit = next((p for p in productos if p.get('id') == prod_id_edit), None)
+            categorias = api_get("/api/v1/categorias")
+            
+            if producto_edit:
+                st.markdown("### ✏️ Editar Producto")
+                
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    edit_nombre = st.text_input("Nombre", value=producto_edit.get('nombre', ''), key="edit_nombre")
+                    edit_precio = st.number_input("Precio venta (€)", value=float(producto_edit.get('precio_venta', 0)), key="edit_precio")
+                    edit_coste = st.number_input("Precio coste (€)", value=float(producto_edit.get('precio_coste') or 0), key="edit_coste")
+                with col_e2:
+                    edit_unidad = st.selectbox("Unidad", ["unidad", "kg", "litro", "paquete", "caja", "botella"], 
+                        index=["unidad", "kg", "litro", "paquete", "caja", "botella"].index(producto_edit.get('unidad', 'unidad')) if producto_edit.get('unidad') in ["unidad", "kg", "litro", "paquete", "caja", "botella"] else 0, key="edit_unidad")
+                    edit_stock_min = st.number_input("Stock mínimo", value=int(producto_edit.get('stock_minimo', 5)), key="edit_stock_min")
+                    edit_stock_max = st.number_input("Stock máximo", value=int(producto_edit.get('stock_maximo', 50)), key="edit_stock_max")
+                
+                col_e3, col_e4 = st.columns(2)
+                with col_e3:
+                    edit_tiempo = st.number_input("Días reposición", value=int(producto_edit.get('tiempo_reposicion', 3)), key="edit_tiempo")
+                with col_e4:
+                    edit_cat = st.selectbox("Categoría", [c.get('nombre') for c in categorias], 
+                        index=next((i for i, c in enumerate(categorias) if c.get('id') == producto_edit.get('categoria_id')), 0), key="edit_cat")
+                    edit_cat_id = next((c.get('id') for c in categorias if c.get('nombre') == edit_cat), 1)
+                
+                edit_descripcion = st.text_area("Descripción", value=producto_edit.get('descripcion') or '', key="edit_descripcion", height=2)
+                
+                col_btns = st.columns(2)
+                with col_btns[0]:
+                    if st.button("💾 Guardar cambios", type="primary", key="guardar_prod"):
+                        data_edit = {
+                            "nombre": edit_nombre,
+                            "precio_venta": edit_precio,
+                            "precio_coste": edit_coste if edit_coste > 0 else None,
+                            "unidad": edit_unidad,
+                            "stock_minimo": edit_stock_min,
+                            "stock_maximo": edit_stock_max,
+                            "tiempo_reposicion": edit_tiempo,
+                            "categoria_id": edit_cat_id,
+                            "descripcion": edit_descripcion
+                        }
+                        result_edit = api_put(f"/api/v1/productos/{prod_id_edit}", data_edit)
+                        if result_edit:
+                            st.success("✅ Producto actualizado")
+                            del st.session_state['editar_producto']
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al actualizar")
+                with col_btns[1]:
+                    if st.button("❌ Cancelar", key="cancelar_edit"):
+                        del st.session_state['editar_producto']
+                        st.rerun()
+        else:
+            st.info("👆 Selecciona un producto del catálogo y haz clic en el botón ✏️ para editarlo")
 
 
 elif menu == "📊 Inventario":
@@ -1488,7 +1644,6 @@ elif menu == "🔍 Barcode":
                         product = data.get("product", {})
                         
                         st.session_state.barcode_product = product
-                        st.session_state.mostrar_formulario = True
                         
                         st.markdown("---")
                         
@@ -1505,64 +1660,60 @@ elif menu == "🔍 Barcode":
                                 """, unsafe_allow_html=True)
                         
                         with col_prod2:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <h3 style="color: var(--accent-cyan); margin-bottom: 10px;">{product.get("product_name", "Producto")}</h3>
-                                <p style="color: var(--text-secondary);">Marca: {product.get("brands", "N/A")}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            nombre_default = product.get("product_name", "Producto")
+                            st.markdown(f"**Nombre:** {nombre_default}")
+                            st.markdown(f"**Marca:** {product.get('brands', 'N/A')}")
                             
-                            if 'form_key' not in st.session_state:
-                                st.session_state.form_key = 0
+                            col_cat = st.selectbox("Categoría", ["General", "Bebidas", "Lácteos", "Frutas", "Verduras", "Panadería", "Carnes", "Snacks"], index=0, key="cat_select")
+                            col_pre1, col_pre2 = st.columns(2)
+                            with col_pre1:
+                                precio_v = st.number_input("Precio venta", min_value=0.01, value=10.0, key="pv_input")
+                            with col_pre2:
+                                precio_c = st.number_input("Precio coste", min_value=0.0, value=5.0, key="pc_input")
                             
-                            key_form = f"prod_form_{st.session_state.form_key}"
+                            sku = f"OFF-{barcode[:6]}"
                             
-                            with st.form(key=key_form):
-                                nombre_prod = st.text_input("Nombre", value=product.get("product_name", ""))
+                            if st.button("➕ AGREGAR A PRODUCTOS", type="primary", use_container_width=True, key="btn_agregar_final"):
+                                st.session_state.agregar_click = True
+                                st.session_state.producto_data = {
+                                    "product": product,
+                                    "barcode": barcode,
+                                    "sku": sku,
+                                    "nombre": nombre_default,
+                                    "categoria": col_cat,
+                                    "precio_v": float(precio_v),
+                                    "precio_c": float(precio_c)
+                                }
+                            
+                            if st.session_state.get("agregar_click"):
+                                datos = st.session_state.producto_data
+                                prod = datos["product"]
+                                cat_map = {"General": 1, "Bebidas": 2, "Lácteos": 3, "Frutas": 4, "Verduras": 5, "Panadería": 6, "Carnes": 7, "Snacks": 8}
+                                cat_id = cat_map.get(datos["categoria"], 1)
                                 
-                                cat_options = ["General", "Bebidas", "Lácteos", "Frutas", "Verduras", "Panadería", "Carnes", "Snacks"]
-                                categoria = st.selectbox("Categoría", cat_options)
+                                nuevo = {
+                                    "sku": datos["sku"],
+                                    "codigo_barras": datos["barcode"],
+                                    "nombre": datos["nombre"][:200],
+                                    "descripcion": f"OpenFoodFacts. Marca: {prod.get('brands', 'N/A')}",
+                                    "precio_venta": datos["precio_v"],
+                                    "precio_coste": datos["precio_c"] if datos["precio_c"] > 0 else None,
+                                    "unidad": "unidad",
+                                    "stock_minimo": 5,
+                                    "stock_maximo": 50,
+                                    "tiempo_reposicion": 3,
+                                    "categoria_id": cat_id,
+                                    "proveedor_id": None,
+                                    "imagen_url": prod.get("image_url")
+                                }
                                 
-                                col_pre1, col_pre2, col_pre3 = st.columns(3)
-                                with col_pre1:
-                                    precio_venta = st.number_input("Precio venta", min_value=0.01, value=10.0)
-                                with col_pre2:
-                                    precio_coste = st.number_input("Precio coste", min_value=0.0, value=5.0)
-                                with col_pre3:
-                                    stock_min = st.number_input("Stock mínimo", min_value=1, value=5)
-                                
-                                sku = f"OFF-{barcode[:6]}"
-                                
-                                submitted = st.form_submit_button("➕ Agregar", type="primary", use_container_width=True)
-                                
-                                if submitted:
-                                    categoria_map = {"General": 1, "Bebidas": 2, "Lácteos": 3, "Frutas": 4, "Verduras": 5, "Panadería": 6, "Carnes": 7, "Snacks": 8}
-                                    cat_id = categoria_map.get(categoria, 1)
-                                    
-                                    nuevo_producto = {
-                                        "sku": sku,
-                                        "codigo_barras": barcode,
-                                        "nombre": nombre_prod[:200] if nombre_prod else "Producto",
-                                        "descripcion": f"Importado. Marca: {product.get('brands', 'N/A')}",
-                                        "precio_venta": float(precio_venta),
-                                        "precio_coste": float(precio_coste) if precio_coste > 0 else None,
-                                        "unidad": "unidad",
-                                        "stock_minimo": int(stock_min),
-                                        "stock_maximo": 50,
-                                        "tiempo_reposicion": 3,
-                                        "categoria_id": cat_id,
-                                        "proveedor_id": None,
-                                        "imagen_url": product.get("image_url")
-                                    }
-                                    
-                                    resp = requests.post(f"{API_URL}/api/v1/productos", json=nuevo_producto, timeout=15)
-                                    if resp.status_code in [200, 201]:
-                                        st.success(f"✓ '{nombre_prod}' agregado!")
-                                        st.balloons()
-                                        st.session_state.form_key += 1
-                                        st.rerun()
-                                    else:
-                                        st.error(f"Error: {resp.status_code}")
+                                resp = requests.post(f"{API_URL}/api/v1/productos", json=nuevo, timeout=15)
+                                if resp.status_code in [200, 201]:
+                                    st.success(f"✓ '{datos['nombre']}' AGREGADO!")
+                                    st.balloons()
+                                    st.session_state.agregar_click = False
+                                else:
+                                    st.error(f"Error: {resp.status_code}")
                     else:
                         st.error("❌ Producto no encontrado en la base de datos")
                 else:

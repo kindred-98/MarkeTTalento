@@ -349,3 +349,5 @@ MarkeTTalento/
 *Última actualización: 28 Abril 2026*
 *Versión: 1.0.0*
 *Progreso: 85%*
+
+![alt text](114031.jpg)
