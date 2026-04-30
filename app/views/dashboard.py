@@ -136,7 +136,7 @@ def render():
                 margin=dict(l=20, r=20, t=30, b=80),
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     with col_chart2:
         st.markdown("<h3>⚡ Alertas</h3>", unsafe_allow_html=True)
