@@ -124,8 +124,9 @@ def to_excel(df):
 
 st.markdown("""
 <style>
-    /* Importar fuente */
+    /* Importar fuentes */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+    @import url('https://cdn.jsdelivr.net/npm/@fontsource/cascadia-code@4.2.1/index.min.css');
     
     /* Tema oscuro futurista */
     :root {
@@ -167,9 +168,14 @@ st.markdown("""
     
     /* Títulos */
     h1, h2, h3 {
-        font-family: 'Orbitron', sans-serif;
+        font-family: 'Cascadia Code', 'Orbitron', monospace;
         color: var(--accent-cyan);
         text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+    }
+    
+    /* Fuente global */
+    html, body, .stApp, [class*="st"] {
+        font-family: 'Cascadia Code', 'Segoe UI', monospace !important;
     }
     
     /* Sidebar */
@@ -304,7 +310,7 @@ st.markdown("---")
 
 # Sidebar
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center; font-family: Orbitron;'>⚡ Menú</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; font-family: \"Cascadia Code\", \"Orbitron\", monospace;'>⚡ Menú</h2>", unsafe_allow_html=True)
     
     st.markdown("""
     <style>
@@ -484,7 +490,7 @@ if menu == "🏠 Dashboard":
             <div style="font-size: 2.5rem; font-weight: 700; color: #00f0ff; text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);">
                 """ + str(resumen.get('total_productos', 0)) + """
             </div>
-            <div style="color: #94a3b8; font-size: 0.8rem;">en catálogo</div>
+            <div style="color: #94a3b8; font-size: 1rem; font-weight: 500;">en catálogo</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -495,7 +501,7 @@ if menu == "🏠 Dashboard":
             <div style="font-size: 2.5rem; font-weight: 700; color: #8b5cf6; text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);">
                 """ + str(resumen.get('total_unidades', 0)) + """
             </div>
-            <div style="color: #94a3b8; font-size: 0.8rem;">unidades</div>
+            <div style="color: #94a3b8; font-size: 1rem; font-weight: 500;">unidades</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -507,7 +513,7 @@ if menu == "🏠 Dashboard":
             <div style="font-size: 2.5rem; font-weight: 700; color: {color}; text-shadow: 0 0 20px {color}40;">
                 {criticos}
             </div>
-            <div style="color: #94a3b8; font-size: 0.8rem;">requieren atención</div>
+            <div style="color: #94a3b8; font-size: 1rem; font-weight: 500;">requieren atención</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -519,7 +525,7 @@ if menu == "🏠 Dashboard":
             <div style="font-size: 2.5rem; font-weight: 700; color: #10b981; text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);">
                 €{valor:.0f}
             </div>
-            <div style="color: #94a3b8; font-size: 0.8rem;">en inventario</div>
+            <div style="color: #94a3b8; font-size: 1rem; font-weight: 500;">en inventario</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -581,6 +587,9 @@ if menu == "🏠 Dashboard":
                 values=[d["Cantidad"] for d in datos_filtrados],
                 marker=dict(colors=[d["Color"] for d in datos_filtrados]),
                 hole=0.6,
+                textinfo='label+percent',
+                textposition='outside',
+                textfont=dict(size=16, color='white', family='Cascadia Code', weight=600),
                 hovertemplate="<b>%{label}</b><br>Cantidad: %{value}<extra></extra>"
             ))
             
@@ -589,16 +598,23 @@ if menu == "🏠 Dashboard":
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
-                    y=-0.2,
+                    y=-0.25,
                     xanchor="center",
                     x=0.5,
-                    font=dict(color="white")
+                    font=dict(color="white", size=12)
                 ),
-                height=350,
+                height=400,
                 paper_bgcolor="#0a0e17",
                 plot_bgcolor="#0a0e17",
                 font=dict(color="white"),
-                margin=dict(l=20, r=20, t=20, b=60)
+                margin=dict(l=20, r=20, t=30, b=80),
+                annotations=[dict(
+                    text='<b>TOTAL</b>',
+                    x=0.5, y=0.5,
+                    font_size=14,
+                    font_color='white',
+                    showarrow=False
+                )]
             )
             
             st.plotly_chart(fig, width='stretch')
@@ -618,23 +634,21 @@ if menu == "🏠 Dashboard":
     </div>
     """, unsafe_allow_html=True)
     
-    # Filtros para Stock por Producto
+    # Filtros para Stock por Producto - Sincronizados con el primer gráfico
     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
     col_filtro1, col_filtro2, col_filtro3, col_filtro4 = st.columns([1, 1, 1, 1])
     with col_filtro1:
-        filtro_stock_agotados = st.checkbox("⚫ Agotados", value=filtro_agotados, key="stock_filtro_agotados")
+        filtro_stock_agotados = st.checkbox("⚫ Agotados", value=st.session_state.filtro_agotados)
+        st.session_state.filtro_agotados = filtro_stock_agotados
     with col_filtro2:
-        filtro_stock_criticos = st.checkbox("🔴 Críticos", value=filtro_criticos, key="stock_filtro_criticos")
+        filtro_stock_criticos = st.checkbox("🔴 Críticos", value=st.session_state.filtro_criticos)
+        st.session_state.filtro_criticos = filtro_stock_criticos
     with col_filtro3:
-        filtro_stock_bajos = st.checkbox("🟡 Bajos", value=filtro_bajos, key="stock_filtro_bajos")
+        filtro_stock_bajos = st.checkbox("🟡 Bajos", value=st.session_state.filtro_bajos)
+        st.session_state.filtro_bajos = filtro_stock_bajos
     with col_filtro4:
-        filtro_stock_saludables = st.checkbox("🟢 Saludables", value=filtro_saludables, key="stock_filtro_saludables")
-    
-    # Sincronizar filtros con los de arriba
-    st.session_state.filtro_agotados = filtro_stock_agotados
-    st.session_state.filtro_criticos = filtro_stock_criticos
-    st.session_state.filtro_bajos = filtro_stock_bajos
-    st.session_state.filtro_saludables = filtro_stock_saludables
+        filtro_stock_saludables = st.checkbox("🟢 Saludables", value=st.session_state.filtro_saludables)
+        st.session_state.filtro_saludables = filtro_stock_saludables
     
     inventarios = api_get("/api/v1/inventario")
     productos = api_get("/api/v1/productos")
@@ -738,7 +752,7 @@ if menu == "🏠 Dashboard":
         .stock-numbers {
             font-size: 1rem;
             color: #94a3b8;
-            font-family: 'Courier New', monospace;
+            font-family: 'Cascadia Code', 'Segoe UI', monospace;
         }
         .progress-container {
             width: 200px;
@@ -795,16 +809,17 @@ if menu == "🏠 Dashboard":
                     <div style="font-size: 1.1rem; font-weight: 600; color: #f8fafc;">{row['Producto']}</div>
                 </div>
                 <div style="flex: 1; text-align: center;">
-                    <span style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; font-family: 'Courier New', monospace;">
+                    <span style="font-size: 1.5rem; font-weight: 600; color: #ffffff; font-family: 'Cascadia Code', 'Segoe UI', monospace;">
                         {stock}
                     </span>
-                    <span style="font-size: 0.85rem; color: #64748b;">/ {max_s}</span>
+                    <span style="font-size: 1.3rem; font-weight: 700; color: #ffffff;">/</span>
+                    <span style="font-size: 1.3rem; font-weight: 700; color: #10b981;">{max_s}</span>
                 </div>
                 <div style="flex: 1.5; padding: 0 20px;">
                     <div style="width: 100%; height: 12px; background: rgba(0, 0, 0, 0.4); border-radius: 6px; overflow: hidden;">
                         <div style="width: {pct}%; height: 100%; background: {estado_info['bg']}; border-radius: 6px;"></div>
                     </div>
-                    <div style="text-align: center; font-size: 0.75rem; color: #64748b; margin-top: 4px;">{pct:.0f}%</div>
+                    <div style="text-align: center; font-size: 1rem; font-weight: 700; color: #ffffff; margin-top: 6px;">{pct:.0f}%</div>
                 </div>
                 <div style="flex: 1; text-align: right;">
                     <span style="padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
@@ -858,32 +873,32 @@ if menu == "🏠 Dashboard":
         if alert_criticos > 0:
             st.markdown(f"""
             <div style="padding: 15px; background: rgba(239, 68, 68, 0.2); border-left: 3px solid #ef4444; border-radius: 0 12px 12px 0; margin-bottom: 10px;">
-                <div style="color: #ef4444; font-weight: 600;">{alert_criticos} Críticos</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Reposición urgente</div>
+                <div style="color: #ef4444; font-weight: 600; font-size: 1.1rem;">{alert_criticos} Críticos</div>
+                <div style="color: #94a3b8; font-size: 1rem; font-weight: 500; margin-top: 4px;">Reposición urgente</div>
             </div>
             """, unsafe_allow_html=True)
         
         if alert_bajos > 0:
             st.markdown(f"""
             <div style="padding: 15px; background: rgba(245, 158, 11, 0.2); border-left: 3px solid #f59e0b; border-radius: 0 12px 12px 0; margin-bottom: 10px;">
-                <div style="color: #f59e0b; font-weight: 600;">{alert_bajos} Bajos</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Revisar pronto</div>
+                <div style="color: #f59e0b; font-weight: 600; font-size: 1.1rem;">{alert_bajos} Bajos</div>
+                <div style="color: #94a3b8; font-size: 1rem; font-weight: 500; margin-top: 4px;">Revisar pronto</div>
             </div>
             """, unsafe_allow_html=True)
         
         if alert_agotados > 0:
             st.markdown(f"""
             <div style="padding: 15px; background: rgba(107, 114, 128, 0.2); border-left: 3px solid #6b7280; border-radius: 0 12px 12px 0; margin-bottom: 10px;">
-                <div style="color: #6b7280; font-weight: 600;">{alert_agotados} Agotados</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Sin existencias</div>
+                <div style="color: #6b7280; font-weight: 600; font-size: 1.1rem;">{alert_agotados} Agotados</div>
+                <div style="color: #94a3b8; font-size: 1rem; font-weight: 500; margin-top: 4px;">Sin existencias</div>
             </div>
             """, unsafe_allow_html=True)
         
         if alert_criticos == 0 and alert_bajos == 0 and alert_agotados == 0:
             st.markdown("""
             <div style="padding: 15px; background: rgba(16, 185, 129, 0.2); border-left: 3px solid #10b981; border-radius: 0 12px 12px 0;">
-                <div style="color: #10b981; font-weight: 600;">✓ Saludable</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Inventario en óptimas condiciones</div>
+                <div style="color: #10b981; font-weight: 600; font-size: 1.1rem;">✓ Saludable</div>
+                <div style="color: #94a3b8; font-size: 1rem; font-weight: 500; margin-top: 4px;">Inventario en óptimas condiciones</div>
             </div>
             """, unsafe_allow_html=True)
     
