@@ -149,16 +149,23 @@ async def crear_producto(
     producto: ProductoCreate,
     db = Depends(get_db)
 ):
-    """Crea un nuevo producto."""
-    db_producto = Producto(**producto.model_dump())
+    """Crea un nuevo producto con inventario inicial."""
+    # Extraer campos de inventario antes de crear el producto
+    cantidad_inicial = getattr(producto, 'cantidad_inicial', 0) or 0
+    ubicacion = getattr(producto, 'ubicacion', None) or "Almacén A"
+    
+    # Crear el producto (sin los campos de inventario)
+    producto_data = producto.model_dump(exclude={'cantidad_inicial', 'ubicacion'})
+    db_producto = Producto(**producto_data)
     db.add(db_producto)
     db.commit()
     db.refresh(db_producto)
     
+    # Crear el inventario con la cantidad inicial
     inventario = Inventario(
         producto_id=db_producto.id,
-        cantidad=0,
-        ubicacion="Por definir"
+        cantidad=cantidad_inicial,
+        ubicacion=ubicacion
     )
     db.add(inventario)
     db.commit()

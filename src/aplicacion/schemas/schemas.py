@@ -56,7 +56,8 @@ class ProductoBase(BaseModel):
 
 
 class ProductoCreate(ProductoBase):
-    pass
+    cantidad_inicial: Optional[int] = Field(default=0, ge=0, description="Cantidad inicial en inventario")
+    ubicacion: Optional[str] = Field(default="Almacén A", max_length=100, description="Ubicación inicial del producto")
 
 
 class ProductoResponse(ProductoBase):

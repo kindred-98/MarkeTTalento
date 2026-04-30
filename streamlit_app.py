@@ -1527,14 +1527,54 @@ elif menu == "📦 Productos":
                         "categoria_id": categoria_id,
                         "proveedor_id": proveedor_id,
                         "descripcion": descripcion,
-                        "imagen_url": imagen_url
+                        "imagen_url": imagen_url,
+                        "cantidad_inicial": unidad_ingreso,
+                        "ubicacion": "Almacén A"
                     }
                     result = api_post("/api/v1/productos", data)
                     if result:
-                        st.success("✅ Producto añadido al catálogo")
-                        prod_id = result.get("id")
-                        # Crear inventario inicial con la unidad de ingreso
-                        api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": unidad_ingreso, "ubicacion": "Almacén A"})
+                        # Mensaje modal centrado en pantalla
+                        st.markdown("""
+                        <div id="success-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                                    background: rgba(0, 0, 0, 0.7); z-index: 9999; display: flex; 
+                                    align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
+                            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(10, 14, 23, 0.98)); 
+                                        padding: 50px 60px; border-radius: 20px; border: 3px solid rgba(16, 185, 129, 0.8);
+                                        text-align: center; box-shadow: 0 0 60px rgba(16, 185, 129, 0.5), 0 0 100px rgba(16, 185, 129, 0.3);
+                                        animation: scaleIn 0.5s ease; max-width: 500px; margin: 20px;">
+                                <div style="font-size: 5rem; margin-bottom: 20px; animation: bounce 1s ease infinite;">🎉</div>
+                                <div style="font-size: 2rem; font-weight: 700; color: #10b981; margin-bottom: 15px; text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);">
+                                    ¡Producto añadido exitosamente!
+                                </div>
+                                <div style="font-size: 1.1rem; color: #94a3b8; margin-bottom: 25px;">
+                                    El producto ha sido registrado en el catálogo
+                                </div>
+                                <div style="font-size: 0.9rem; color: #64748b; font-style: italic;">
+                                    Redirigiendo en 3 segundos...
+                                </div>
+                            </div>
+                        </div>
+                        <style>
+                            @keyframes fadeIn {
+                                from { opacity: 0; }
+                                to { opacity: 1; }
+                            }
+                            @keyframes scaleIn {
+                                from { opacity: 0; transform: scale(0.8); }
+                                to { opacity: 1; transform: scale(1); }
+                            }
+                            @keyframes bounce {
+                                0%, 100% { transform: translateY(0); }
+                                50% { transform: translateY(-10px); }
+                            }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
+                        # Globos desde abajo
+                        st.balloons()
+                        
+                        # Esperar 3 segundos y limpiar
+                        time.sleep(3)
                         st.session_state['form_version'] = form_version + 1
                         st.rerun()
                     else:
@@ -1618,13 +1658,14 @@ elif menu == "📦 Productos":
                     edit_stock_actual = st.number_input("", min_value=0, value=int(stock_actual_val), key="edit_stock_actual", label_visibility="collapsed")
                     
                 with col_stock2:
-                    # Unidad de ingreso con mismo estilo de card
+                    # Ingreso - Cantidad que está entrando al almacén (inicia en 0)
                     st.markdown("""
                     <div style="background: rgba(30, 41, 59, 0.6); padding: 15px; border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.2);">
-                        <label style="color: #94a3b8; font-size: 0.9rem;">📥 Unidad de ingreso</label>
+                        <label style="color: #94a3b8; font-size: 0.9rem;">📥 Ingreso (entrada)</label>
                     </div>
                     """, unsafe_allow_html=True)
-                    edit_unidad_ingreso = st.number_input("", min_value=1, value=int(producto_edit.get('unidad_ingreso', 10)), key="edit_unidad_ingreso", label_visibility="collapsed")
+                    edit_ingreso = st.number_input("", min_value=0, value=0, key="edit_ingreso", label_visibility="collapsed", 
+                                                   help="Cantidad que está entrando al almacén. Se sumará al stock actual.")
                 
                 # Fila 2: Stock mínimo | Stock máximo
                 col_stock3, col_stock4 = st.columns(2)
@@ -1721,7 +1762,7 @@ elif menu == "📦 Productos":
                                 "unidad": edit_unidad,
                                 "stock_minimo": edit_stock_min,
                                 "stock_maximo": edit_stock_max,
-                                "unidad_ingreso": edit_unidad_ingreso,
+                                "unidad_ingreso": producto_edit.get('unidad_ingreso', 10),
                                 "tiempo_reposicion": edit_tiempo,
                                 "categoria_id": edit_cat_id,
                                 "proveedor_id": edit_prov_id,
@@ -1730,8 +1771,10 @@ elif menu == "📦 Productos":
                             }
                             result_edit = api_put(f"/api/v1/productos/{prod_id_edit}", data_edit)
                             if result_edit and result_edit.get('id'):
+                                # Calcular nuevo stock: actual + ingreso
+                                nuevo_stock = edit_stock_actual + edit_ingreso
                                 # Actualizar stock en inventario
-                                api_post(f"/api/v1/inventario/{prod_id_edit}", {"cantidad": edit_stock_actual, "ubicacion": "Almacén A"})
+                                api_post(f"/api/v1/inventario/{prod_id_edit}", {"cantidad": nuevo_stock, "ubicacion": "Almacén A"})
                                 # Guardar flag para mostrar mensaje después del rerun
                                 st.session_state['producto_actualizado'] = True
                                 del st.session_state['editar_producto']
