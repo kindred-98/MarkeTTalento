@@ -1,0 +1,84 @@
+/* Estilos para el Sidebar */
+
+/* Menú cards */
+.menu-card {
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.menu-icon { 
+    font-size: 2rem; 
+    margin-bottom: 5px; 
+}
+
+.menu-label { 
+    font-weight: 600; 
+    font-size: 0.9rem; 
+}
+
+.card-dashboard { 
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 240, 255, 0.05)); 
+    border-color: rgba(0, 240, 255, 0.3); 
+}
+
+.card-productos { 
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.05)); 
+    border-color: rgba(139, 92, 246, 0.3); 
+}
+
+.card-inventario { 
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05)); 
+    border-color: rgba(16, 185, 129, 0.3); 
+}
+
+.card-ventas { 
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05)); 
+    border-color: rgba(245, 158, 11, 0.3); 
+}
+
+.card-predicciones { 
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.05)); 
+    border-color: rgba(236, 72, 153, 0.3); 
+}
+
+.card-vision { 
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05)); 
+    border-color: rgba(59, 130, 246, 0.3); 
+}
+
+/* Status indicator en sidebar */
+.sidebar-status {
+    padding: 15px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 0, 0, 0.2));
+    border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    margin-bottom: 10px;
+}
+
+.sidebar-status-dot {
+    width: 10px;
+    height: 10px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+    display: inline-block;
+}
+
+.txt-cyan { color: #00f0ff; }
+.txt-purple { color: #8b5cf6; }
+.txt-green { color: #10b981; }
+.txt-orange { color: #f59e0b; }
+.txt-pink { color: #ec4899; }
+.txt-blue { color: #3b82f6; }
+.txt-white { color: #f1f5f9; }
