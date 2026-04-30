@@ -7,7 +7,6 @@ from app.utils.api import api_get
 from app.utils.helpers import calcular_porcentaje
 from app.utils.state import get_filtro_dashboard
 from app.logic.inventario import calcular_estado_stock
-from app.components.stock_badge import render_stock_badge
 from app.config import PRODUCTOS_POR_PAGINA
 
 

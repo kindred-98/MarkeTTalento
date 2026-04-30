@@ -442,3 +442,25 @@ ARCHIVOS QUE SE ELIMINAN:
 ❌ main.py (raíz) → se mueve a src/api/main.py
 ❌ streamlit_app.py (raíz) → se divide en app/main.py + app/pages/*.py
 ❌ iniciar.py (raíz) → reemplazado por run.py
+
+MarkeTTalento/
+├── data/                      ✅ Bases de datos (data/ restaurado)
+│   ├── markettalento.db
+│   └── inventario.db
+│
+├── src/core/database/         ✅ Código de conexión (database/ restaurado)
+│   ├── __init__.py
+│   ├── base.py
+│   ├── database.py
+│   └── multi_database.py      ← Soporte multi-DB
+│
+├── src/implementaciones/      ✅ (antes infraestructura)
+│   └── repositorios_impl.py
+│
+├── tests/                     ✅ Tests reorganizados
+│   └── (vacío - scripts de test movidos/eliminados)
+│
+├── scripts/
+│   └── crear_datos.py         ✅ Script de utilidad
+│
+└── ... (resto del proyecto)

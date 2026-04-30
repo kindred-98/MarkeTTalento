@@ -4,8 +4,8 @@ Página de Ventas
 import streamlit as st
 import pandas as pd
 from app.utils.api import api_get, api_post
-from app.utils.helpers import to_excel, format_currency
-from app.logic.venta import preparar_datos_ventas, validar_venta
+from app.utils.helpers import to_excel, format_currency, get_prod_name
+from app.logic.venta import calcular_total_venta
 
 
 def render():
@@ -20,12 +20,6 @@ def render():
         
         # Exportar
         if ventas:
-            def get_prod_name(pid):
-                for p in productos:
-                    if p.get("id") == pid:
-                        return p.get("nombre", "Producto")
-                return "Producto"
-            
             df_ventas = pd.DataFrame([{
                 "Fecha": v.get("fecha", "")[:10],
                 "Producto": get_prod_name(v.get("producto_id")),
@@ -46,11 +40,7 @@ def render():
                 precio = venta.get("precio_unitario", 0)
                 total = cantidad * precio
                 
-                prod_nombre = "Producto"
-                for p in productos:
-                    if p.get("id") == venta.get("producto_id"):
-                        prod_nombre = p.get("nombre", "Producto")
-                        break
+                prod_nombre = get_prod_name(venta.get("producto_id"), productos)
                 
                 st.markdown(f"""
                 <div style="background: linear-gradient(135deg, rgba(26,35,50,0.8) 0%, rgba(26,35,50,0.6) 100%); border: 1px solid rgba(0,240,255,0.15); border-radius: 14px; padding: 16px; margin-bottom: 10px;">

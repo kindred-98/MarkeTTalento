@@ -28,19 +28,33 @@ class InventarioAnalisis:
     
     @property
     def estado(self) -> str:
-        dias = self.dias_hasta_agotarse
-        if dias <= 2:
-            return "CRÍTICO"
-        elif dias <= 5:
-            return "BAJO"
-        elif dias <= 10:
-            return "MODERADO"
+        """Calcula el estado basado en el porcentaje del stock máximo."""
+        stock_maximo = self.producto.stock_maximo or 100
+        
+        if self.stock_actual <= 0:
+            return "AGOTADO"
+        
+        if stock_maximo > 0:
+            pct = (self.stock_actual / stock_maximo) * 100
+            if pct <= 25:
+                return "CRÍTICO"
+            elif pct <= 50:
+                return "BAJO"
+            elif pct <= 75:
+                return "MODERADO"
+        
         return "ADECUADO"
     
     @property
     def necesita_reposicion(self) -> bool:
-        dias = self.dias_hasta_agotarse
-        return dias <= self.producto.tiempo_reposicion
+        """Determina si necesita reposición basado en el porcentaje del stock."""
+        stock_maximo = self.producto.stock_maximo or 100
+        
+        if stock_maximo > 0:
+            pct = (self.stock_actual / stock_maximo) * 100
+            return pct <= 25  # Necesita reposición si está en 25% o menos
+        
+        return False
     
     @property
     def cantidad_recomendada(self) -> int:

@@ -8,21 +8,6 @@ API_URL = "http://127.0.0.1:8002"
 # Configuración de paginación
 PRODUCTOS_POR_PAGINA = 10
 
-# Colores del tema
-COLORS = {
-    "cyan": "#00f0ff",
-    "purple": "#8b5cf6",
-    "pink": "#ec4899",
-    "green": "#10b981",
-    "red": "#ef4444",
-    "orange": "#f59e0b",
-    "bg_primary": "#0a0e17",
-    "bg_secondary": "#111827",
-    "bg_card": "#1a2332",
-    "text_primary": "#f1f5f9",
-    "text_secondary": "#94a3b8",
-}
-
 # Estados de stock con colores
 ESTADOS_STOCK = {
     "Agotado": {"color": "#6b7280", "bg": "#6b7280", "texto": "⚫ Agotado"},

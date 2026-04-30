@@ -1,10 +1,7 @@
 from typing import List, Optional
-from src.dominio.entidades.entidades import Producto, Categoria, Proveedor
+from src.dominio.entidades.entidades import Producto
 from src.dominio.repositorios.repositorios import ProductoRepositorio
-from src.aplicacion.schemas.schemas import (
-    ProductoCreate, 
-    ProductoResponse,
-)
+from src.aplicacion.schemas.schemas import ProductoCreate
 
 
 class ProductoServicio:

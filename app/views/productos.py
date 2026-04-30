@@ -7,8 +7,8 @@ import pandas as pd
 from datetime import datetime
 from app.utils.api import api_get, api_post, api_put
 from app.utils.helpers import to_excel, calcular_porcentaje, truncate_text
-from app.utils.state import set_editar_producto, clear_editar_producto, get_menu
-from app.logic.producto import get_categoria_emoji, get_descripcion_default, validar_producto, preparar_producto_data
+from app.utils.state import set_editar_producto, clear_editar_producto
+from app.logic.producto import get_categoria_emoji, get_descripcion_default, preparar_producto_data
 from app.logic.inventario import calcular_estado_stock
 from app.components.success_modal import show_success_modal
 from app.config import PRODUCTOS_POR_PAGINA
