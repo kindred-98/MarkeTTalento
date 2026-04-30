@@ -8,7 +8,7 @@ proceso = None
 try:
     print("Iniciando servidor...")
     proceso = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "src.infraestructura.api.main:app", "--host", "127.0.0.1", "--port", "8000"],
+        [sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8000"],
         cwd="D:/ADEV/ProyectosVScode/MarkeTTalento",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE

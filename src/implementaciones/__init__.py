@@ -1,4 +1,4 @@
-from src.infraestructura.repositorios.repositorios_impl import (
+from src.implementaciones.repositorios_impl import (
     SQLAlchemyProductoRepositorio,
     SQLAlchemyInventarioRepositorio,
     SQLAlchemyVentaRepositorio,

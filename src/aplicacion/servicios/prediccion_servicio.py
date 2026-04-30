@@ -78,33 +78,9 @@ class PrediccionServicio:
             tendencia = "ESTABLE"
         
         # Calcular días hasta agotarse (asumiendo stock actual de BD)
-        from src.infraestructura.repositorios.repositorios_impl import SQLAlchemyInventarioRepositorio
-        inventario_repo = SQLAlchemyInventarioRepositorio()
-        inventario = inventario_repo.obtener_por_producto(producto_id)
-        stock_actual = inventario.cantidad if inventario else 0
-        
-        if consumo_promedio > 0:
-            dias_hasta = stock_actual / consumo_promedio
-        else:
-            dias_hasta = 999
-        
-        # Preparar datos para gráfico
-        datos_grafico = [
-            {"fecha": v.fecha.strftime("%Y-%m-%d"), "cantidad": v.cantidad}
-            for v in historial
-        ]
-        
-        return PrediccionModelo(
-            producto_nombre=historial[0].producto.nombre if historial else "Unknown",
-            dias_hasta_agotarse=dias_hasta,
-            consumo_promedio=consumo_promedio,
-            tendencia=tendencia,
-            datos_grafico=datos_grafico
-        )
+        from src.implementaciones.repositorios_impl import SQLAlchemyInventarioRepositorio
 
-    def predecir_todos(self) -> List[PrediccionModelo]:
-        """Predice demanda para todos los productos."""
-        from src.infraestructura.repositorios.repositorios_impl import SQLAlchemyProductoRepositorio
+        from src.implementaciones.repositorios_impl import SQLAlchemyProductoRepositorio
         from src.dominio.entidades.entidades import Producto
         
         producto_repo = SQLAlchemyProductoRepositorio()

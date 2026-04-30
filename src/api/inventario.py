@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from src.core.database.database import get_db
 from src.dominio.entidades.entidades import Producto, Inventario
 from src.dominio.repositorios.repositorios import ProductoRepositorio, InventarioRepositorio, VentaRepositorio
-from src.infraestructura.repositorios.repositorios_impl import (
+from src.implementaciones.repositorios_impl import (
     SQLAlchemyProductoRepositorio,
     SQLAlchemyInventarioRepositorio,
     SQLAlchemyVentaRepositorio,

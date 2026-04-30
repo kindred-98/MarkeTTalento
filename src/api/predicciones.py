@@ -6,7 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 
 from src.dominio.repositorios.repositorios import VentaRepositorio
-from src.infraestructura.repositorios.repositorios_impl import SQLAlchemyVentaRepositorio
+from src.implementaciones.repositorios_impl import SQLAlchemyVentaRepositorio
 from src.aplicacion.servicios.prediccion_servicio import PrediccionServicio
 
 router = APIRouter()

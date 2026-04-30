@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.core.config.config import settings
 from src.core.config.environments import get_current_config
-from src.core.database.database import init_db
+from src.core.database.multi_database import init_all_databases
 from src.core.logging import setup_logging, get_logger
 from src.core.errors import setup_error_handlers
 from src.api.router import api_router
@@ -35,8 +35,8 @@ async def lifespan(app: FastAPI):
     # Startup
     try:
         logger.info("Iniciando aplicación MarkeTTalento...")
-        init_db()
-        logger.info("Base de datos inicializada correctamente")
+        init_all_databases()
+        logger.info("Todas las bases de datos inicializadas correctamente")
     except Exception as e:
         logger.warning(f"Base de datos no disponible - modo desarrollo: {e}")
     

@@ -4,7 +4,7 @@ Agrupa todos los routers de endpoints
 """
 from fastapi import APIRouter
 
-from src.api import sistema, categorias, proveedores, productos, inventario, ventas, predicciones, vision
+from src.api import sistema, categorias, proveedores, productos, inventario, ventas, predicciones, vision, admin
 
 api_router = APIRouter()
 
@@ -17,3 +17,4 @@ api_router.include_router(inventario.router, prefix="/inventario", tags=["Invent
 api_router.include_router(ventas.router, prefix="/ventas", tags=["Ventas"])
 api_router.include_router(predicciones.router, prefix="/prediccion", tags=["Predicciones"])
 api_router.include_router(vision.router, prefix="/vision", tags=["Visión Artificial"])
+api_router.include_router(admin.router, prefix="/admin", tags=["Administración"])
