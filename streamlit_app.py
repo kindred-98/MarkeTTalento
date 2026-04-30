@@ -127,6 +127,7 @@ st.markdown("""
     /* Importar fuentes */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap');
     @import url('https://cdn.jsdelivr.net/npm/@fontsource/cascadia-code@4.2.1/index.min.css');
+    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
     
     /* Tema oscuro futurista */
     :root {
@@ -173,9 +174,19 @@ st.markdown("""
         text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
     }
     
-    /* Fuente global */
+    /* Fuente global - excluir elementos de iconos del sidebar */
     html, body, .stApp, [class*="st"] {
         font-family: 'Cascadia Code', 'Segoe UI', monospace !important;
+    }
+    
+    /* Excluir específicamente los elementos de iconos de Streamlit */
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="stSidebarCollapseButton"] *,
+    .material-symbols-rounded,
+    .material-symbols-outlined,
+    .st-emotion-cache-1cypcdb,  /* Posible clase del botón */
+    button[kind="header"] {
+        font-family: 'Material Symbols Rounded', sans-serif !important;
     }
     
     /* Sidebar */
@@ -183,6 +194,22 @@ st.markdown("""
         background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-primary) 100%);
         border-right: 1px solid rgba(0, 240, 255, 0.1);
     }
+    
+    /* Botón colapsar sidebar - usar Material Symbols Rounded para los iconos */
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="stSidebarCollapseButton"] span,
+    [data-testid="stSidebarCollapseButton"] button {
+        font-family: 'Material Symbols Rounded', sans-serif !important;
+        font-size: 24px !important;
+    }
+    
+    /* Asegurar que el icono se muestre correctamente */
+    .material-symbols-rounded,
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Rounded' !important;
+    }
+    
+
     
     /* Botones principales */
     .stButton > button:first-child {
@@ -216,6 +243,38 @@ st.markdown("""
         border: 1px solid rgba(0, 240, 255, 0.2);
         color: var(--text-primary);
         border-radius: 10px;
+    }
+    
+    /* File Uploader - estilo limpio */
+    [data-testid="stFileUploader"] {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(0, 240, 255, 0.2);
+        border-radius: 10px;
+        padding: 10px;
+    }
+    
+    [data-testid="stFileUploader"] > section {
+        border: 2px dashed rgba(0, 240, 255, 0.3) !important;
+        background: rgba(0, 0, 0, 0.2) !important;
+        border-radius: 8px !important;
+    }
+    
+    [data-testid="stFileUploader"] button {
+        background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
+        color: var(--bg-primary) !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        padding: 6px 16px !important;
+    }
+    
+    [data-testid="stFileUploader"] button:hover {
+        box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4) !important;
+    }
+    
+    [data-testid="stFileUploader"] span {
+        color: var(--text-secondary) !important;
+        font-size: 0.8rem !important;
     }
     
     /* Dataframes */
@@ -705,7 +764,7 @@ if menu == "🏠 Dashboard":
         prod_list = api_get("/api/v1/productos")
         
         # CONFIGURACIÓN DE PAGINACIÓN
-        productos_por_pagina = 25
+        productos_por_pagina = 10
         total_productos = len(df_stock)
         total_paginas = (total_productos + productos_por_pagina - 1) // productos_por_pagina
         
@@ -1378,17 +1437,16 @@ elif menu == "📦 Productos":
                                        placeholder="Describe el producto...")
         
         with col4:
-            # Foto del producto en card
-            st.markdown("""
-            <div style="background: rgba(30, 41, 59, 0.6); padding: 15px; border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.2);">
-                <label style="color: #94a3b8; font-size: 0.9rem;">📷 Foto del producto</label>
-            </div>
-            """, unsafe_allow_html=True)
-            imagen_subida = st.file_uploader("Subir", type=['png', 'jpg', 'jpeg'], key=f"new_imagen_{form_version}", label_visibility="collapsed")
+            # Foto del producto
+            st.markdown("<label style='color: #94a3b8; font-size: 0.9rem; display: block; margin-bottom: 8px;'>📷 Foto del producto</label>", unsafe_allow_html=True)
+            
+            imagen_subida = st.file_uploader("", type=['png', 'jpg', 'jpeg'], key=f"new_imagen_{form_version}", label_visibility="collapsed")
             
             if imagen_subida is not None:
                 st.image(imagen_subida, width=150, caption="Vista previa")
-                st.success("✅ Imagen cargada")
+                st.markdown('<div style="color: #10b981; font-size: 0.85rem; margin-top: 8px;">✅ Imagen cargada</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="color: #64748b; font-size: 0.85rem; font-style: italic; margin-top: 8px; padding: 10px; background: rgba(30,41,59,0.4); border-radius: 6px; border: 1px dashed rgba(0,240,255,0.3);">📁 Arrastra o haz clic para subir</div>', unsafe_allow_html=True)
         
         # Verificar campos obligatorios
         campos_obligatorios = {
@@ -1458,8 +1516,8 @@ elif menu == "📦 Productos":
                     if result:
                         st.success("✅ Producto añadido al catálogo")
                         prod_id = result.get("id")
-                        # Crear inventario inicial con stock 0
-                        api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": stock_actual, "ubicacion": "Almacén A"})
+                        # Crear inventario inicial con la unidad de ingreso
+                        api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": unidad_ingreso, "ubicacion": "Almacén A"})
                         st.session_state['form_version'] = form_version + 1
                         st.rerun()
                     else:

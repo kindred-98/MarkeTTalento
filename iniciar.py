@@ -21,12 +21,12 @@ def iniciar():
         import requests
         r = requests.get("http://127.0.0.1:8002/api/v1/salud", timeout=2)
         api_ya_esta = r.status_code == 200
-    except:
+    except Exception:
         api_ya_esta = False
     
     if not api_ya_esta:
         print("\n[1] Iniciando API...")
-        api = subprocess.Popen(
+        _api = subprocess.Popen(
             [sys.executable, "main.py"],
             creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
         )
@@ -42,7 +42,7 @@ def iniciar():
     
     if not puerto_ocupado(8501):
         print("\n[2] Iniciando Streamlit Dashboard...")
-        streamlit = subprocess.Popen(
+        _streamlit = subprocess.Popen(
             [sys.executable, "-m", "streamlit", "run", "streamlit_app.py", "--server.headless", "true"],
             creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
         )
