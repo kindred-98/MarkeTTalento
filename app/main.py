@@ -18,8 +18,9 @@ from app.components.sidebar import render_sidebar
 from app.views import dashboard, productos, inventario, ventas, predicciones, vision_ai, barcode
 
 
-def load_css():
-    """Carga todos los archivos CSS."""
+@st.cache_resource
+def get_css_content():
+    """Cachea el contenido CSS para evitar lecturas repetidas de archivos."""
     css_files = [
         'app/styles/global.css',
         'app/styles/components.css',
@@ -36,6 +37,12 @@ def load_css():
             with open(css_file, 'r', encoding='utf-8') as f:
                 css_content += f.read() + "\n"
     
+    return css_content
+
+
+def load_css():
+    """Carga todos los archivos CSS (usando cache)."""
+    css_content = get_css_content()
     st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
 
 
