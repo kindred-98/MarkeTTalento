@@ -127,7 +127,15 @@ st.markdown("""
     /* Importar fuentes */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap');
     @import url('https://cdn.jsdelivr.net/npm/@fontsource/cascadia-code@4.2.1/index.min.css');
-    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
+    
+    /* Forzar carga de Material Symbols */
+    @font-face {
+        font-family: 'Material Symbols Rounded';
+        font-style: normal;
+        font-weight: 100 700;
+        src: url(https://fonts.gstatic.com/s/materialsymbolsrounded/v212/sykg-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190Fjzag.woff2) format('woff2');
+    }
     
     /* Tema oscuro futurista */
     :root {
@@ -174,33 +182,42 @@ st.markdown("""
         text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
     }
     
-    /* Fuente global - excluir elementos de iconos del sidebar */
-    html, body, .stApp, [class*="st"] {
+    /* Fuente global - TODO excepto elementos de iconos */
+    html, body, .stApp {
         font-family: 'Cascadia Code', 'Segoe UI', monospace !important;
     }
     
-    /* Excluir específicamente los elementos de iconos de Streamlit */
-    [data-testid="stSidebarCollapseButton"],
-    [data-testid="stSidebarCollapseButton"] *,
-    .material-symbols-rounded,
-    .material-symbols-outlined,
-    .st-emotion-cache-1cypcdb,  /* Posible clase del botón */
-    button[kind="header"] {
-        font-family: 'Material Symbols Rounded', sans-serif !important;
+    /* Sidebar - Botón de colapsar/expandir - SOLUCIÓN CON ICONOS UNICODE */
+    button[data-testid="stSidebarCollapseButton"] {
+        position: relative !important;
+        color: transparent !important;
+        font-size: 0 !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+    }
+    
+    /* Icono por defecto: << (cuando sidebar está abierto) */
+    button[data-testid="stSidebarCollapseButton"]::after {
+        content: "◀◀" !important;
+        font-family: Arial, sans-serif !important;
+        font-size: 14px !important;
+        color: var(--accent-cyan) !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        letter-spacing: -2px !important;
+    }
+    
+    /* Icono cuando sidebar está colapsado: >> */
+    [data-testid="stSidebarCollapsedControl"] button[data-testid="stSidebarCollapseButton"]::after {
+        content: "▶▶" !important;
     }
     
     /* Sidebar */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-primary) 100%);
         border-right: 1px solid rgba(0, 240, 255, 0.1);
-    }
-    
-    /* Botón colapsar sidebar - usar Material Symbols Rounded para los iconos */
-    [data-testid="stSidebarCollapseButton"],
-    [data-testid="stSidebarCollapseButton"] span,
-    [data-testid="stSidebarCollapseButton"] button {
-        font-family: 'Material Symbols Rounded', sans-serif !important;
-        font-size: 24px !important;
     }
     
     /* Asegurar que el icono se muestre correctamente */
