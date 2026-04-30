@@ -351,3 +351,94 @@ MarkeTTalento/
 *Progreso: 85%*
 
 ![alt text](114031.jpg)
+
+MarkeTTalento/
+│
+├── run.py                          ← ÚNICO punto de entrada
+│   └── Lanza: src/api/main.py (API) + app/main.py (Dashboard) + abre navegador
+│
+├── src/api/main.py                 ← API FastAPI (movido desde raíz/main.py)
+│   └── Endpoints: /api/v1/productos, /api/v1/inventario, /api/v1/ventas, etc.
+│
+├── app/                            ← NUEVO: Todo el frontend modularizado
+│   │
+│   ├── __init__.py
+│   │
+│   ├── main.py                     ← Dashboard Streamlit (era streamlit_app.py)
+│   │   ├── Importa y ensambla todo
+│   │   ├── Carga CSS global
+│   │   ├── Renderiza sidebar
+│   │   ├── Router de páginas (if menu == "X": page.render())
+│   │   └── Maneja estado global
+│   │
+│   ├── config.py                   ← Configuración (API_URL, etc.)
+│   │
+│   ├── styles/                     ← CSS modularizado por funcionalidad
+│   │   ├── global.css              ← Variables CSS, tema oscuro, scrollbar, fuentes
+│   │   ├── components.css          ← Botones, cards, inputs, tabs, file uploader
+│   │   ├── sidebar.css             ← Estilos del menú lateral
+│   │   ├── dashboard.css           ← Métricas, gráficos, filtros del dashboard
+│   │   ├── productos.css           ← Cards de producto, catálogo, formularios nuevo/edición
+│   │   ├── inventario.css          ← Cards de inventario, badges de estado, controles +/-
+│   │   ├── ventas.css              ← Cards de ventas, formulario nueva venta
+│   │   ├── predicciones.css        ← Gráficos de predicciones ML
+│   │   └── vision.css              ← Vista de cámara, preview, resultados
+│   │
+│   ├── utils/                      ← Utilidades reutilizables (sin UI)
+│   │   ├── __init__.py
+│   │   ├── api.py                  ← api_get(), api_post(), api_put() - comunicación con backend
+│   │   ├── helpers.py              ← to_excel(), formatters, funciones auxiliares
+│   │   └── state.py                ← Gestión de session_state, inicialización de variables
+│   │
+│   ├── logic/                      ← Lógica de negocio pura (sin Streamlit)
+│   │   ├── __init__.py
+│   │   ├── producto.py             ← Validaciones de producto, cálculos de margen
+│   │   ├── inventario.py           ← Cálculo de estados (Crítico/Bajo/Saludable), validaciones stock
+│   │   └── venta.py                ← Cálculos de totales, validaciones de ventas
+│   │
+│   ├── components/                 ← Componentes UI reutilizables (bloques visuales)
+│   │   ├── __init__.py
+│   │   ├── sidebar.py              ← Menú lateral completo con navegación y estado activo
+│   │   ├── header.py               ← Header animado de la aplicación con título y badges
+│   │   ├── metric_card.py          ← Cards de métricas para dashboard (4 métricas principales)
+│   │   ├── product_card.py         ← Card individual de producto (imagen, nombre, precio, stock)
+│   │   ├── inventario_card.py      ← Card de item de inventario con info de stock y ubicación
+│   │   ├── stock_badge.py          ← Badge de estado con color (Crítico/Bajo/Saludable/Agotado)
+│   │   ├── stock_progress.py       ← Barra de progreso de stock (0-100% con color según estado)
+│   │   ├── file_uploader.py        ← Componente de subida de imágenes estilizado (drop zone)
+│   │   ├── success_modal.py        ← Modal de éxito con animación (usado al crear producto)
+│   │   └── data_table.py           ← Tablas con paginación, filtros y botón exportar Excel
+│   │
+│   └── pages/                      ← Cada sección del menú como módulo independiente
+│       ├── __init__.py
+│       ├── dashboard.py            ← Dashboard: métricas, gráfico pastel, tabla stock, alertas
+│       ├── productos.py            ← Productos: Catálogo + Nuevo + Edición (3 tabs/sub-secciones)
+│       ├── inventario.py           ← Inventario: Lista con filtros, ajuste rápido +/-, exportar
+│       ├── ventas.py               ← Ventas: Historial con cards + formulario nueva venta
+│       ├── predicciones.py         ← Predicciones: Gráficos ML de demanda por producto
+│       ├── vision_ai.py            ← Visión AI: Selector cámara/imagen, detección, resultados
+│       └── barcode.py              ← Barcode: Escáner de códigos de barras
+│
+├── src/                            ← Backend (ya existe, sin cambios en estructura)
+│   ├── api/                        ← Aquí va main.py con endpoints
+│   ├── core/
+│   │   ├── config/
+│   │   └── database/
+│   ├── dominio/
+│   │   ├── entidades/
+│   │   └── repositorios/
+│   ├── aplicacion/
+│   │   ├── servicios/
+│   │   └── schemas/
+│   └── infraestructura/
+│       └── repositorios/
+│
+├── data/                           ← Base de datos SQLite (markettalento.db)
+├── docs/productos/                 ← Imágenes subidas de productos
+├── models/                         ← Modelos ML/YOLO
+└── requirements.txt
+
+ARCHIVOS QUE SE ELIMINAN:
+❌ main.py (raíz) → se mueve a src/api/main.py
+❌ streamlit_app.py (raíz) → se divide en app/main.py + app/pages/*.py
+❌ iniciar.py (raíz) → reemplazado por run.py
