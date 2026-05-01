@@ -424,7 +424,7 @@ def render():
             st.markdown('<div class="section-micro-sub">Visualización en tiempo real del inventario</div>', unsafe_allow_html=True)
         
         with col_search:
-            busqueda = st.text_input("", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
+            busqueda = st.text_input("Buscar producto", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
         
         # Filtros para la lista
         if 'filtros_lista' not in st.session_state:
@@ -592,7 +592,7 @@ def render():
                 margin=dict(l=5, r=5, t=10, b=35),
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         # Centro de Notificaciones
         st.markdown('<div class="section-micro" style="margin-top: 8px;">⚡ Centro de Notificaciones y Alertas</div>', unsafe_allow_html=True)
