@@ -293,47 +293,33 @@ def render():
                 'saludables': True
             }
         
-        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
-        
-        # CSS para botones HTML puros con estilo opaco (y ocultar botones Streamlit)
+        # CSS global para botones de filtro
         st.markdown("""
         <style>
-        /* Ocultar botones Streamlit de filtros */
-        div[data-testid="stHorizontalBlock"]:nth-of-type(3) {
-            display: none !important;
+        /* Botones de filtro - estilo opaco y animación */
+        div[data-testid="stHorizontalBlock"] button[data-testid="baseButton-secondary"] {
+            background: rgba(30, 41, 59, 0.7) !important;
+            border: 1px solid rgba(100, 116, 139, 0.3) !important;
+            color: #e2e8f0 !important;
+            font-size: 0.75rem !important;
+            padding: 6px 10px !important;
+            border-radius: 8px !important;
+            min-height: 32px !important;
+            transition: all 0.3s ease !important;
+            box-shadow: none !important;
+            background-image: none !important;
         }
         
-        .filter-btn-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .filter-btn-html {
-            flex: 1;
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            color: #e2e8f0;
-            font-size: 0.75rem;
-            padding: 8px 12px;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        .filter-btn-html:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
-            border-color: rgba(0, 240, 255, 0.5);
-            background: rgba(51, 65, 85, 0.9);
-        }
-        .filter-btn-html.inactive {
-            opacity: 0.5;
-            background: rgba(30, 41, 59, 0.4);
+        div[data-testid="stHorizontalBlock"] button[data-testid="baseButton-secondary"]:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3) !important;
+            border-color: rgba(0, 240, 255, 0.5) !important;
+            background: rgba(51, 65, 85, 0.9) !important;
         }
         </style>
-        <div class="filter-btn-row">
         """, unsafe_allow_html=True)
+        
+        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
         
         filtros_config = [
             ("⚫ Agotados", 'agotados'),
@@ -342,29 +328,20 @@ def render():
             ("🟢 Saludables", 'saludables'),
         ]
         
-        for label, filtro_nombre in filtros_config:
-            is_active = st.session_state['filtros_lista'][filtro_nombre]
-            icon = "✓" if is_active else "○"
-            inactive_class = "" if is_active else "inactive"
-            
-            st.markdown(f"""
-            <button class="filter-btn-html {inactive_class}" 
-                    onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', value: '{filtro_nombre}'}}, '*')">
-                <span>{icon}</span>
-                <span>{label}</span>
-            </button>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Botones Streamlit para manejar los clicks (usando emojis como label)
+        # Botones de filtro en línea con estilo opaco
         filtros_cols = st.columns(4)
         col_idx = 0
         for label, filtro_nombre in filtros_config:
             with filtros_cols[col_idx]:
                 is_active = st.session_state['filtros_lista'][filtro_nombre]
                 btn_emoji = "✓" if is_active else "○"
-                if st.button(f"{btn_emoji} {label}", key=f"btn_filtro_{filtro_nombre}"):
+                
+                if st.button(
+                    f"{btn_emoji} {label}", 
+                    key=f"btn_filtro_{filtro_nombre}",
+                    use_container_width=True,
+                    type="secondary"
+                ):
                     st.session_state['filtros_lista'][filtro_nombre] = not is_active
                     st.rerun()
             col_idx += 1
