@@ -1,5 +1,5 @@
 """
-Página del Dashboard - Ultra Compacto con Fondo Tech
+Página del Dashboard - Fondo Futurista
 """
 import streamlit as st
 import plotly.graph_objects as go
@@ -85,7 +85,7 @@ def _generar_sparkline_data(trend="up"):
 
 
 def render():
-    """Renderiza el dashboard ultra compacto."""
+    """Renderiza el dashboard con fondo futurista."""
     # Placeholder para carga inicial
     if '_dashboard_loaded' not in st.session_state:
         st.session_state['_dashboard_loaded'] = False
@@ -95,14 +95,15 @@ def render():
         with loading_placeholder.container():
             st.spinner("Cargando dashboard...")
     
-    # CSS para fondo tech con grid
+    # FONDO FUTURISTA CON GRID Y PARTICULAS
     st.markdown("""
     <style>
-    /* Fondo tecnológico con grid */
+    /* Fondo base oscuro futurista */
     .stApp {
-        background: linear-gradient(135deg, #0a0e17 0%, #0f172a 50%, #1e1b4b 100%);
+        background: linear-gradient(135deg, #050810 0%, #0a0f1e 30%, #0d1321 70%, #0a0e1a 100%);
     }
     
+    /* Grid tecnológico */
     .stApp::before {
         content: '';
         position: fixed;
@@ -111,186 +112,195 @@ def render():
         right: 0;
         bottom: 0;
         background-image: 
-            linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
-        background-size: 50px 50px;
+            linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
         pointer-events: none;
         z-index: 0;
     }
     
-    /* Hero Section Compacto */
-    .hero-mini {
-        background: linear-gradient(135deg, rgba(0,240,255,0.08) 0%, rgba(139,92,246,0.08) 50%, rgba(236,72,153,0.08) 100%);
-        padding: 20px 30px;
-        border-radius: 16px;
-        border: 1px solid rgba(0,240,255,0.2);
-        margin-bottom: 15px;
-        text-align: center;
-        position: relative;
-    }
-    
-    .hero-mini::before {
+    /* Efecto de vignette */
+    .stApp::after {
         content: '';
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+        bottom: 0;
+        background: radial-gradient(ellipse at center, transparent 0%, rgba(5,8,16,0.4) 100%);
+        pointer-events: none;
+        z-index: 0;
     }
     
-    .hero-icon {
-        font-size: 2.5rem;
-        margin-bottom: 8px;
+    /* Líneas de conexión decorativas */
+    .tech-lines {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 0;
+        background: 
+            linear-gradient(45deg, transparent 48%, rgba(0,240,255,0.02) 49%, rgba(0,240,255,0.02) 51%, transparent 52%),
+            linear-gradient(-45deg, transparent 48%, rgba(139,92,246,0.02) 49%, rgba(139,92,246,0.02) 51%, transparent 52%);
+        background-size: 100px 100px;
     }
     
-    .hero-title {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin: 0 0 5px 0;
-        background: linear-gradient(90deg, #00f0ff, #8b5cf6, #ec4899);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        letter-spacing: 2px;
-    }
-    
-    .hero-subtitle {
-        color: #64748b;
-        font-size: 0.9rem;
-        margin: 0 0 12px 0;
-    }
-    
-    .hero-subtitle span {
-        color: #00f0ff;
-    }
-    
-    .hero-tags {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-    }
-    
-    .hero-tag {
-        padding: 4px 12px;
-        border-radius: 15px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    
-    .hero-tag.cyan {
-        background: rgba(0,240,255,0.15);
-        border: 1px solid rgba(0,240,255,0.4);
-        color: #00f0ff;
-    }
-    
-    .hero-tag.purple {
-        background: rgba(139,92,246,0.15);
-        border: 1px solid rgba(139,92,246,0.4);
-        color: #8b5cf6;
-    }
-    
-    .hero-tag.green {
-        background: rgba(16,185,129,0.15);
-        border: 1px solid rgba(16,185,129,0.4);
-        color: #10b981;
-    }
-    
-    /* Tarjetas de métricas compactas */
-    .metric-card {
-        background: rgba(30, 41, 59, 0.4);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 12px;
-        padding: 12px 15px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .metric-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-    }
-    
-    .metric-icon.cyan {
-        background: rgba(0,240,255,0.15);
-    }
-    
-    .metric-icon.purple {
-        background: rgba(139,92,246,0.15);
-    }
-    
-    .metric-icon.red {
-        background: rgba(239,68,68,0.15);
-    }
-    
-    .metric-icon.green {
-        background: rgba(16,185,129,0.15);
-    }
-    
-    .metric-content {
-        flex: 1;
-    }
-    
-    .metric-label {
-        color: #64748b;
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 2px;
-    }
-    
-    .metric-value {
-        font-size: 1.4rem;
-        font-weight: 700;
-        margin-bottom: 2px;
-    }
-    
-    .metric-sublabel {
-        color: #475569;
-        font-size: 0.7rem;
-    }
-    
-    .metric-sparkline {
-        width: 60px;
-        height: 30px;
-    }
-    
-    /* Secciones */
-    .section-title {
-        color: #00f0ff;
-        font-size: 0.95rem;
-        margin-bottom: 10px;
+    /* Header esquina */
+    .header-corner {
+        position: fixed;
+        top: 10px;
+        right: 20px;
         display: flex;
         align-items: center;
         gap: 8px;
+        z-index: 100;
+        padding: 8px 15px;
+        background: rgba(10, 15, 30, 0.8);
+        border: 1px solid rgba(0, 240, 255, 0.2);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
     }
     
-    .section-subtitle {
+    .header-corner-icon {
+        font-size: 1.2rem;
+    }
+    
+    .header-corner-text {
+        font-size: 0.9rem;
+        font-weight: 600;
+        background: linear-gradient(90deg, #00f0ff, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    /* Tarjetas de métricas ultra compactas */
+    .metric-micro {
+        background: rgba(20, 25, 40, 0.6);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .metric-micro-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+    
+    .metric-micro-content {
+        flex: 1;
+    }
+    
+    .metric-micro-label {
         color: #64748b;
-        font-size: 0.75rem;
-        margin-bottom: 12px;
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 1px;
+    }
+    
+    .metric-micro-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    
+    .metric-micro-sublabel {
+        color: #475569;
+        font-size: 0.6rem;
+    }
+    
+    .metric-micro-spark {
+        width: 45px;
+        height: 22px;
+    }
+    
+    /* Titulos de sección */
+    .section-micro {
+        color: #00f0ff;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .section-micro-sub {
+        color: #64748b;
+        font-size: 0.7rem;
+        margin-bottom: 10px;
+    }
+    
+    /* Botones de filtro compactos */
+    .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        border: 1px solid;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    /* Productos lista */
+    .product-row {
+        display: flex;
+        align-items: center;
+        background: rgba(20, 25, 40, 0.4);
+        border-radius: 6px;
+        padding: 6px 10px;
+        margin-bottom: 4px;
+        border-left: 2px solid;
+        font-size: 0.8rem;
+    }
+    
+    .product-icon {
+        width: 24px;
+        height: 24px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+        font-size: 0.8rem;
+    }
+    
+    /* Alertas compactas */
+    .alert-micro {
+        padding: 6px 8px;
+        border-radius: 5px;
+        margin-bottom: 4px;
+        border: 1px solid;
+        font-size: 0.7rem;
     }
     </style>
     
-    <!-- Hero Section -->
-    <div class="hero-mini">
-        <div class="hero-icon">📦</div>
-        <h1 class="hero-title">MarkeTTalento</h1>
-        <p class="hero-subtitle">Sistema de Inventario Inteligente con <span>Visión Artificial</span></p>
-        <div class="hero-tags">
-            <span class="hero-tag cyan">🤖 ML & IA</span>
-            <span class="hero-tag purple">📊 Analytics</span>
-            <span class="hero-tag green">🔮 Predicciones</span>
-        </div>
+    <!-- Líneas decorativas de fondo -->
+    <div class="tech-lines"></div>
+    
+    <!-- Header en esquina -->
+    <div class="header-corner">
+        <span class="header-corner-icon">📦</span>
+        <span class="header-corner-text">MarkeTTalento</span>
     </div>
     
-    <p style="color: #475569; font-size: 0.8rem; margin-bottom: 15px;">Dashboard</p>
+    <div style="margin-top: 40px;"></div>
     """, unsafe_allow_html=True)
     
     # Obtener datos con cache
@@ -333,37 +343,35 @@ def render():
     spark_criticos = _generar_sparkline_data("down")
     spark_valor = _generar_sparkline_data("up")
     
-    # Métricas compactas con sparklines
+    # Métricas ultra compactas
     metrics_cols = st.columns(4)
     
     with metrics_cols[0]:
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-icon cyan">📦</div>
-            <div class="metric-content">
-                <div class="metric-label">Productos en Catálogo</div>
-                <div class="metric-value" style="color: #00f0ff;">{resumen.get('total_productos', 0)}</div>
-                <div class="metric-sublabel">en catálogo</div>
+        <div class="metric-micro">
+            <div class="metric-micro-icon" style="background: rgba(0,240,255,0.12);">📦</div>
+            <div class="metric-micro-content">
+                <div class="metric-micro-label">Productos en Catálogo</div>
+                <div class="metric-micro-value" style="color: #00f0ff;">{resumen.get('total_productos', 0)}</div>
+                <div class="metric-micro-sublabel">en catálogo</div>
             </div>
-            <svg class="metric-sparkline" viewBox="0 0 60 30">
-                <polyline fill="none" stroke="#00f0ff" stroke-width="2" points="0,{30-spark_productos[0]*0.5} 6,{30-spark_productos[1]*0.5} 12,{30-spark_productos[2]*0.5} 18,{30-spark_productos[3]*0.5} 24,{30-spark_productos[4]*0.5} 30,{30-spark_productos[5]*0.5} 36,{30-spark_productos[6]*0.5} 42,{30-spark_productos[7]*0.5} 48,{30-spark_productos[8]*0.5} 54,{30-spark_productos[9]*0.5}"/>
-                <polygon fill="rgba(0,240,255,0.1)" stroke="none" points="0,30 0,{30-spark_productos[0]*0.5} 6,{30-spark_productos[1]*0.5} 12,{30-spark_productos[2]*0.5} 18,{30-spark_productos[3]*0.5} 24,{30-spark_productos[4]*0.5} 30,{30-spark_productos[5]*0.5} 36,{30-spark_productos[6]*0.5} 42,{30-spark_productos[7]*0.5} 48,{30-spark_productos[8]*0.5} 54,{30-spark_productos[9]*0.5} 54,30"/>
+            <svg class="metric-micro-spark" viewBox="0 0 45 22">
+                <polyline fill="none" stroke="#00f0ff" stroke-width="1.5" points="0,{22-spark_productos[0]*0.4} 5,{22-spark_productos[1]*0.4} 10,{22-spark_productos[2]*0.4} 15,{22-spark_productos[3]*0.4} 20,{22-spark_productos[4]*0.4} 25,{22-spark_productos[5]*0.4} 30,{22-spark_productos[6]*0.4} 35,{22-spark_productos[7]*0.4} 40,{22-spark_productos[8]*0.4} 45,{22-spark_productos[9]*0.4}"/>
             </svg>
         </div>
         """, unsafe_allow_html=True)
     
     with metrics_cols[1]:
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-icon purple">📊</div>
-            <div class="metric-content">
-                <div class="metric-label">Stock Total Unidades</div>
-                <div class="metric-value" style="color: #8b5cf6;">{resumen.get('total_unidades', 0)}</div>
-                <div class="metric-sublabel">unidades</div>
+        <div class="metric-micro">
+            <div class="metric-micro-icon" style="background: rgba(139,92,246,0.12);">📊</div>
+            <div class="metric-micro-content">
+                <div class="metric-micro-label">Stock Total Unidades</div>
+                <div class="metric-micro-value" style="color: #8b5cf6;">{resumen.get('total_unidades', 0)}</div>
+                <div class="metric-micro-sublabel">unidades</div>
             </div>
-            <svg class="metric-sparkline" viewBox="0 0 60 30">
-                <polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="0,{30-spark_stock[0]*0.5} 6,{30-spark_stock[1]*0.5} 12,{30-spark_stock[2]*0.5} 18,{30-spark_stock[3]*0.5} 24,{30-spark_stock[4]*0.5} 30,{30-spark_stock[5]*0.5} 36,{30-spark_stock[6]*0.5} 42,{30-spark_stock[7]*0.5} 48,{30-spark_stock[8]*0.5} 54,{30-spark_stock[9]*0.5}"/>
-                <polygon fill="rgba(139,92,246,0.1)" stroke="none" points="0,30 0,{30-spark_stock[0]*0.5} 6,{30-spark_stock[1]*0.5} 12,{30-spark_stock[2]*0.5} 18,{30-spark_stock[3]*0.5} 24,{30-spark_stock[4]*0.5} 30,{30-spark_stock[5]*0.5} 36,{30-spark_stock[6]*0.5} 42,{30-spark_stock[7]*0.5} 48,{30-spark_stock[8]*0.5} 54,{30-spark_stock[9]*0.5} 54,30"/>
+            <svg class="metric-micro-spark" viewBox="0 0 45 22">
+                <polyline fill="none" stroke="#8b5cf6" stroke-width="1.5" points="0,{22-spark_stock[0]*0.4} 5,{22-spark_stock[1]*0.4} 10,{22-spark_stock[2]*0.4} 15,{22-spark_stock[3]*0.4} 20,{22-spark_stock[4]*0.4} 25,{22-spark_stock[5]*0.4} 30,{22-spark_stock[6]*0.4} 35,{22-spark_stock[7]*0.4} 40,{22-spark_stock[8]*0.4} 45,{22-spark_stock[9]*0.4}"/>
             </svg>
         </div>
         """, unsafe_allow_html=True)
@@ -371,16 +379,15 @@ def render():
     with metrics_cols[2]:
         color_crit = "#ef4444" if criticos > 0 else "#10b981"
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-icon red">⚠️</div>
-            <div class="metric-content">
-                <div class="metric-label">Índice Críticos</div>
-                <div class="metric-value" style="color: {color_crit};">{criticos}</div>
-                <div class="metric-sublabel">requieren atención</div>
+        <div class="metric-micro">
+            <div class="metric-micro-icon" style="background: rgba({color_crit.replace('#', '')},0.12);">⚠️</div>
+            <div class="metric-micro-content">
+                <div class="metric-micro-label">Índice Críticos</div>
+                <div class="metric-micro-value" style="color: {color_crit};">{criticos}</div>
+                <div class="metric-micro-sublabel">requieren atención</div>
             </div>
-            <svg class="metric-sparkline" viewBox="0 0 60 30">
-                <polyline fill="none" stroke="{color_crit}" stroke-width="2" points="0,{30-spark_criticos[0]*0.5} 6,{30-spark_criticos[1]*0.5} 12,{30-spark_criticos[2]*0.5} 18,{30-spark_criticos[3]*0.5} 24,{30-spark_criticos[4]*0.5} 30,{30-spark_criticos[5]*0.5} 36,{30-spark_criticos[6]*0.5} 42,{30-spark_criticos[7]*0.5} 48,{30-spark_criticos[8]*0.5} 54,{30-spark_criticos[9]*0.5}"/>
-                <polygon fill="rgba(239,68,68,0.1)" stroke="none" points="0,30 0,{30-spark_criticos[0]*0.5} 6,{30-spark_criticos[1]*0.5} 12,{30-spark_criticos[2]*0.5} 18,{30-spark_criticos[3]*0.5} 24,{30-spark_criticos[4]*0.5} 30,{30-spark_criticos[5]*0.5} 36,{30-spark_criticos[6]*0.5} 42,{30-spark_criticos[7]*0.5} 48,{30-spark_criticos[8]*0.5} 54,{30-spark_criticos[9]*0.5} 54,30"/>
+            <svg class="metric-micro-spark" viewBox="0 0 45 22">
+                <polyline fill="none" stroke="{color_crit}" stroke-width="1.5" points="0,{22-spark_criticos[0]*0.4} 5,{22-spark_criticos[1]*0.4} 10,{22-spark_criticos[2]*0.4} 15,{22-spark_criticos[3]*0.4} 20,{22-spark_criticos[4]*0.4} 25,{22-spark_criticos[5]*0.4} 30,{22-spark_criticos[6]*0.4} 35,{22-spark_criticos[7]*0.4} 40,{22-spark_criticos[8]*0.4} 45,{22-spark_criticos[9]*0.4}"/>
             </svg>
         </div>
         """, unsafe_allow_html=True)
@@ -388,23 +395,22 @@ def render():
     with metrics_cols[3]:
         valor = resumen.get("valor_total", 0)
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-icon green">💰</div>
-            <div class="metric-content">
-                <div class="metric-label">Valor Total Inventario</div>
-                <div class="metric-value" style="color: #10b981;">€{valor:.0f}</div>
-                <div class="metric-sublabel">en inventario</div>
+        <div class="metric-micro">
+            <div class="metric-micro-icon" style="background: rgba(16,185,129,0.12);">💰</div>
+            <div class="metric-micro-content">
+                <div class="metric-micro-label">Valor Total Inventario</div>
+                <div class="metric-micro-value" style="color: #10b981;">€{valor:.0f}</div>
+                <div class="metric-micro-sublabel">en inventario</div>
             </div>
-            <svg class="metric-sparkline" viewBox="0 0 60 30">
-                <polyline fill="none" stroke="#10b981" stroke-width="2" points="0,{30-spark_valor[0]*0.5} 6,{30-spark_valor[1]*0.5} 12,{30-spark_valor[2]*0.5} 18,{30-spark_valor[3]*0.5} 24,{30-spark_valor[4]*0.5} 30,{30-spark_valor[5]*0.5} 36,{30-spark_valor[6]*0.5} 42,{30-spark_valor[7]*0.5} 48,{30-spark_valor[8]*0.5} 54,{30-spark_valor[9]*0.5}"/>
-                <polygon fill="rgba(16,185,129,0.1)" stroke="none" points="0,30 0,{30-spark_valor[0]*0.5} 6,{30-spark_valor[1]*0.5} 12,{30-spark_valor[2]*0.5} 18,{30-spark_valor[3]*0.5} 24,{30-spark_valor[4]*0.5} 30,{30-spark_valor[5]*0.5} 36,{30-spark_valor[6]*0.5} 42,{30-spark_valor[7]*0.5} 48,{30-spark_valor[8]*0.5} 54,{30-spark_valor[9]*0.5} 54,30"/>
+            <svg class="metric-micro-spark" viewBox="0 0 45 22">
+                <polyline fill="none" stroke="#10b981" stroke-width="1.5" points="0,{22-spark_valor[0]*0.4} 5,{22-spark_valor[1]*0.4} 10,{22-spark_valor[2]*0.4} 15,{22-spark_valor[3]*0.4} 20,{22-spark_valor[4]*0.4} 25,{22-spark_valor[5]*0.4} 30,{22-spark_valor[6]*0.4} 35,{22-spark_valor[7]*0.4} 40,{22-spark_valor[8]*0.4} 45,{22-spark_valor[9]*0.4}"/>
             </svg>
         </div>
         """, unsafe_allow_html=True)
     
-    st.markdown("---")
+    st.markdown("<div style='margin: 12px 0; border-top: 1px solid rgba(255,255,255,0.06);'></div>", unsafe_allow_html=True)
     
-    # LAYOUT PRINCIPAL: Dos columnas (izquierda 2/3, derecha 1/3)
+    # LAYOUT PRINCIPAL: Dos columnas
     col_main_left, col_main_right = st.columns([2, 1])
     
     # ============================================
@@ -414,8 +420,8 @@ def render():
         # Header compacto
         col_header, col_search = st.columns([2, 1])
         with col_header:
-            st.markdown('<div class="section-title">📦 Stock por Producto</div>', unsafe_allow_html=True)
-            st.markdown('<div class="section-subtitle">Visualización en tiempo real del inventario</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-micro">📦 Stock por Producto</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-micro-sub">Visualización en tiempo real del inventario</div>', unsafe_allow_html=True)
         
         with col_search:
             busqueda = st.text_input("", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
@@ -429,7 +435,7 @@ def render():
                 'saludables': True
             }
         
-        st.markdown('<div class="section-subtitle">💡 Haz clic para filtrar:</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-micro-sub">💡 Haz clic para filtrar:</div>', unsafe_allow_html=True)
         
         # Filtros clickeables
         filtros_config = [
@@ -481,7 +487,7 @@ def render():
         estado_orden = {"Crítico": 0, "Agotado": 1, "Bajo": 2, "Saludable": 3}
         datos_stock_filtrados.sort(key=lambda x: (estado_orden.get(x["estado"], 3), x["producto"].get("nombre", "")))
         
-        # Mostrar tabla
+        # Mostrar lista
         if datos_stock_filtrados:
             color_map = {
                 "Agotado": "#6b7280",
@@ -490,7 +496,7 @@ def render():
                 "Saludable": "#10b981"
             }
             
-            items_a_renderizar = min(15, len(datos_stock_filtrados))
+            items_a_renderizar = min(12, len(datos_stock_filtrados))
             
             for i, d in enumerate(datos_stock_filtrados[:items_a_renderizar]):
                 prod = d["producto"]
@@ -501,31 +507,26 @@ def render():
                 color = color_map.get(estado, "#10b981")
                 
                 st.markdown(f"""
-                <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.4); 
-                            border-radius: 8px; padding: 8px 12px; margin-bottom: 5px;
-                            border-left: 3px solid {color};">
-                    <div style="width: 28px; height: 28px; background: rgba(255,255,255,0.08); border-radius: 5px; 
-                                display: flex; align-items: center; justify-content: center; margin-right: 10px;">
-                        <span style="font-size: 0.9rem;">📦</span>
-                    </div>
+                <div class="product-row" style="border-left-color: {color};">
+                    <div class="product-icon">📦</div>
                     <div style="flex: 2; min-width: 80px;">
-                        <div style="font-size: 0.85rem; font-weight: 600; color: #f8fafc;">{prod.get('nombre', 'Producto')}</div>
+                        <span style="font-weight: 600; color: #f8fafc;">{prod.get('nombre', 'Producto')}</span>
                     </div>
                     <div style="flex: 0.7; text-align: center;">
-                        <span style="font-size: 1rem; font-weight: 600; color: #ffffff;">{stock}</span>
+                        <span style="font-weight: 600; color: #ffffff;">{stock}</span>
                         <span style="color: #64748b; font-size: 0.7rem;">/</span>
-                        <span style="font-size: 0.8rem; color: #64748b;">{max_s}</span>
+                        <span style="font-size: 0.75rem; color: #64748b;">{max_s}</span>
                     </div>
                     <div style="flex: 1; padding: 0 10px;">
-                        <div style="width: 100%; height: 5px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
-                            <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 3px;"></div>
+                        <div style="width: 100%; height: 4px; background: rgba(0, 0, 0, 0.3); border-radius: 2px; overflow: hidden;">
+                            <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 2px;"></div>
                         </div>
                     </div>
                     <div style="flex: 0.4; text-align: center;">
-                        <span style="font-size: 0.75rem; color: #94a3b8;">{pct:.0f}%</span>
+                        <span style="font-size: 0.7rem; color: #94a3b8;">{pct:.0f}%</span>
                     </div>
                     <div style="flex: 0.6; text-align: right;">
-                        <span style="padding: 2px 6px; border-radius: 8px; font-size: 0.65rem; font-weight: 600;
+                        <span style="padding: 2px 6px; border-radius: 6px; font-size: 0.6rem; font-weight: 600;
                                     background: {color}20; color: {color}; border: 1px solid {color}40;">
                             {estado}
                         </span>
@@ -543,7 +544,7 @@ def render():
     # ============================================
     with col_main_right:
         # Estado del Inventario
-        st.markdown('<div class="section-title">📊 Estado del Inventario</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-micro">📊 Estado del Inventario</div>', unsafe_allow_html=True)
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
@@ -577,53 +578,53 @@ def render():
                 hole=0.6,
                 textinfo='label+percent',
                 textposition='outside',
-                textfont=dict(size=12, color='white'),
+                textfont=dict(size=11, color='white'),
                 hovertemplate='<b>%{label}</b><br>Cantidad: %{value}<br>Porcentaje: %{percent}<extra></extra>'
             ))
             
             fig.update_layout(
                 showlegend=True,
                 legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="white", size=9)),
-                height=220,
+                height=200,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=5, r=5, t=15, b=40),
+                margin=dict(l=5, r=5, t=10, b=35),
             )
             
             st.plotly_chart(fig, use_container_width=True)
         
         # Centro de Notificaciones
-        st.markdown('<div class="section-title" style="margin-top: 10px;">⚡ Centro de Notificaciones y Alertas</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-micro" style="margin-top: 8px;">⚡ Centro de Notificaciones y Alertas</div>', unsafe_allow_html=True)
         
         if criticos > 0:
             st.markdown(f"""
-            <div style="padding: 8px 10px; background: rgba(239,68,68,0.12); border-radius: 6px; margin-bottom: 5px; border: 1px solid rgba(239,68,68,0.25);">
-                <div style="color: #ef4444; font-weight: 600; font-size: 0.75rem;">🔴 ALERTA: {criticos} Críticos - Urgente</div>
+            <div class="alert-micro" style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3);">
+                <div style="color: #ef4444; font-weight: 600;">🔴 ALERTA: {criticos} Críticos - Urgente</div>
                 <div style="color: #64748b; font-size: 0.65rem;">Reposición urgente</div>
             </div>
             """, unsafe_allow_html=True)
         
         if bajos > 0:
             st.markdown(f"""
-            <div style="padding: 8px 10px; background: rgba(245,158,11,0.12); border-radius: 6px; margin-bottom: 5px; border: 1px solid rgba(245,158,11,0.25);">
-                <div style="color: #f59e0b; font-weight: 600; font-size: 0.75rem;">🟡 ALERTA: {bajos} Bajos - Revisión</div>
+            <div class="alert-micro" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3);">
+                <div style="color: #f59e0b; font-weight: 600;">🟡 ALERTA: {bajos} Bajos - Revisión</div>
                 <div style="color: #64748b; font-size: 0.65rem;">Revisar pronto</div>
             </div>
             """, unsafe_allow_html=True)
         
         if agotados > 0:
             st.markdown(f"""
-            <div style="padding: 8px 10px; background: rgba(107,114,128,0.12); border-radius: 6px; margin-bottom: 5px; border: 1px solid rgba(107,114,128,0.25);">
-                <div style="color: #94a3b8; font-weight: 600; font-size: 0.75rem;">⚫ AVISO: {agotados} Agotados - Sin existencias</div>
+            <div class="alert-micro" style="background: rgba(107,114,128,0.1); border-color: rgba(107,114,128,0.3);">
+                <div style="color: #94a3b8; font-weight: 600;">⚫ AVISO: {agotados} Agotados</div>
                 <div style="color: #64748b; font-size: 0.65rem;">Sin existencias</div>
             </div>
             """, unsafe_allow_html=True)
         
         if criticos == 0 and bajos == 0 and agotados == 0:
             st.markdown("""
-            <div style="padding: 8px 10px; background: rgba(16,185,129,0.12); border-radius: 6px; border: 1px solid rgba(16,185,129,0.25);">
-                <div style="color: #10b981; font-weight: 600; font-size: 0.75rem;">✓ Todo en orden</div>
-                <div style="color: #64748b; font-size: 0.65rem;">Inventario en óptimas condiciones</div>
+            <div class="alert-micro" style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3);">
+                <div style="color: #10b981; font-weight: 600;">✓ Todo en orden</div>
+                <div style="color: #64748b; font-size: 0.65rem;">Inventario óptimo</div>
             </div>
             """, unsafe_allow_html=True)
