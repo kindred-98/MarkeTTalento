@@ -30,6 +30,7 @@ class BaseConfig(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Permite variables de entorno adicionales no definidas
 
 
 class DevelopmentConfig(BaseConfig):

@@ -35,13 +35,19 @@ ENV/
 *.swo
 *~
 .DS_Store
+.qodo/
 
 # ===============================
-# Environment / Config
+# Environment / Config / Secrets
 # ===============================
 .env
 .env.local
+.env.*.local
 *.log
+secrets.toml
+credentials.json
+*.key
+*.pem
 
 # ===============================
 # Testing
@@ -63,3 +69,47 @@ runs/
 # Streamlit
 # ===============================
 .streamlit/
+
+# ===============================
+# BASES DE DATOS Y DATOS
+# ===============================
+# SQLite databases - NUNCA subir a GitHub
+data/
+db_data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Logs
+logs/
+*.log
+
+# ===============================
+# ARCHIVOS DE USUARIO / UPLOADS
+# ===============================
+# Imágenes de productos subidas por usuarios
+docs/productos/*.jpg
+docs/productos/*.jpeg
+docs/productos/*.png
+docs/productos/*.gif
+
+# Archivos temporales
+temp_*
+*.tmp
+*.temp
+
+# ===============================
+# Sistema Operativo
+# ===============================
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ===============================
+# Backup files
+# ===============================
+*.bak
+*.backup
+*~
+*.old
