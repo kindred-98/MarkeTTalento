@@ -350,7 +350,7 @@ def render():
         # Estado del Inventario
         st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
-        # Leyenda clickeable ARRIBA del gráfico (estilo visual anterior)
+        # Leyenda clickeable ARRIBA del gráfico (estilo visual tipo etiqueta, no botón)
         if 'filtros_grafico' not in st.session_state:
             st.session_state['filtros_grafico'] = {
                 'agotados': True,
@@ -359,50 +359,128 @@ def render():
                 'saludables': True
             }
         
+        # CSS para leyendas clickeables
+        st.markdown("""
+        <style>
+        .legend-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .legend-item:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.1);
+        }
+        .legend-item.active {
+            background: rgba(255,255,255,0.1);
+        }
+        .legend-circle {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .legend-circle.inactive {
+            background: #374151 !important;
+            opacity: 0.5;
+        }
+        .legend-text {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        .legend-text.inactive {
+            color: #64748b;
+            text-decoration: line-through;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Crear leyendas como botones invisibles con estilo de etiqueta
         leyenda_cols = st.columns(4)
         
-        # Agotados - Estilo visual con emoji ⚫
+        # Agotados
         with leyenda_cols[0]:
-            is_active_agotados = st.session_state['filtros_grafico']['agotados']
-            btn_label_agotados = f"⚫ Agotados" if is_active_agotados else "○ Agotados"
-            btn_type_agotados = "primary" if is_active_agotados else "secondary"
-            if st.button(btn_label_agotados, key="leyenda_agotados", 
-                        use_container_width=True,
-                        type=btn_type_agotados):
-                st.session_state['filtros_grafico']['agotados'] = not is_active_agotados
+            is_active = st.session_state['filtros_grafico']['agotados']
+            circle_class = "legend-circle" if is_active else "legend-circle inactive"
+            text_class = "legend-text" if is_active else "legend-text inactive"
+            color = "#6b7280" if is_active else "#374151"
+            
+            st.markdown(f"""
+            <div class="legend-item {'active' if is_active else ''}">
+                <span class="{circle_class}" style="background: {color};"></span>
+                <span class="{text_class}">Agotados</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Botón invisible encima para detectar clicks
+            if st.button(" ", key="btn_leyenda_agotados", use_container_width=True, type="secondary"):
+                st.session_state['filtros_grafico']['agotados'] = not is_active
                 st.rerun()
         
-        # Críticos - Estilo visual con emoji 🔴
+        # Críticos
         with leyenda_cols[1]:
-            is_active_criticos = st.session_state['filtros_grafico']['criticos']
-            btn_label_criticos = f"🔴 Críticos" if is_active_criticos else "○ Críticos"
-            btn_type_criticos = "primary" if is_active_criticos else "secondary"
-            if st.button(btn_label_criticos, key="leyenda_criticos",
-                        use_container_width=True,
-                        type=btn_type_criticos):
-                st.session_state['filtros_grafico']['criticos'] = not is_active_criticos
+            is_active = st.session_state['filtros_grafico']['criticos']
+            circle_class = "legend-circle" if is_active else "legend-circle inactive"
+            text_class = "legend-text" if is_active else "legend-text inactive"
+            color = "#ef4444" if is_active else "#374151"
+            
+            st.markdown(f"""
+            <div class="legend-item {'active' if is_active else ''}">
+                <span class="{circle_class}" style="background: {color};"></span>
+                <span class="{text_class}">Críticos</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(" ", key="btn_leyenda_criticos", use_container_width=True, type="secondary"):
+                st.session_state['filtros_grafico']['criticos'] = not is_active
                 st.rerun()
         
-        # Bajos - Estilo visual con emoji 🟡
+        # Bajos
         with leyenda_cols[2]:
-            is_active_bajos = st.session_state['filtros_grafico']['bajos']
-            btn_label_bajos = f"🟡 Bajos" if is_active_bajos else "○ Bajos"
-            btn_type_bajos = "primary" if is_active_bajos else "secondary"
-            if st.button(btn_label_bajos, key="leyenda_bajos",
-                        use_container_width=True,
-                        type=btn_type_bajos):
-                st.session_state['filtros_grafico']['bajos'] = not is_active_bajos
+            is_active = st.session_state['filtros_grafico']['bajos']
+            circle_class = "legend-circle" if is_active else "legend-circle inactive"
+            text_class = "legend-text" if is_active else "legend-text inactive"
+            color = "#f59e0b" if is_active else "#374151"
+            
+            st.markdown(f"""
+            <div class="legend-item {'active' if is_active else ''}">
+                <span class="{circle_class}" style="background: {color};"></span>
+                <span class="{text_class}">Bajos</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(" ", key="btn_leyenda_bajos", use_container_width=True, type="secondary"):
+                st.session_state['filtros_grafico']['bajos'] = not is_active
                 st.rerun()
         
-        # Saludables - Estilo visual con emoji 🟢
+        # Saludables
         with leyenda_cols[3]:
-            is_active_saludables = st.session_state['filtros_grafico']['saludables']
-            btn_label_saludables = f"🟢 Saludables" if is_active_saludables else "○ Saludables"
-            btn_type_saludables = "primary" if is_active_saludables else "secondary"
-            if st.button(btn_label_saludables, key="leyenda_saludables",
-                        use_container_width=True,
-                        type=btn_type_saludables):
-                st.session_state['filtros_grafico']['saludables'] = not is_active_saludables
+            is_active = st.session_state['filtros_grafico']['saludables']
+            circle_class = "legend-circle" if is_active else "legend-circle inactive"
+            text_class = "legend-text" if is_active else "legend-text inactive"
+            color = "#10b981" if is_active else "#374151"
+            
+            st.markdown(f"""
+            <div class="legend-item {'active' if is_active else ''}">
+                <span class="{circle_class}" style="background: {color};"></span>
+                <span class="{text_class}">Saludables</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(" ", key="btn_leyenda_saludables", use_container_width=True, type="secondary"):
+                st.session_state['filtros_grafico']['saludables'] = not is_active
                 st.rerun()
         
         datos = [
