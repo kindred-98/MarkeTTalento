@@ -391,29 +391,40 @@ def render():
                 color = color_map.get(estado, "#10b981")
                 
                 st.markdown(f"""
-                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(30, 41, 59, 0.5); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; border-left: 3px solid {color};">
-                    <!-- Nombre -->
-                    <div style="flex: 1; min-width: 0; padding-right: 20px;">
+                <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.5); border-radius: 8px; padding: 10px 16px; margin-bottom: 6px; border-left: 3px solid {color};">
+                    <!-- Nombre (30%) -->
+                    <div style="width: 30%; padding-right: 15px;">
                         <span style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{prod.get('nombre', 'Producto')}</span>
                     </div>
                     
+                    <!-- Separador -->
+                    <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1); margin: 0 15px;"></div>
+                    
                     <!-- Stock (12/50) -->
-                    <div style="display: flex; align-items: center; gap: 2px; margin-right: 25px; white-space: nowrap;">
+                    <div style="width: 15%; display: flex; align-items: center; justify-content: center; gap: 3px;">
                         <span style="font-size: 1rem; font-weight: 600; color: #ffffff;">{stock}</span>
                         <span style="color: #64748b; font-size: 0.8rem;">/</span>
                         <span style="font-size: 0.9rem; color: #10b981; font-weight: 600;">{max_s}</span>
                     </div>
                     
+                    <!-- Separador -->
+                    <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1); margin: 0 15px;"></div>
+                    
                     <!-- Barra de progreso + Porcentaje -->
-                    <div style="display: flex; align-items: center; gap: 8px; margin-right: 20px; width: 100px;">
+                    <div style="width: 25%; display: flex; align-items: center; gap: 10px;">
                         <div style="flex: 1; height: 6px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
                             <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 3px;"></div>
                         </div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; white-space: nowrap; width: 32px; text-align: right;">{pct:.0f}%</span>
+                        <span style="font-size: 0.75rem; color: #94a3b8; white-space: nowrap; width: 35px; text-align: right;">{pct:.0f}%</span>
                     </div>
                     
+                    <!-- Separador -->
+                    <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1); margin: 0 15px;"></div>
+                    
                     <!-- Estado -->
-                    <span style="padding: 3px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50; white-space: nowrap;">{estado}</span>
+                    <div style="width: 15%; display: flex; justify-content: flex-end;">
+                        <span style="padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50; white-space: nowrap;">{estado}</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
             
