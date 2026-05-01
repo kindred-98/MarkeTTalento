@@ -28,7 +28,7 @@ def render_sidebar():
         ]
         
         for label, card_class in menu_items:
-            if st.button(label, use_container_width=True, key=f"btn_{label.replace(' ', '_').replace('🔍', 'barcode')}"):
+            if st.button(label, key=f"btn_{label.replace(' ', '_').replace('🔍', 'barcode')}"):
                 set_menu(label)
                 st.rerun()
         
