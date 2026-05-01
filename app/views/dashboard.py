@@ -97,7 +97,7 @@ def render():
     # Título pequeño en esquina superior izquierda
     st.markdown("""
     <div style="margin-bottom: 30px;">
-        <span style="font-size: 3rem; font-weight: 600; color: #00f0ff;">MarkeTTalento</span>
+        <span style="font-size: 4rem; font-weight: 600; color: #00f0ff;">MarkeTTalento</span>
     </div>
     """, unsafe_allow_html=True)
     
@@ -196,9 +196,9 @@ def render():
         <div class="metric-card">
             <div class="metric-icon" style="background: rgba(0,240,255,0.15); color: #00f0ff;">📦</div>
             <div style="flex: 1;">
-                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Productos en Catálogo</div>
+                <div style="color: white; font-size: 1rem; text-transform: uppercase;">Productos en Catálogo</div>
                 <div class="metric-value" style="color: #00f0ff;">{resumen.get('total_productos', 0)}</div>
-                <div style="color: #64748b; font-size: 0.7rem;">en catálogo</div>
+                <div style="color: white; font-size: 0.9rem;">en catálogo</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -215,9 +215,9 @@ def render():
         <div class="metric-card">
             <div class="metric-icon" style="background: rgba(139,92,246,0.15); color: #8b5cf6;">📊</div>
             <div style="flex: 1;">
-                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Stock Total Unidades</div>
+                <div style="color: white; font-size: 1rem; text-transform: uppercase;">Stock Total Unidades</div>
                 <div class="metric-value" style="color: #8b5cf6;">{resumen.get('total_unidades', 0)}</div>
-                <div style="color: #64748b; font-size: 0.7rem;">unidades</div>
+                <div style="color: white; font-size: 0.9rem;">unidades</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -235,9 +235,9 @@ def render():
         <div class="metric-card">
             <div class="metric-icon" style="background: rgba({color_crit.replace('#', '')},0.15); color: {color_crit};">⚠️</div>
             <div style="flex: 1;">
-                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Índice Críticos</div>
+                <div style="color: white; font-size: 1rem; text-transform: uppercase;">Índice Críticos</div>
                 <div class="metric-value" style="color: {color_crit};">{criticos}</div>
-                <div style="color: #64748b; font-size: 0.7rem;">requieren atención</div>
+                <div style="color: white; font-size: 0.9rem;">requieren atención</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -255,9 +255,9 @@ def render():
         <div class="metric-card">
             <div class="metric-icon" style="background: rgba(16,185,129,0.15); color: #10b981;">💰</div>
             <div style="flex: 1;">
-                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Valor Total Inventario</div>
+                <div style="color: white; font-size: 1rem; text-transform: uppercase;">Valor Total Inventario</div>
                 <div class="metric-value" style="color: #10b981;">€{valor:.0f}</div>
-                <div style="color: #64748b; font-size: 0.7rem;">en inventario</div>
+                <div style="color: white; font-size: 0.9rem;">en inventario</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -385,72 +385,9 @@ def render():
     # ============================================
     with col_main_right:
         # Estado del Inventario
-        st.markdown("<h3 style='color: #00f0ff; font-size: 1.5rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
-        # Leyenda clickeable ARRIBA del gráfico (estilo visual tipo etiqueta, no botón)
-        if 'filtros_grafico' not in st.session_state:
-            st.session_state['filtros_grafico'] = {
-                'agotados': True,
-                'criticos': True,
-                'bajos': True,
-                'saludables': True
-            }
-        
-        # CSS para botones de leyenda pequeños y oscuros
-        st.markdown("""
-        <style>
-        div[data-testid="stButton"] button[kind="secondary"] {
-            background: rgba(30, 41, 59, 0.6) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #e2e8f0 !important;
-            font-size: 0.7rem !important;
-            padding: 4px 8px !important;
-            border-radius: 15px !important;
-            min-height: 28px !important;
-        }
-        div[data-testid="stButton"] button[kind="secondary"]:hover {
-            background: rgba(51, 65, 85, 0.8) !important;
-            border-color: rgba(148, 163, 184, 0.3) !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Leyendas clickeables
-        st.markdown("<p style='color: #64748b; font-size: 0.7rem; margin: 8px 0; text-align: center;'>Haz clic para mostrar/ocultar:</p>", unsafe_allow_html=True)
-        
-        leyenda_cols = st.columns(4)
-        
-        # Agotados
-        with leyenda_cols[0]:
-            is_active = st.session_state['filtros_grafico']['agotados']
-            label = f"⚫ Agotados" if is_active else "○ Agotados"
-            if st.button(label, key="leyenda_agotados", use_container_width=True, type="secondary"):
-                st.session_state['filtros_grafico']['agotados'] = not is_active
-                st.rerun()
-        
-        # Críticos
-        with leyenda_cols[1]:
-            is_active = st.session_state['filtros_grafico']['criticos']
-            label = f"🔴 Críticos" if is_active else "○ Críticos"
-            if st.button(label, key="leyenda_criticos", use_container_width=True, type="secondary"):
-                st.session_state['filtros_grafico']['criticos'] = not is_active
-                st.rerun()
-        
-        # Bajos
-        with leyenda_cols[2]:
-            is_active = st.session_state['filtros_grafico']['bajos']
-            label = f"🟡 Bajos" if is_active else "○ Bajos"
-            if st.button(label, key="leyenda_bajos", use_container_width=True, type="secondary"):
-                st.session_state['filtros_grafico']['bajos'] = not is_active
-                st.rerun()
-        
-        # Saludables
-        with leyenda_cols[3]:
-            is_active = st.session_state['filtros_grafico']['saludables']
-            label = f"🟢 Saludables" if is_active else "○ Saludables"
-            if st.button(label, key="leyenda_saludables", use_container_width=True, type="secondary"):
-                st.session_state['filtros_grafico']['saludables'] = not is_active
-                st.rerun()
+        st.markdown("<p style='color: #64748b; font-size: 0.7rem; margin: 5px 0;'>Haz clic en la leyenda o en los segmentos para filtrar</p>", unsafe_allow_html=True)
         
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
@@ -459,37 +396,57 @@ def render():
             {"Estado": "Saludables", "Cantidad": saludables, "Color": "#10b981"},
         ]
         
-        datos_filtrados = [d for d in datos if (
-            (d["Estado"] == "Agotados" and st.session_state['filtros_grafico']['agotados']) or
-            (d["Estado"] == "Críticos" and st.session_state['filtros_grafico']['criticos']) or
-            (d["Estado"] == "Bajos" and st.session_state['filtros_grafico']['bajos']) or
-            (d["Estado"] == "Saludables" and st.session_state['filtros_grafico']['saludables'])
-        ) and d["Cantidad"] > 0]
+        # Filtrar solo los que tienen cantidad > 0
+        datos = [d for d in datos if d["Cantidad"] > 0]
         
-        if datos_filtrados:
+        if datos:
             fig = go.Figure()
             
             fig.add_trace(go.Pie(
-                labels=[d["Estado"] for d in datos_filtrados],
-                values=[d["Cantidad"] for d in datos_filtrados],
-                marker=dict(colors=[d["Color"] for d in datos_filtrados]),
+                labels=[d["Estado"] for d in datos],
+                values=[d["Cantidad"] for d in datos],
+                marker=dict(colors=[d["Color"] for d in datos]),
                 hole=0.6,
                 textinfo='label+percent',
                 textposition='outside',
-                textfont=dict(size=12, color='white'),
-                hovertemplate='<b>%{label}</b><br>Cantidad: %{value}<br>Porcentaje: %{percent}<extra></extra>'
+                textfont=dict(size=11, color='white'),
+                hovertemplate='<b>%{label}</b><br>Cantidad: %{value}<br>Porcentaje: %{percent}<extra></extra>',
+                # Hacer clickeable
+                customdata=[d["Estado"] for d in datos],
             ))
             
             fig.update_layout(
-                showlegend=False,  # Usamos la leyenda HTML de arriba
-                height=350,
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.2,
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(color="white", size=10),
+                    bgcolor="rgba(0,0,0,0)",
+                    bordercolor="rgba(255,255,255,0.1)",
+                    borderwidth=1,
+                ),
+                height=300,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=20, r=20, t=20, b=60),  # Márgenes amplios para que el gráfico se vea completo
+                margin=dict(l=10, r=10, t=10, b=60),
+                clickmode='event+select',
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            # Configurar eventos de clic
+            selected_points = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="grafico_inventario")
+            
+            # Procesar selección
+            if selected_points and hasattr(selected_points, 'selection') and selected_points.selection:
+                if selected_points.selection.points:
+                    punto = selected_points.selection.points[0]
+                    if 'label' in punto:
+                        estado_clickeado = punto['label']
+                        st.session_state['filtro_estado_seleccionado'] = estado_clickeado
+                        st.info(f"Seleccionaste: {estado_clickeado}")
         
         # Centro de Notificaciones
         st.markdown("<h4 style='color: #f59e0b; font-size: 1.5rem; margin-top: 15px;'>⚡ Centro de Notificaciones y Alertas</h4>", unsafe_allow_html=True)
