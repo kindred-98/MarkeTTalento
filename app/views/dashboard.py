@@ -359,127 +359,41 @@ def render():
                 'saludables': True
             }
         
-        # CSS para leyendas clickeables
-        st.markdown("""
-        <style>
-        .legend-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 20px;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-        }
-        .legend-item:hover {
-            background: rgba(255,255,255,0.05);
-            border-color: rgba(255,255,255,0.1);
-        }
-        .legend-item.active {
-            background: rgba(255,255,255,0.1);
-        }
-        .legend-circle {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .legend-circle.inactive {
-            background: #374151 !important;
-            opacity: 0.5;
-        }
-        .legend-text {
-            color: #94a3b8;
-            font-size: 0.85rem;
-        }
-        .legend-text.inactive {
-            color: #64748b;
-            text-decoration: line-through;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        # Leyendas clickeables (estilo etiqueta, NO botón)
+        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin: 8px 0; text-align: center;'>Haz clic en una leyenda para mostrar/ocultar:</p>", unsafe_allow_html=True)
         
-        # Crear leyendas como botones invisibles con estilo de etiqueta
+        # Crear botones que parecen etiquetas de leyenda
         leyenda_cols = st.columns(4)
         
         # Agotados
         with leyenda_cols[0]:
             is_active = st.session_state['filtros_grafico']['agotados']
-            circle_class = "legend-circle" if is_active else "legend-circle inactive"
-            text_class = "legend-text" if is_active else "legend-text inactive"
-            color = "#6b7280" if is_active else "#374151"
-            
-            st.markdown(f"""
-            <div class="legend-item {'active' if is_active else ''}">
-                <span class="{circle_class}" style="background: {color};"></span>
-                <span class="{text_class}">Agotados</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Botón invisible encima para detectar clicks
-            if st.button(" ", key="btn_leyenda_agotados", use_container_width=True, type="secondary"):
+            label = f"⚫ Agotados" if is_active else "○ Agotados"
+            if st.button(label, key="leyenda_agotados", use_container_width=True):
                 st.session_state['filtros_grafico']['agotados'] = not is_active
                 st.rerun()
         
         # Críticos
         with leyenda_cols[1]:
             is_active = st.session_state['filtros_grafico']['criticos']
-            circle_class = "legend-circle" if is_active else "legend-circle inactive"
-            text_class = "legend-text" if is_active else "legend-text inactive"
-            color = "#ef4444" if is_active else "#374151"
-            
-            st.markdown(f"""
-            <div class="legend-item {'active' if is_active else ''}">
-                <span class="{circle_class}" style="background: {color};"></span>
-                <span class="{text_class}">Críticos</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button(" ", key="btn_leyenda_criticos", use_container_width=True, type="secondary"):
+            label = f"🔴 Críticos" if is_active else "○ Críticos"
+            if st.button(label, key="leyenda_criticos", use_container_width=True):
                 st.session_state['filtros_grafico']['criticos'] = not is_active
                 st.rerun()
         
         # Bajos
         with leyenda_cols[2]:
             is_active = st.session_state['filtros_grafico']['bajos']
-            circle_class = "legend-circle" if is_active else "legend-circle inactive"
-            text_class = "legend-text" if is_active else "legend-text inactive"
-            color = "#f59e0b" if is_active else "#374151"
-            
-            st.markdown(f"""
-            <div class="legend-item {'active' if is_active else ''}">
-                <span class="{circle_class}" style="background: {color};"></span>
-                <span class="{text_class}">Bajos</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button(" ", key="btn_leyenda_bajos", use_container_width=True, type="secondary"):
+            label = f"🟡 Bajos" if is_active else "○ Bajos"
+            if st.button(label, key="leyenda_bajos", use_container_width=True):
                 st.session_state['filtros_grafico']['bajos'] = not is_active
                 st.rerun()
         
         # Saludables
         with leyenda_cols[3]:
             is_active = st.session_state['filtros_grafico']['saludables']
-            circle_class = "legend-circle" if is_active else "legend-circle inactive"
-            text_class = "legend-text" if is_active else "legend-text inactive"
-            color = "#10b981" if is_active else "#374151"
-            
-            st.markdown(f"""
-            <div class="legend-item {'active' if is_active else ''}">
-                <span class="{circle_class}" style="background: {color};"></span>
-                <span class="{text_class}">Saludables</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button(" ", key="btn_leyenda_saludables", use_container_width=True, type="secondary"):
+            label = f"🟢 Saludables" if is_active else "○ Saludables"
+            if st.button(label, key="leyenda_saludables", use_container_width=True):
                 st.session_state['filtros_grafico']['saludables'] = not is_active
                 st.rerun()
         
