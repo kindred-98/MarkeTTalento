@@ -94,6 +94,13 @@ def render():
         with loading_placeholder.container():
             st.spinner("Cargando dashboard...")
     
+    # Título pequeño en esquina superior izquierda
+    st.markdown("""
+    <div style="margin-bottom: 20px;">
+        <span style="font-size: 1.2rem; font-weight: 600; color: #00f0ff;">MarkeTTalento</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Obtener datos con cache
     inventarios, productos, resumen = _get_dashboard_data()
     
