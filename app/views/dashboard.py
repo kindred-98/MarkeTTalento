@@ -293,34 +293,41 @@ def render():
                 'saludables': True
             }
         
-        # CSS para botones de filtro con estilo opaco y animación
+        # CSS AGRESIVO para botones de filtro - SOBRESCRIBIR TODO
         st.markdown("""
         <style>
-        /* Contenedor de filtros */
-        .filtros-container button {
-            background: rgba(30, 41, 59, 0.6) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #e2e8f0 !important;
-            font-size: 0.75rem !important;
-            padding: 6px 10px !important;
-            border-radius: 8px !important;
-            min-height: 32px !important;
+        /* Forzar estilo opaco en botones de filtros - Selector muy específico */
+        div[data-testid="stHorizontalBlock"] div[data-testid="column"] div[data-testid="stButton"] > button {
+            background-color: rgba(30, 41, 59, 0.8) !important;
+            background-image: none !important;
+            border: 1px solid rgba(100, 116, 139, 0.3) !important;
+            color: #cbd5e1 !important;
+            font-size: 0.7rem !important;
+            padding: 5px 8px !important;
+            border-radius: 6px !important;
+            min-height: 28px !important;
             transition: all 0.3s ease !important;
             box-shadow: none !important;
-            background-image: none !important;
+            text-transform: none !important;
+            letter-spacing: normal !important;
         }
         
-        .filtros-container button:hover {
+        /* Hover - efecto brillo */
+        div[data-testid="stHorizontalBlock"] div[data-testid="column"] div[data-testid="stButton"] > button:hover {
             transform: translateY(-2px) !important;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important;
-            border-color: rgba(0, 240, 255, 0.5) !important;
-            background: rgba(30, 41, 59, 0.8) !important;
+            box-shadow: 0 4px 12px rgba(0, 240, 255, 0.25) !important;
+            border-color: rgba(0, 240, 255, 0.4) !important;
+            background-color: rgba(51, 65, 85, 0.9) !important;
+        }
+        
+        /* Eliminar cualquier gradiente o color de fondo heredado */
+        div[data-testid="stHorizontalBlock"] div[data-testid="column"] div[data-testid="stButton"] > button::before,
+        div[data-testid="stHorizontalBlock"] div[data-testid="column"] div[data-testid="stButton"] > button::after {
+            background: none !important;
+            background-image: none !important;
         }
         </style>
         """, unsafe_allow_html=True)
-        
-        # Contenedor con clase para los filtros
-        st.markdown('<div class="filtros-container">', unsafe_allow_html=True)
         
         st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar</p>", unsafe_allow_html=True)
         
@@ -343,8 +350,6 @@ def render():
                     st.session_state['filtros_lista'][filtro_nombre] = not is_active
                     st.rerun()
             col_idx += 1
-        
-        st.markdown('</div>', unsafe_allow_html=True)
         
         # Filtrar datos
         datos_stock_filtrados = []
