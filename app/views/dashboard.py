@@ -232,16 +232,7 @@ def render():
     # COLUMNA IZQUIERDA: Stock por Producto
     # ============================================
     with col_main_left:
-        # Header
-        col_header, col_search = st.columns([2, 1])
-        with col_header:
-            st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📦 Stock por Producto</h3>", unsafe_allow_html=True)
-            st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin: 5px 0 10px 0;'>Visualización en tiempo real del inventario</p>", unsafe_allow_html=True)
-        
-        with col_search:
-            busqueda = st.text_input("Buscar producto", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
-        
-        # Filtros
+        # Filtros PRIMERO (arriba del título)
         if 'filtros_lista' not in st.session_state:
             st.session_state['filtros_lista'] = {
                 'agotados': True,
@@ -250,7 +241,7 @@ def render():
                 'saludables': True
             }
         
-        st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin-bottom: 8px;'>💡 Haz clic para filtrar</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin-bottom: 8px; margin-top: 0;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
         
         filtros_config = [
             ("⚫ Agotados", 'agotados', "#6b7280"),
@@ -275,6 +266,18 @@ def render():
                     st.session_state['filtros_lista'][filtro_nombre] = not is_active
                     st.rerun()
             col_idx += 1
+        
+        # Margen entre filtros y título
+        st.markdown("<div style='margin: 20px 0;'></div>", unsafe_allow_html=True)
+        
+        # Header DESPUÉS (debajo de los filtros)
+        col_header, col_search = st.columns([2, 1])
+        with col_header:
+            st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📦 Stock por Producto</h3>", unsafe_allow_html=True)
+            st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin: 5px 0 10px 0;'>Visualización en tiempo real del inventario</p>", unsafe_allow_html=True)
+        
+        with col_search:
+            busqueda = st.text_input("Buscar producto", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
         
         # Filtrar datos
         datos_stock_filtrados = []
