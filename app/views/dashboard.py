@@ -231,8 +231,8 @@ def render():
             else:
                 fig = st.session_state[fig_key]
             
-            # Usar use_container_width=True para mejor rendimiento
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            # Usar width='stretch' para mejor rendimiento (reemplaza use_container_width)
+            st.plotly_chart(fig, use_container_width=True)
     
     with col_chart2:
         st.markdown("<h3>⚡ Alertas</h3>", unsafe_allow_html=True)
@@ -290,27 +290,83 @@ def render():
     </div>
     """, unsafe_allow_html=True)
     
-    # Filtros para stock por producto
-    col_filtro1, col_filtro2, col_filtro3, col_filtro4 = st.columns([1, 1, 1, 1])
-    with col_filtro1:
-        filtro_stock_agotados = st.checkbox("⚫ Agotados", value=True, key="stock_filtro_agotados")
-    with col_filtro2:
-        filtro_stock_criticos = st.checkbox("🔴 Críticos", value=True, key="stock_filtro_criticos")
-    with col_filtro3:
-        filtro_stock_bajos = st.checkbox("🟡 Bajos", value=True, key="stock_filtro_bajos")
-    with col_filtro4:
-        filtro_stock_saludables = st.checkbox("🟢 Saludables", value=True, key="stock_filtro_saludables")
+    # Filtros para stock por producto (usando los mismos filtros del gráfico)
+    st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px;'>💡 Los filtros aplican tanto al gráfico como a la lista de productos</p>", unsafe_allow_html=True)
     
-    # Filtrar y ordenar datos
+    # Usar los mismos filtros que ya se definieron arriba para el gráfico
+    # No crear nuevos checkboxes, reutilizar las variables existentes
+    
+    # Badge visual de filtros activos (estilo "lindo")
+    filtros_info = [
+        ("⚫ Agotados", filtro_agotados, "#6b7280", "rgba(107,114,128,0.2)"),
+        ("🔴 Críticos", filtro_criticos, "#ef4444", "rgba(239,68,68,0.2)"),
+        ("🟡 Bajos", filtro_bajos, "#f59e0b", "rgba(245,158,11,0.2)"),
+        ("🟢 Saludables", filtro_saludables, "#10b981", "rgba(16,185,129,0.2)"),
+    ]
+    
+    badges_html = """
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center;">
+        <span style="color: #64748b; font-size: 0.85rem; margin-right: 5px;">Filtros activos:</span>
+    """
+    
+    for label, is_active, color_active, bg_active in filtros_info:
+        if is_active:
+            badges_html += f"""
+            <span style="
+                background: linear-gradient(135deg, {bg_active}, rgba(0,0,0,0.3));
+                color: {color_active};
+                padding: 6px 14px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                border: 1px solid {color_active}40;
+                box-shadow: 0 2px 8px {color_active}20;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                transition: all 0.3s ease;
+            ">
+                ✓ {label}
+            </span>
+            """
+        else:
+            badges_html += f"""
+            <span style="
+                background: rgba(30, 41, 59, 0.4);
+                color: #64748b;
+                padding: 6px 14px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                font-weight: 500;
+                border: 1px solid rgba(100, 116, 139, 0.3);
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                opacity: 0.6;
+            ">
+                ✕ {label}
+            </span>
+            """
+    
+    badges_html += """
+        <span style="color: #64748b; font-size: 0.8rem; margin-left: 10px; font-style: italic;">
+            (usa los checkboxes arriba para cambiar)
+        </span>
+    </div>
+    """
+    
+    st.markdown(badges_html, unsafe_allow_html=True)
+    
+    # Filtrar y ordenar datos usando los filtros del gráfico
     datos_stock_filtrados = []
     for d in datos_stock:
-        if d["estado"] == "Agotado" and filtro_stock_agotados:
+        if d["estado"] == "Agotado" and filtro_agotados:
             datos_stock_filtrados.append(d)
-        elif d["estado"] == "Crítico" and filtro_stock_criticos:
+        elif d["estado"] == "Crítico" and filtro_criticos:
             datos_stock_filtrados.append(d)
-        elif d["estado"] == "Bajo" and filtro_stock_bajos:
+        elif d["estado"] == "Bajo" and filtro_bajos:
             datos_stock_filtrados.append(d)
-        elif d["estado"] == "Saludable" and filtro_stock_saludables:
+        elif d["estado"] == "Saludable" and filtro_saludables:
             datos_stock_filtrados.append(d)
     
     # Ordenar: Críticos primero

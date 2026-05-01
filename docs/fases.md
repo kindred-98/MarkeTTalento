@@ -464,3 +464,25 @@ MarkeTTalento/
 │   └── crear_datos.py         ✅ Script de utilidad
 │
 └── ... (resto del proyecto)
+
+
+El usuario quiere que actúe como su "señor tutor" y quiere saber qué le falta a la app para funcionar correctamente. Me dice que hay botones que no hacen nada o hacen las cosas mal, y hay errores en ciertas partes.
+
+Como tutor, debo:
+
+Hacer un diagnóstico honesto del estado actual
+Identificar problemas específicos que he visto
+Priorizar qué necesita arreglarse
+Dar recomendaciones profesionales
+
+Problemas que he detectado o sospecho:
+
+Botones en el sidebar - Los botones del menú pueden no estar funcionando correctamente con el caching
+Validaciones - Faltan validaciones en formularios
+Testing - No hay tests automatizados reales
+Errores de UX - Algunos flujos no son intuitivos
+Manejo de errores - Si la API falla, la app puede crashar
+Estados de carga - Falta feedback cuando se cargan datos
+Paginación - Puede haber bugs en la paginación
+Filtros - Los filtros pueden no funcionar correctamente con el cache
+Debo ser honesto pero constructivo.
