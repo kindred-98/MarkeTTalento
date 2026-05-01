@@ -296,8 +296,11 @@ def render():
         # CSS para botones de filtro con estilo opaco y animación
         st.markdown("""
         <style>
-        /* Botones de filtro - estilo opaco para TODOS los secondary en esta sección */
-        button[data-testid="baseButton-secondary"] {
+        /* Botones de filtro - estilo opaco por key específico */
+        button[key="btn_lista_agotados"],
+        button[key="btn_lista_criticos"],
+        button[key="btn_lista_bajos"],
+        button[key="btn_lista_saludables"] {
             background: rgba(30, 41, 59, 0.6) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
             color: #e2e8f0 !important;
@@ -307,19 +310,19 @@ def render():
             min-height: 32px !important;
             transition: all 0.3s ease !important;
             box-shadow: none !important;
+            background-image: none !important;
         }
         
         /* Hover effect igual que las cards */
-        button[data-testid="baseButton-secondary"]:hover {
+        button[key="btn_lista_agotados"]:hover,
+        button[key="btn_lista_criticos"]:hover,
+        button[key="btn_lista_bajos"]:hover,
+        button[key="btn_lista_saludables"]:hover {
             transform: translateY(-2px) !important;
             box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important;
             border-color: rgba(0, 240, 255, 0.5) !important;
             background: rgba(30, 41, 59, 0.8) !important;
-        }
-        
-        /* Active/pressed effect */
-        button[data-testid="baseButton-secondary"]:active {
-            transform: translateY(0) !important;
+            background-image: none !important;
         }
         </style>
         """, unsafe_allow_html=True)
