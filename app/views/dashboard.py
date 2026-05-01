@@ -226,7 +226,7 @@ def render():
     st.markdown("---")
     
     # LAYOUT PRINCIPAL: Dos columnas
-    col_main_left, col_main_right = st.columns([2, 1])
+    col_main_left, col_main_right = st.columns([1, 1])
     
     # ============================================
     # COLUMNA IZQUIERDA: Stock por Producto
@@ -235,8 +235,7 @@ def render():
         # Header PRIMERO (arriba)
         col_header, col_search = st.columns([2, 1])
         with col_header:
-            st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📦 Stock por Producto</h3>", unsafe_allow_html=True)
-            st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin: 5px 0 10px 0;'>Visualización en tiempo real del inventario</p>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color: #00f0ff; font-size: 1.5rem; margin: 0;'>📦 Stock por Producto</h3>", unsafe_allow_html=True)
         
         with col_search:
             busqueda = st.text_input("Buscar producto", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
@@ -321,27 +320,18 @@ def render():
                 color = color_map.get(estado, "#10b981")
                 
                 st.markdown(f"""
-                <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.5); border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; border-left: 3px solid {color};">
-                    <div style="width: 32px; height: 32px; background: rgba(255,255,255,0.08); border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 1rem;">📦</div>
-                    <div style="flex: 2; min-width: 100px;">
-                        <div style="font-size: 0.95rem; font-weight: 600; color: #f8fafc;">{prod.get('nombre', 'Producto')}</div>
-                    </div>
-                    <div style="flex: 0.8; text-align: center;">
-                        <span style="font-size: 1.1rem; font-weight: 600; color: #ffffff;">{stock}</span>
-                        <span style="color: #64748b; font-size: 0.8rem;">/</span>
-                        <span style="font-size: 0.9rem; color: #10b981; font-weight: 600;">{max_s}</span>
-                    </div>
-                    <div style="flex: 1.2; padding: 0 12px;">
-                        <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
-                            <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 3px;"></div>
+                <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.5); border-radius: 8px; padding: 8px 12px; margin-bottom: 5px; border-left: 3px solid {color};">
+                    <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">{prod.get('nombre', 'Producto')}</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #ffffff;">{stock}</span><span style="color: #64748b; font-size: 0.75rem;">/</span><span style="font-size: 0.85rem; color: #10b981; font-weight: 600;">{max_s}</span>
+                        <div style="width: 50px;">
+                            <div style="width: 100%; height: 5px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
+                                <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 3px;"></div>
+                            </div>
                         </div>
+                        <span style="font-size: 0.7rem; color: #94a3b8; width: 35px;">{pct:.0f}%</span>
                     </div>
-                    <div style="flex: 0.5; text-align: center;">
-                        <span style="font-size: 0.8rem; color: #94a3b8;">{pct:.0f}%</span>
-                    </div>
-                    <div style="flex: 0.7; text-align: right;">
-                        <span style="padding: 3px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50;">{estado}</span>
-                    </div>
+                    <span style="padding: 2px 8px; border-radius: 8px; font-size: 0.65rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50; margin-left: 8px;">{estado}</span>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -355,7 +345,7 @@ def render():
     # ============================================
     with col_main_right:
         # Estado del Inventario
-        st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #00f0ff; font-size: 1.5rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
         # Leyenda clickeable ARRIBA del gráfico (estilo visual tipo etiqueta, no botón)
         if 'filtros_grafico' not in st.session_state:
