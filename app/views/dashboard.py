@@ -458,7 +458,7 @@ def render():
                 legend=dict(
                     orientation="h",
                     yanchor="top",
-                    y=-0.45,
+                    y=-0.2,
                     xanchor="center",
                     x=0.5,
                     font=dict(color="white", size=10),
