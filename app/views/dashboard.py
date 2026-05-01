@@ -319,7 +319,7 @@ def render():
         </style>
         """, unsafe_allow_html=True)
         
-        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar</p>", unsafe_allow_html=True)
         
         filtros_config = [
             ("⚫ Agotados", 'agotados'),
@@ -391,18 +391,29 @@ def render():
                 color = color_map.get(estado, "#10b981")
                 
                 st.markdown(f"""
-                <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.5); border-radius: 8px; padding: 8px 12px; margin-bottom: 5px; border-left: 3px solid {color};">
-                    <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">{prod.get('nombre', 'Producto')}</span>
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #ffffff;">{stock}</span><span style="color: #64748b; font-size: 0.75rem;">/</span><span style="font-size: 0.85rem; color: #10b981; font-weight: 600;">{max_s}</span>
-                        <div style="width: 50px;">
-                            <div style="width: 100%; height: 5px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
-                                <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 3px;"></div>
-                            </div>
-                        </div>
-                        <span style="font-size: 0.7rem; color: #94a3b8; width: 35px;">{pct:.0f}%</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(30, 41, 59, 0.5); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; border-left: 3px solid {color};">
+                    <!-- Nombre -->
+                    <div style="flex: 1; min-width: 0; padding-right: 20px;">
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{prod.get('nombre', 'Producto')}</span>
                     </div>
-                    <span style="padding: 2px 8px; border-radius: 8px; font-size: 0.65rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50; margin-left: 8px;">{estado}</span>
+                    
+                    <!-- Stock (12/50) -->
+                    <div style="display: flex; align-items: center; gap: 2px; margin-right: 25px; white-space: nowrap;">
+                        <span style="font-size: 1rem; font-weight: 600; color: #ffffff;">{stock}</span>
+                        <span style="color: #64748b; font-size: 0.8rem;">/</span>
+                        <span style="font-size: 0.9rem; color: #10b981; font-weight: 600;">{max_s}</span>
+                    </div>
+                    
+                    <!-- Barra de progreso + Porcentaje -->
+                    <div style="display: flex; align-items: center; gap: 8px; margin-right: 20px; width: 100px;">
+                        <div style="flex: 1; height: 6px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
+                            <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 3px;"></div>
+                        </div>
+                        <span style="font-size: 0.75rem; color: #94a3b8; white-space: nowrap; width: 32px; text-align: right;">{pct:.0f}%</span>
+                    </div>
+                    
+                    <!-- Estado -->
+                    <span style="padding: 3px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50; white-space: nowrap;">{estado}</span>
                 </div>
                 """, unsafe_allow_html=True)
             
