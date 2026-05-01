@@ -315,8 +315,8 @@ def render():
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Botón invisible para detectar clicks
-                if st.button(" ", key=f"btn_lista_{filtro_nombre}", label_visibility="collapsed"):
+                # Botón invisible para detectar clicks (encima del div visual)
+                if st.button(" ", key=f"btn_lista_{filtro_nombre}"):
                     st.session_state['filtros_lista'][filtro_nombre] = not is_active
                     st.rerun()
             col_idx += 1
