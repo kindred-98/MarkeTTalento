@@ -432,18 +432,6 @@ def render():
                 </div>
                 """, unsafe_allow_html=True)
             
-            # CSS para botones de paginación pequeños
-            st.markdown("""
-            <style>
-            button[key="btn_pagina_anterior"],
-            button[key="btn_pagina_siguiente"] {
-                min-height: 28px !important;
-                padding: 2px 8px !important;
-                font-size: 0.8rem !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            
             # Controles de paginación (botones pequeños)
             if total_paginas > 1:
                 col_pag1, col_pag2, col_pag3, col_pag4 = st.columns([1, 2, 2, 1])
