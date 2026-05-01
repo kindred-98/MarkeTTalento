@@ -357,43 +357,27 @@ def render():
         # Estado del Inventario
         st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
-        # Filtros ARRIBA del gráfico (badges clickeables como en la leyenda)
-        if 'filtros_grafico' not in st.session_state:
-            st.session_state['filtros_grafico'] = {
-                'agotados': True,
-                'criticos': True,
-                'bajos': True,
-                'saludables': True
-            }
-        
-        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin: 8px 0;'>Filtrar estados:</p>", unsafe_allow_html=True)
-        
-        filtros_grafico_config = [
-            ("⚫ Agotados", 'agotados', "#6b7280"),
-            ("🔴 Críticos", 'criticos', "#ef4444"),
-            ("🟡 Bajos", 'bajos', "#f59e0b"),
-            ("🟢 Saludables", 'saludables', "#10b981"),
-        ]
-        
-        filtros_cols = st.columns([1, 1, 1, 1])
-        col_idx = 0
-        for label, filtro_nombre, color in filtros_grafico_config:
-            with filtros_cols[col_idx]:
-                is_active = st.session_state['filtros_grafico'][filtro_nombre]
-                btn_label = f"{'✓' if is_active else '✕'} {label}"
-                clicked = st.button(
-                    btn_label, 
-                    key=f"btn_graf_{filtro_nombre}",
-                    use_container_width=True,
-                    type="primary" if is_active else "secondary"
-                )
-                if clicked:
-                    st.session_state['filtros_grafico'][filtro_nombre] = not is_active
-                    st.rerun()
-            col_idx += 1
-        
-        # Margen entre filtros y gráfico
-        st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
+        # Leyenda ARRIBA del gráfico (como en la foto)
+        st.markdown("""
+        <div style="display: flex; justify-content: center; gap: 15px; margin: 10px 0; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span style="width: 12px; height: 12px; background: #6b7280; border-radius: 50%; display: inline-block;"></span>
+                <span style="color: #94a3b8; font-size: 0.8rem;">Agotados</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
+                <span style="color: #94a3b8; font-size: 0.8rem;">Críticos</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span style="width: 12px; height: 12px; background: #f59e0b; border-radius: 50%; display: inline-block;"></span>
+                <span style="color: #94a3b8; font-size: 0.8rem;">Bajos</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+                <span style="color: #94a3b8; font-size: 0.8rem;">Saludables</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
@@ -402,12 +386,7 @@ def render():
             {"Estado": "Saludables", "Cantidad": saludables, "Color": "#10b981"},
         ]
         
-        datos_filtrados = [d for d in datos if (
-            (d["Estado"] == "Agotados" and st.session_state['filtros_grafico']['agotados']) or
-            (d["Estado"] == "Críticos" and st.session_state['filtros_grafico']['criticos']) or
-            (d["Estado"] == "Bajos" and st.session_state['filtros_grafico']['bajos']) or
-            (d["Estado"] == "Saludables" and st.session_state['filtros_grafico']['saludables'])
-        ) and d["Cantidad"] > 0]
+        datos_filtrados = [d for d in datos if d["Cantidad"] > 0]
         
         if datos_filtrados:
             fig = go.Figure()
@@ -424,12 +403,12 @@ def render():
             ))
             
             fig.update_layout(
-                showlegend=False,  # Ocultar leyenda porque los filtros están arriba
+                showlegend=False,  # Usamos la leyenda HTML de arriba
                 height=220,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=5, r=5, t=10, b=20),
+                margin=dict(l=5, r=5, t=5, b=5),  # Márgenes mínimos para que el gráfico se vea completo
             )
             
             st.plotly_chart(fig, use_container_width=True)
