@@ -458,7 +458,7 @@ def render():
                 legend=dict(
                     orientation="h",
                     yanchor="top",
-                    y=-0.3,
+                    y=-0.45,
                     xanchor="center",
                     x=0.5,
                     font=dict(color="white", size=10),
@@ -466,11 +466,11 @@ def render():
                     bordercolor="rgba(255,255,255,0.1)",
                     borderwidth=1,
                 ),
-                height=300,
+                height=350,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=10, r=10, t=10, b=80),
+                margin=dict(l=10, r=10, t=10, b=100),
                 clickmode='event+select',
             )
             
