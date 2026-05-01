@@ -96,8 +96,8 @@ def render():
     
     # Título pequeño en esquina superior izquierda
     st.markdown("""
-    <div style="margin-bottom: 20px;">
-        <span style="font-size: 1.2rem; font-weight: 600; color: #00f0ff;">MarkeTTalento</span>
+    <div style="margin-bottom: 30px;">
+        <span style="font-size: 3rem; font-weight: 600; color: #00f0ff;">MarkeTTalento</span>
     </div>
     """, unsafe_allow_html=True)
     
@@ -152,9 +152,9 @@ def render():
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba(0,240,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📦</div>
             <div style="flex: 1;">
-                <div style="color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Productos en Catálogo</div>
+                <div style="color: white; font-size: 0.9rem; text-transform: uppercase;">Productos en Catálogo</div>
                 <div style="font-size: 1.4rem; font-weight: 700; color: #00f0ff;">{resumen.get('total_productos', 0)}</div>
-                <div style="color: #475569; font-size: 0.7rem;">en catálogo</div>
+                <div style="color: white;; font-size: 0.9rem;">en catálogo</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -171,9 +171,9 @@ def render():
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba(139,92,246,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📊</div>
             <div style="flex: 1;">
-                <div style="color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Stock Total Unidades</div>
+                <div style="color: white;; font-size: 0.9rem; text-transform: uppercase;">Stock Total Unidades</div>
                 <div style="font-size: 1.4rem; font-weight: 700; color: #8b5cf6;">{resumen.get('total_unidades', 0)}</div>
-                <div style="color: #475569; font-size: 0.7rem;">unidades</div>
+                <div style="color: white;; font-size: 0.9rem;">unidades</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -191,9 +191,9 @@ def render():
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba({color_crit.replace('#', '')},0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⚠️</div>
             <div style="flex: 1;">
-                <div style="color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Índice Críticos</div>
+                <div style="color: white; font-size: 0.9rem; text-transform: uppercase;">Índice Críticos</div>
                 <div style="font-size: 1.4rem; font-weight: 700; color: {color_crit};">{criticos}</div>
-                <div style="color: #475569; font-size: 0.7rem;">requieren atención</div>
+                <div style="color: white; font-size: 0.9rem;">requieren atención</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -211,9 +211,9 @@ def render():
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba(16,185,129,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">💰</div>
             <div style="flex: 1;">
-                <div style="color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Valor Total Inventario</div>
+                <div style="color: white; font-size: 0.9rem; text-transform: uppercase;">Valor Total Inventario</div>
                 <div style="font-size: 1.4rem; font-weight: 700; color: #10b981;">€{valor:.0f}</div>
-                <div style="color: #475569; font-size: 0.7rem;">en inventario</div>
+                <div style="color: white; font-size: 0.9rem;">en inventario</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
