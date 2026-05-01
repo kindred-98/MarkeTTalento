@@ -410,34 +410,46 @@ def render():
                 st.markdown(f"""
                 <div style="display: flex; align-items: center; background: rgba(30, 41, 59, 0.5); border-radius: 8px; padding: 10px 16px; margin-bottom: 6px; border-left: 3px solid {color};">
                     <div style="width: 30%; padding-right: 15px;">
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{prod.get('nombre', 'Producto')}</span>
+                        <span style="font-size: 1rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{prod.get('nombre', 'Producto')}</span>
                     </div>
                     <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1); margin: 0 15px;"></div>
                     <div style="width: 15%; display: flex; align-items: center; justify-content: center; gap: 3px;">
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #ffffff;">{stock}</span>
+                        <span style="font-size: 1rem; font-weight: 600; color: #ffffff;">{stock}</span>
                         <span style="color: #64748b; font-size: 0.8rem;">/</span>
-                        <span style="font-size: 0.85rem; color: #10b981; font-weight: 600;">{max_s}</span>
+                        <span style="font-size: 1rem; color: #10b981; font-weight: 600;">{max_s}</span>
                     </div>
                     <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1); margin: 0 15px;"></div>
                     <div style="width: 25%; display: flex; align-items: center; gap: 10px;">
-                        <div style="flex: 1; height: 6px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
+                        <div style="flex: 1; height: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
                             <div style="width: {pct}%; height: 100%; background: {color}; border-radius: 3px;"></div>
                         </div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; white-space: nowrap; width: 35px; text-align: right;">{pct:.0f}%</span>
+                        <span style="font-size: 1rem; color: white; white-space: nowrap; width: 35px; text-align: right;">{pct:.0f}%</span>
                     </div>
                     <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1); margin: 0 15px;"></div>
                     <div style="width: 15%; display: flex; justify-content: flex-end;">
-                        <span style="padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50; white-space: nowrap;">{estado}</span>
+                        <span style="padding: 4px 12px; border-radius: 6px; font-size: 1rem; font-weight: 600; background: {color}20; color: {color}; border: 1px solid {color}50; white-space: nowrap;">{estado}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Controles de paginación
+            # CSS para botones de paginación pequeños
+            st.markdown("""
+            <style>
+            button[key="btn_pagina_anterior"],
+            button[key="btn_pagina_siguiente"] {
+                min-height: 28px !important;
+                padding: 2px 8px !important;
+                font-size: 0.8rem !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Controles de paginación (botones pequeños)
             if total_paginas > 1:
                 col_pag1, col_pag2, col_pag3, col_pag4 = st.columns([1, 2, 2, 1])
                 
                 with col_pag1:
-                    if st.button("◀ Anterior", disabled=(pagina_actual == 1), key="btn_pagina_anterior"):
+                    if st.button("◀", disabled=(pagina_actual == 1), key="btn_pagina_anterior", use_container_width=True):
                         st.session_state['pagina_stock'] = pagina_actual - 1
                         st.rerun()
                 
@@ -448,7 +460,18 @@ def render():
                     st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin: 0;'>{inicio+1}-{fin} de {total_productos} productos</p>", unsafe_allow_html=True)
                 
                 with col_pag4:
-                    if st.button("Siguiente ▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente"):
+                    if st.button("▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente", use_container_width=True):
+                        st.session_state['pagina_stock'] = pagina_actual + 1
+                        st.rerun()
+                
+                with col_pag2:
+                    st.markdown(f"<p style='text-align: center; color: #94a3b8; font-size: 0.85rem; margin: 0;'>Página {pagina_actual} de {total_paginas}</p>", unsafe_allow_html=True)
+                
+                with col_pag3:
+                    st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin: 0;'>{inicio+1}-{fin} de {total_productos}</p>", unsafe_allow_html=True)
+                
+                with col_pag4:
+                    if st.button("▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente"):
                         st.session_state['pagina_stock'] = pagina_actual + 1
                         st.rerun()
         else:
