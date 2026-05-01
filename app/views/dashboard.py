@@ -296,11 +296,8 @@ def render():
         # CSS para botones de filtro con estilo opaco y animación
         st.markdown("""
         <style>
-        /* Botones de filtro estilo opaco */
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("⚫")),
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🔴")),
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟡")),
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟢")) {
+        /* Botones de filtro - estilo opaco para TODOS los secondary en esta sección */
+        button[data-testid="baseButton-secondary"] {
             background: rgba(30, 41, 59, 0.6) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
             color: #e2e8f0 !important;
@@ -313,10 +310,7 @@ def render():
         }
         
         /* Hover effect igual que las cards */
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("⚫")):hover,
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🔴")):hover,
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟡")):hover,
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟢")):hover {
+        button[data-testid="baseButton-secondary"]:hover {
             transform: translateY(-2px) !important;
             box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important;
             border-color: rgba(0, 240, 255, 0.5) !important;
@@ -324,10 +318,7 @@ def render():
         }
         
         /* Active/pressed effect */
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("⚫")):active,
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🔴")):active,
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟡")):active,
-        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟢")):active {
+        button[data-testid="baseButton-secondary"]:active {
             transform: translateY(0) !important;
         }
         </style>
