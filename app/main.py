@@ -64,10 +64,10 @@ def main():
                 st.info("💡 Ejecuta: `python run.py` para iniciar todo el sistema")
                 return
     
-    # Renderizar header
-    render_header()
+    # Header comentado - ahora el título está en cada página
+    # render_header()
     
-    st.markdown("---")
+    # st.markdown("---")
     
     # Renderizar sidebar y obtener menú seleccionado
     menu = render_sidebar()
