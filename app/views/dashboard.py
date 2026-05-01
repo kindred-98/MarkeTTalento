@@ -145,6 +145,9 @@ def render():
     metrics_cols = st.columns(4)
     
     with metrics_cols[0]:
+        # Generar puntos para sparkline (valores entre 10 y 20 para que quepan bien)
+        sp1 = [random.randint(12, 20) for _ in range(8)]
+        points1 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp1)])
         st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba(0,240,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📦</div>
@@ -153,13 +156,17 @@ def render():
                 <div style="font-size: 1.4rem; font-weight: 700; color: #00f0ff;">{resumen.get('total_productos', 0)}</div>
                 <div style="color: #475569; font-size: 0.7rem;">en catálogo</div>
             </div>
-            <svg width="45" height="22" viewBox="0 0 45 22">
-                <polyline fill="none" stroke="#00f0ff" stroke-width="1.5" points="0,{22-spark_productos[0]*0.4} 5,{22-spark_productos[1]*0.4} 10,{22-spark_productos[2]*0.4} 15,{22-spark_productos[3]*0.4} 20,{22-spark_productos[4]*0.4} 25,{22-spark_productos[5]*0.4} 30,{22-spark_productos[6]*0.4} 35,{22-spark_productos[7]*0.4} 40,{22-spark_productos[8]*0.4} 45,{22-spark_productos[9]*0.4}"/>
-            </svg>
+            <div style="width: 50px; height: 25px;">
+                <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
+                    <polyline fill="none" stroke="#00f0ff" stroke-width="2" points="{points1}"/>
+                </svg>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
     with metrics_cols[1]:
+        sp2 = [random.randint(12, 20) for _ in range(8)]
+        points2 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp2)])
         st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba(139,92,246,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📊</div>
@@ -168,14 +175,18 @@ def render():
                 <div style="font-size: 1.4rem; font-weight: 700; color: #8b5cf6;">{resumen.get('total_unidades', 0)}</div>
                 <div style="color: #475569; font-size: 0.7rem;">unidades</div>
             </div>
-            <svg width="45" height="22" viewBox="0 0 45 22">
-                <polyline fill="none" stroke="#8b5cf6" stroke-width="1.5" points="0,{22-spark_stock[0]*0.4} 5,{22-spark_stock[1]*0.4} 10,{22-spark_stock[2]*0.4} 15,{22-spark_stock[3]*0.4} 20,{22-spark_stock[4]*0.4} 25,{22-spark_stock[5]*0.4} 30,{22-spark_stock[6]*0.4} 35,{22-spark_stock[7]*0.4} 40,{22-spark_stock[8]*0.4} 45,{22-spark_stock[9]*0.4}"/>
-            </svg>
+            <div style="width: 50px; height: 25px;">
+                <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
+                    <polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="{points2}"/>
+                </svg>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
     with metrics_cols[2]:
         color_crit = "#ef4444" if criticos > 0 else "#10b981"
+        sp3 = [random.randint(12, 20) for _ in range(8)]
+        points3 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp3)])
         st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba({color_crit.replace('#', '')},0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⚠️</div>
@@ -184,14 +195,18 @@ def render():
                 <div style="font-size: 1.4rem; font-weight: 700; color: {color_crit};">{criticos}</div>
                 <div style="color: #475569; font-size: 0.7rem;">requieren atención</div>
             </div>
-            <svg width="45" height="22" viewBox="0 0 45 22">
-                <polyline fill="none" stroke="{color_crit}" stroke-width="1.5" points="0,{22-spark_criticos[0]*0.4} 5,{22-spark_criticos[1]*0.4} 10,{22-spark_criticos[2]*0.4} 15,{22-spark_criticos[3]*0.4} 20,{22-spark_criticos[4]*0.4} 25,{22-spark_criticos[5]*0.4} 30,{22-spark_criticos[6]*0.4} 35,{22-spark_criticos[7]*0.4} 40,{22-spark_criticos[8]*0.4} 45,{22-spark_criticos[9]*0.4}"/>
-            </svg>
+            <div style="width: 50px; height: 25px;">
+                <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
+                    <polyline fill="none" stroke="{color_crit}" stroke-width="2" points="{points3}"/>
+                </svg>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
     with metrics_cols[3]:
         valor = resumen.get("valor_total", 0)
+        sp4 = [random.randint(12, 20) for _ in range(8)]
+        points4 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp4)])
         st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
             <div style="width: 36px; height: 36px; background: rgba(16,185,129,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">💰</div>
@@ -200,9 +215,11 @@ def render():
                 <div style="font-size: 1.4rem; font-weight: 700; color: #10b981;">€{valor:.0f}</div>
                 <div style="color: #475569; font-size: 0.7rem;">en inventario</div>
             </div>
-            <svg width="45" height="22" viewBox="0 0 45 22">
-                <polyline fill="none" stroke="#10b981" stroke-width="1.5" points="0,{22-spark_valor[0]*0.4} 5,{22-spark_valor[1]*0.4} 10,{22-spark_valor[2]*0.4} 15,{22-spark_valor[3]*0.4} 20,{22-spark_valor[4]*0.4} 25,{22-spark_valor[5]*0.4} 30,{22-spark_valor[6]*0.4} 35,{22-spark_valor[7]*0.4} 40,{22-spark_valor[8]*0.4} 45,{22-spark_valor[9]*0.4}"/>
-            </svg>
+            <div style="width: 50px; height: 25px;">
+                <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
+                    <polyline fill="none" stroke="#10b981" stroke-width="2" points="{points4}"/>
+                </svg>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
