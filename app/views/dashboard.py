@@ -293,6 +293,46 @@ def render():
                 'saludables': True
             }
         
+        # CSS para botones de filtro con estilo opaco y animación
+        st.markdown("""
+        <style>
+        /* Botones de filtro estilo opaco */
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("⚫")),
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🔴")),
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟡")),
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟢")) {
+            background: rgba(30, 41, 59, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #e2e8f0 !important;
+            font-size: 0.75rem !important;
+            padding: 6px 10px !important;
+            border-radius: 8px !important;
+            min-height: 32px !important;
+            transition: all 0.3s ease !important;
+            box-shadow: none !important;
+        }
+        
+        /* Hover effect igual que las cards */
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("⚫")):hover,
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🔴")):hover,
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟡")):hover,
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟢")):hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important;
+            border-color: rgba(0, 240, 255, 0.5) !important;
+            background: rgba(30, 41, 59, 0.8) !important;
+        }
+        
+        /* Active/pressed effect */
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("⚫")):active,
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🔴")):active,
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟡")):active,
+        div[data-testid="stButton"] > button[kind="secondary"][data-testid="baseButton-secondary"]:has(span:contains("🟢")):active {
+            transform: translateY(0) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar</p>", unsafe_allow_html=True)
         
         filtros_config = [
@@ -385,7 +425,7 @@ def render():
     # ============================================
     with col_main_right:
         # Estado del Inventario
-        st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #00f0ff; font-size: 1.5rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
@@ -418,7 +458,7 @@ def render():
                 legend=dict(
                     orientation="h",
                     yanchor="top",
-                    y=-0.35,
+                    y=-0.3,
                     xanchor="center",
                     x=0.5,
                     font=dict(color="white", size=10),
