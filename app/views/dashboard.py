@@ -141,20 +141,64 @@ def render():
     spark_criticos = _generar_sparkline_data("down")
     spark_valor = _generar_sparkline_data("up")
     
+    # CSS para animaciones de tarjetas
+    st.markdown("""
+    <style>
+    .metric-card {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        border-color: rgba(0, 240, 255, 0.5);
+        background: rgba(30, 41, 59, 0.8);
+    }
+    .metric-card:hover .metric-icon {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 8px currentColor);
+    }
+    .metric-card:hover .metric-value {
+        text-shadow: 0 0 10px currentColor;
+    }
+    .metric-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+    }
+    .metric-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        transition: all 0.3s ease;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Métricas compactas
     metrics_cols = st.columns(4)
     
     with metrics_cols[0]:
-        # Generar puntos para sparkline (valores entre 10 y 20 para que quepan bien)
         sp1 = [random.randint(12, 20) for _ in range(8)]
         points1 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp1)])
         st.markdown(f"""
-        <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
-            <div style="width: 36px; height: 36px; background: rgba(0,240,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📦</div>
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(0,240,255,0.15); color: #00f0ff;">📦</div>
             <div style="flex: 1;">
-                <div style="color: white; font-size: 0.9rem; text-transform: uppercase;">Productos en Catálogo</div>
-                <div style="font-size: 1.4rem; font-weight: 700; color: #00f0ff;">{resumen.get('total_productos', 0)}</div>
-                <div style="color: white;; font-size: 0.9rem;">en catálogo</div>
+                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Productos en Catálogo</div>
+                <div class="metric-value" style="color: #00f0ff;">{resumen.get('total_productos', 0)}</div>
+                <div style="color: #64748b; font-size: 0.7rem;">en catálogo</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -168,12 +212,12 @@ def render():
         sp2 = [random.randint(12, 20) for _ in range(8)]
         points2 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp2)])
         st.markdown(f"""
-        <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
-            <div style="width: 36px; height: 36px; background: rgba(139,92,246,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📊</div>
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(139,92,246,0.15); color: #8b5cf6;">📊</div>
             <div style="flex: 1;">
-                <div style="color: white;; font-size: 0.9rem; text-transform: uppercase;">Stock Total Unidades</div>
-                <div style="font-size: 1.4rem; font-weight: 700; color: #8b5cf6;">{resumen.get('total_unidades', 0)}</div>
-                <div style="color: white;; font-size: 0.9rem;">unidades</div>
+                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Stock Total Unidades</div>
+                <div class="metric-value" style="color: #8b5cf6;">{resumen.get('total_unidades', 0)}</div>
+                <div style="color: #64748b; font-size: 0.7rem;">unidades</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -188,12 +232,12 @@ def render():
         sp3 = [random.randint(12, 20) for _ in range(8)]
         points3 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp3)])
         st.markdown(f"""
-        <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
-            <div style="width: 36px; height: 36px; background: rgba({color_crit.replace('#', '')},0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⚠️</div>
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba({color_crit.replace('#', '')},0.15); color: {color_crit};">⚠️</div>
             <div style="flex: 1;">
-                <div style="color: white; font-size: 0.9rem; text-transform: uppercase;">Índice Críticos</div>
-                <div style="font-size: 1.4rem; font-weight: 700; color: {color_crit};">{criticos}</div>
-                <div style="color: white; font-size: 0.9rem;">requieren atención</div>
+                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Índice Críticos</div>
+                <div class="metric-value" style="color: {color_crit};">{criticos}</div>
+                <div style="color: #64748b; font-size: 0.7rem;">requieren atención</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -208,12 +252,12 @@ def render():
         sp4 = [random.randint(12, 20) for _ in range(8)]
         points4 = " ".join([f"{i*6},{22-v}" for i, v in enumerate(sp4)])
         st.markdown(f"""
-        <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
-            <div style="width: 36px; height: 36px; background: rgba(16,185,129,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">💰</div>
+        <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(16,185,129,0.15); color: #10b981;">💰</div>
             <div style="flex: 1;">
-                <div style="color: white; font-size: 0.9rem; text-transform: uppercase;">Valor Total Inventario</div>
-                <div style="font-size: 1.4rem; font-weight: 700; color: #10b981;">€{valor:.0f}</div>
-                <div style="color: white; font-size: 0.9rem;">en inventario</div>
+                <div style="color: #94a3b8; font-size: 0.65rem; text-transform: uppercase;">Valor Total Inventario</div>
+                <div class="metric-value" style="color: #10b981;">€{valor:.0f}</div>
+                <div style="color: #64748b; font-size: 0.7rem;">en inventario</div>
             </div>
             <div style="width: 50px; height: 25px;">
                 <svg width="50" height="25" viewBox="0 0 50 25" style="overflow: visible;">
@@ -249,7 +293,7 @@ def render():
                 'saludables': True
             }
         
-        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar</p>", unsafe_allow_html=True)
         
         filtros_config = [
             ("⚫ Agotados", 'agotados', "#6b7280"),
@@ -352,17 +396,35 @@ def render():
                 'saludables': True
             }
         
-        # Leyendas clickeables (estilo etiqueta, NO botón)
-        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin: 8px 0; text-align: center;'>Haz clic en una leyenda para mostrar/ocultar:</p>", unsafe_allow_html=True)
+        # CSS para botones de leyenda pequeños y oscuros
+        st.markdown("""
+        <style>
+        div[data-testid="stButton"] button[kind="secondary"] {
+            background: rgba(30, 41, 59, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #e2e8f0 !important;
+            font-size: 0.7rem !important;
+            padding: 4px 8px !important;
+            border-radius: 15px !important;
+            min-height: 28px !important;
+        }
+        div[data-testid="stButton"] button[kind="secondary"]:hover {
+            background: rgba(51, 65, 85, 0.8) !important;
+            border-color: rgba(148, 163, 184, 0.3) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         
-        # Crear botones que parecen etiquetas de leyenda
+        # Leyendas clickeables
+        st.markdown("<p style='color: #64748b; font-size: 0.7rem; margin: 8px 0; text-align: center;'>Haz clic para mostrar/ocultar:</p>", unsafe_allow_html=True)
+        
         leyenda_cols = st.columns(4)
         
         # Agotados
         with leyenda_cols[0]:
             is_active = st.session_state['filtros_grafico']['agotados']
             label = f"⚫ Agotados" if is_active else "○ Agotados"
-            if st.button(label, key="leyenda_agotados", use_container_width=True):
+            if st.button(label, key="leyenda_agotados", use_container_width=True, type="secondary"):
                 st.session_state['filtros_grafico']['agotados'] = not is_active
                 st.rerun()
         
@@ -370,7 +432,7 @@ def render():
         with leyenda_cols[1]:
             is_active = st.session_state['filtros_grafico']['criticos']
             label = f"🔴 Críticos" if is_active else "○ Críticos"
-            if st.button(label, key="leyenda_criticos", use_container_width=True):
+            if st.button(label, key="leyenda_criticos", use_container_width=True, type="secondary"):
                 st.session_state['filtros_grafico']['criticos'] = not is_active
                 st.rerun()
         
@@ -378,7 +440,7 @@ def render():
         with leyenda_cols[2]:
             is_active = st.session_state['filtros_grafico']['bajos']
             label = f"🟡 Bajos" if is_active else "○ Bajos"
-            if st.button(label, key="leyenda_bajos", use_container_width=True):
+            if st.button(label, key="leyenda_bajos", use_container_width=True, type="secondary"):
                 st.session_state['filtros_grafico']['bajos'] = not is_active
                 st.rerun()
         
@@ -386,7 +448,7 @@ def render():
         with leyenda_cols[3]:
             is_active = st.session_state['filtros_grafico']['saludables']
             label = f"🟢 Saludables" if is_active else "○ Saludables"
-            if st.button(label, key="leyenda_saludables", use_container_width=True):
+            if st.button(label, key="leyenda_saludables", use_container_width=True, type="secondary"):
                 st.session_state['filtros_grafico']['saludables'] = not is_active
                 st.rerun()
         
@@ -430,29 +492,29 @@ def render():
             st.plotly_chart(fig, use_container_width=True)
         
         # Centro de Notificaciones
-        st.markdown("<h4 style='color: #f59e0b; font-size: 0.9rem; margin-top: 15px;'>⚡ Centro de Notificaciones y Alertas</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #f59e0b; font-size: 1.5rem; margin-top: 15px;'>⚡ Centro de Notificaciones y Alertas</h4>", unsafe_allow_html=True)
         
         if criticos > 0:
             st.markdown(f"""
             <div style="padding: 8px 12px; background: rgba(239,68,68,0.12); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(239,68,68,0.25);">
-                <div style="color: #ef4444; font-weight: 600; font-size: 0.8rem;">🔴 ALERTA: {criticos} Críticos - Urgente</div>
-                <div style="color: #64748b; font-size: 0.7rem;">Reposición urgente</div>
+                <div style="color: #ef4444; font-weight: 600; font-size: 1rem;">🔴 ALERTA: {criticos} Críticos - Urgente</div>
+                <div style="color: white; font-size: 0.9rem;">Reposición urgente</div>
             </div>
             """, unsafe_allow_html=True)
         
         if bajos > 0:
             st.markdown(f"""
             <div style="padding: 8px 12px; background: rgba(245,158,11,0.12); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(245,158,11,0.25);">
-                <div style="color: #f59e0b; font-weight: 600; font-size: 0.8rem;">🟡 ALERTA: {bajos} Bajos - Revisión</div>
-                <div style="color: #64748b; font-size: 0.7rem;">Revisar pronto</div>
+                <div style="color: #f59e0b; font-weight: 600; font-size: 1rem;">🟡 ALERTA: {bajos} Bajos - Revisión</div>
+                <div style="color: white; font-size: 0.9rem;">Revisar pronto</div>
             </div>
             """, unsafe_allow_html=True)
         
         if agotados > 0:
             st.markdown(f"""
             <div style="padding: 8px 12px; background: rgba(107,114,128,0.12); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(107,114,128,0.25);">
-                <div style="color: #94a3b8; font-weight: 600; font-size: 0.8rem;">⚫ AVISO: {agotados} Agotados - Sin existencias</div>
-                <div style="color: #64748b; font-size: 0.7rem;">Sin existencias</div>
+                <div style="color: #94a3b8; font-weight: 600; font-size: 1rem;">⚫ AVISO: {agotados} Agotados - Sin existencias</div>
+                <div style="color: white; font-size: 0.9rem;">Sin existencias</div>
             </div>
             """, unsafe_allow_html=True)
         
