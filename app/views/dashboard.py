@@ -387,8 +387,6 @@ def render():
         # Estado del Inventario
         st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
-        st.markdown("<p style='color: #64748b; font-size: 0.7rem; margin: 5px 0;'>Haz clic en la leyenda o en los segmentos para filtrar</p>", unsafe_allow_html=True)
-        
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
             {"Estado": "Críticos", "Cantidad": criticos, "Color": "#ef4444"},
@@ -409,7 +407,7 @@ def render():
                 hole=0.6,
                 textinfo='label+percent',
                 textposition='outside',
-                textfont=dict(size=11, color='white'),
+                textfont=dict(size=15, color='white'),
                 hovertemplate='<b>%{label}</b><br>Cantidad: %{value}<br>Porcentaje: %{percent}<extra></extra>',
                 # Hacer clickeable
                 customdata=[d["Estado"] for d in datos],
@@ -419,8 +417,8 @@ def render():
                 showlegend=True,
                 legend=dict(
                     orientation="h",
-                    yanchor="bottom",
-                    y=-0.2,
+                    yanchor="top",
+                    y=-0.35,
                     xanchor="center",
                     x=0.5,
                     font=dict(color="white", size=10),
@@ -432,7 +430,7 @@ def render():
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=10, r=10, t=10, b=60),
+                margin=dict(l=10, r=10, t=10, b=80),
                 clickmode='event+select',
             )
             
