@@ -232,7 +232,16 @@ def render():
     # COLUMNA IZQUIERDA: Stock por Producto
     # ============================================
     with col_main_left:
-        # Filtros PRIMERO (arriba del título)
+        # Header PRIMERO (arriba)
+        col_header, col_search = st.columns([2, 1])
+        with col_header:
+            st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📦 Stock por Producto</h3>", unsafe_allow_html=True)
+            st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin: 5px 0 10px 0;'>Visualización en tiempo real del inventario</p>", unsafe_allow_html=True)
+        
+        with col_search:
+            busqueda = st.text_input("Buscar producto", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
+        
+        # Filtros DESPUÉS (debajo del título)
         if 'filtros_lista' not in st.session_state:
             st.session_state['filtros_lista'] = {
                 'agotados': True,
@@ -241,7 +250,7 @@ def render():
                 'saludables': True
             }
         
-        st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin-bottom: 8px; margin-top: 0;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin-bottom: 8px;'>💡 Haz clic para filtrar</p>", unsafe_allow_html=True)
         
         filtros_config = [
             ("⚫ Agotados", 'agotados', "#6b7280"),
@@ -266,18 +275,6 @@ def render():
                     st.session_state['filtros_lista'][filtro_nombre] = not is_active
                     st.rerun()
             col_idx += 1
-        
-        # Margen entre filtros y título
-        st.markdown("<div style='margin: 20px 0;'></div>", unsafe_allow_html=True)
-        
-        # Header DESPUÉS (debajo de los filtros)
-        col_header, col_search = st.columns([2, 1])
-        with col_header:
-            st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📦 Stock por Producto</h3>", unsafe_allow_html=True)
-            st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin: 5px 0 10px 0;'>Visualización en tiempo real del inventario</p>", unsafe_allow_html=True)
-        
-        with col_search:
-            busqueda = st.text_input("Buscar producto", placeholder="🔍 Buscar...", label_visibility="collapsed", key="search_productos")
         
         # Filtrar datos
         datos_stock_filtrados = []
@@ -357,8 +354,24 @@ def render():
     # COLUMNA DERECHA: Gráfico + Alertas
     # ============================================
     with col_main_right:
-        # Estado del Inventario (sin filtros, siempre muestra todo)
+        # Estado del Inventario
         st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
+        
+        # Filtros ARRIBA del gráfico
+        st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin: 8px 0;'>Filtrar estados:</p>", unsafe_allow_html=True)
+        
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        with col_f1:
+            filtro_grafico_agotados = st.checkbox("⚫", value=True, key="graf_agotados", label_visibility="visible")
+        with col_f2:
+            filtro_grafico_criticos = st.checkbox("🔴", value=True, key="graf_criticos", label_visibility="visible")
+        with col_f3:
+            filtro_grafico_bajos = st.checkbox("🟡", value=True, key="graf_bajos", label_visibility="visible")
+        with col_f4:
+            filtro_grafico_saludables = st.checkbox("🟢", value=True, key="graf_saludables", label_visibility="visible")
+        
+        # Margen entre filtros y gráfico
+        st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
         
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
@@ -367,7 +380,12 @@ def render():
             {"Estado": "Saludables", "Cantidad": saludables, "Color": "#10b981"},
         ]
         
-        datos_filtrados = [d for d in datos if d["Cantidad"] > 0]
+        datos_filtrados = [d for d in datos if (
+            (d["Estado"] == "Agotados" and filtro_grafico_agotados) or
+            (d["Estado"] == "Críticos" and filtro_grafico_criticos) or
+            (d["Estado"] == "Bajos" and filtro_grafico_bajos) or
+            (d["Estado"] == "Saludables" and filtro_grafico_saludables)
+        ) and d["Cantidad"] > 0]
         
         if datos_filtrados:
             fig = go.Figure()
