@@ -357,18 +357,40 @@ def render():
         # Estado del Inventario
         st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
-        # Filtros ARRIBA del gráfico
+        # Filtros ARRIBA del gráfico (badges clickeables como en la leyenda)
+        if 'filtros_grafico' not in st.session_state:
+            st.session_state['filtros_grafico'] = {
+                'agotados': True,
+                'criticos': True,
+                'bajos': True,
+                'saludables': True
+            }
+        
         st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin: 8px 0;'>Filtrar estados:</p>", unsafe_allow_html=True)
         
-        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-        with col_f1:
-            filtro_grafico_agotados = st.checkbox("⚫", value=True, key="graf_agotados", label_visibility="visible")
-        with col_f2:
-            filtro_grafico_criticos = st.checkbox("🔴", value=True, key="graf_criticos", label_visibility="visible")
-        with col_f3:
-            filtro_grafico_bajos = st.checkbox("🟡", value=True, key="graf_bajos", label_visibility="visible")
-        with col_f4:
-            filtro_grafico_saludables = st.checkbox("🟢", value=True, key="graf_saludables", label_visibility="visible")
+        filtros_grafico_config = [
+            ("⚫ Agotados", 'agotados', "#6b7280"),
+            ("🔴 Críticos", 'criticos', "#ef4444"),
+            ("🟡 Bajos", 'bajos', "#f59e0b"),
+            ("🟢 Saludables", 'saludables', "#10b981"),
+        ]
+        
+        filtros_cols = st.columns([1, 1, 1, 1])
+        col_idx = 0
+        for label, filtro_nombre, color in filtros_grafico_config:
+            with filtros_cols[col_idx]:
+                is_active = st.session_state['filtros_grafico'][filtro_nombre]
+                btn_label = f"{'✓' if is_active else '✕'} {label}"
+                clicked = st.button(
+                    btn_label, 
+                    key=f"btn_graf_{filtro_nombre}",
+                    use_container_width=True,
+                    type="primary" if is_active else "secondary"
+                )
+                if clicked:
+                    st.session_state['filtros_grafico'][filtro_nombre] = not is_active
+                    st.rerun()
+            col_idx += 1
         
         # Margen entre filtros y gráfico
         st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
@@ -381,10 +403,10 @@ def render():
         ]
         
         datos_filtrados = [d for d in datos if (
-            (d["Estado"] == "Agotados" and filtro_grafico_agotados) or
-            (d["Estado"] == "Críticos" and filtro_grafico_criticos) or
-            (d["Estado"] == "Bajos" and filtro_grafico_bajos) or
-            (d["Estado"] == "Saludables" and filtro_grafico_saludables)
+            (d["Estado"] == "Agotados" and st.session_state['filtros_grafico']['agotados']) or
+            (d["Estado"] == "Críticos" and st.session_state['filtros_grafico']['criticos']) or
+            (d["Estado"] == "Bajos" and st.session_state['filtros_grafico']['bajos']) or
+            (d["Estado"] == "Saludables" and st.session_state['filtros_grafico']['saludables'])
         ) and d["Cantidad"] > 0]
         
         if datos_filtrados:
@@ -402,13 +424,12 @@ def render():
             ))
             
             fig.update_layout(
-                showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="white", size=9)),
+                showlegend=False,  # Ocultar leyenda porque los filtros están arriba
                 height=220,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=5, r=5, t=10, b=40),
+                margin=dict(l=5, r=5, t=10, b=20),
             )
             
             st.plotly_chart(fig, use_container_width=True)
