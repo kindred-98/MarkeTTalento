@@ -404,11 +404,11 @@ def render():
             
             fig.update_layout(
                 showlegend=False,  # Usamos la leyenda HTML de arriba
-                height=220,
+                height=280,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=5, r=5, t=5, b=5),  # Márgenes mínimos para que el gráfico se vea completo
+                margin=dict(l=20, r=20, t=10, b=20),  # Márgenes amplios para que el gráfico se vea completo
             )
             
             st.plotly_chart(fig, use_container_width=True)
