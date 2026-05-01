@@ -350,27 +350,60 @@ def render():
         # Estado del Inventario
         st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
         
-        # Leyenda ARRIBA del gráfico (como en la foto)
-        st.markdown("""
-        <div style="display: flex; justify-content: center; gap: 15px; margin: 10px 0; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="width: 12px; height: 12px; background: #6b7280; border-radius: 50%; display: inline-block;"></span>
-                <span style="color: #94a3b8; font-size: 0.8rem;">Agotados</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
-                <span style="color: #94a3b8; font-size: 0.8rem;">Críticos</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="width: 12px; height: 12px; background: #f59e0b; border-radius: 50%; display: inline-block;"></span>
-                <span style="color: #94a3b8; font-size: 0.8rem;">Bajos</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
-                <span style="color: #94a3b8; font-size: 0.8rem;">Saludables</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Leyenda clickeable ARRIBA del gráfico (estilo visual anterior)
+        if 'filtros_grafico' not in st.session_state:
+            st.session_state['filtros_grafico'] = {
+                'agotados': True,
+                'criticos': True,
+                'bajos': True,
+                'saludables': True
+            }
+        
+        leyenda_cols = st.columns(4)
+        
+        # Agotados - Estilo visual con emoji ⚫
+        with leyenda_cols[0]:
+            is_active_agotados = st.session_state['filtros_grafico']['agotados']
+            btn_label_agotados = f"⚫ Agotados" if is_active_agotados else "○ Agotados"
+            btn_type_agotados = "primary" if is_active_agotados else "secondary"
+            if st.button(btn_label_agotados, key="leyenda_agotados", 
+                        use_container_width=True,
+                        type=btn_type_agotados):
+                st.session_state['filtros_grafico']['agotados'] = not is_active_agotados
+                st.rerun()
+        
+        # Críticos - Estilo visual con emoji 🔴
+        with leyenda_cols[1]:
+            is_active_criticos = st.session_state['filtros_grafico']['criticos']
+            btn_label_criticos = f"🔴 Críticos" if is_active_criticos else "○ Críticos"
+            btn_type_criticos = "primary" if is_active_criticos else "secondary"
+            if st.button(btn_label_criticos, key="leyenda_criticos",
+                        use_container_width=True,
+                        type=btn_type_criticos):
+                st.session_state['filtros_grafico']['criticos'] = not is_active_criticos
+                st.rerun()
+        
+        # Bajos - Estilo visual con emoji 🟡
+        with leyenda_cols[2]:
+            is_active_bajos = st.session_state['filtros_grafico']['bajos']
+            btn_label_bajos = f"🟡 Bajos" if is_active_bajos else "○ Bajos"
+            btn_type_bajos = "primary" if is_active_bajos else "secondary"
+            if st.button(btn_label_bajos, key="leyenda_bajos",
+                        use_container_width=True,
+                        type=btn_type_bajos):
+                st.session_state['filtros_grafico']['bajos'] = not is_active_bajos
+                st.rerun()
+        
+        # Saludables - Estilo visual con emoji 🟢
+        with leyenda_cols[3]:
+            is_active_saludables = st.session_state['filtros_grafico']['saludables']
+            btn_label_saludables = f"🟢 Saludables" if is_active_saludables else "○ Saludables"
+            btn_type_saludables = "primary" if is_active_saludables else "secondary"
+            if st.button(btn_label_saludables, key="leyenda_saludables",
+                        use_container_width=True,
+                        type=btn_type_saludables):
+                st.session_state['filtros_grafico']['saludables'] = not is_active_saludables
+                st.rerun()
         
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
@@ -379,7 +412,12 @@ def render():
             {"Estado": "Saludables", "Cantidad": saludables, "Color": "#10b981"},
         ]
         
-        datos_filtrados = [d for d in datos if d["Cantidad"] > 0]
+        datos_filtrados = [d for d in datos if (
+            (d["Estado"] == "Agotados" and st.session_state['filtros_grafico']['agotados']) or
+            (d["Estado"] == "Críticos" and st.session_state['filtros_grafico']['criticos']) or
+            (d["Estado"] == "Bajos" and st.session_state['filtros_grafico']['bajos']) or
+            (d["Estado"] == "Saludables" and st.session_state['filtros_grafico']['saludables'])
+        ) and d["Cantidad"] > 0]
         
         if datos_filtrados:
             fig = go.Figure()
