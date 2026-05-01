@@ -94,13 +94,6 @@ def render():
         with loading_placeholder.container():
             st.spinner("Cargando dashboard...")
     
-    # Título pequeño en esquina
-    st.markdown("""
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
-        <span style="font-size: 1rem; font-weight: 600; color: #00f0ff;">MarkeTTalento</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
     # Obtener datos con cache
     inventarios, productos, resumen = _get_dashboard_data()
     
@@ -404,11 +397,11 @@ def render():
             
             fig.update_layout(
                 showlegend=False,  # Usamos la leyenda HTML de arriba
-                height=280,
+                height=350,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
-                margin=dict(l=20, r=20, t=10, b=20),  # Márgenes amplios para que el gráfico se vea completo
+                margin=dict(l=20, r=20, t=20, b=60),  # Márgenes amplios para que el gráfico se vea completo
             )
             
             st.plotly_chart(fig, use_container_width=True)
