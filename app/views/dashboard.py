@@ -250,7 +250,7 @@ def render():
                 'saludables': True
             }
         
-        st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin-bottom: 8px;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b; font-size: 0.8rem; margin-bottom: 8px;'>💡 Haz clic para filtrar</p>", unsafe_allow_html=True)
         
         filtros_config = [
             ("⚫ Agotados", 'agotados', "#6b7280"),
@@ -354,16 +354,8 @@ def render():
     # COLUMNA DERECHA: Gráfico + Alertas
     # ============================================
     with col_main_right:
-        # Estado del Inventario
+        # Estado del Inventario (sin filtros, siempre muestra todo)
         st.markdown("<h3 style='color: #00f0ff; font-size: 1.1rem; margin: 0;'>📊 Estado del Inventario</h3>", unsafe_allow_html=True)
-        
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            filtro_grafico_agotados = st.checkbox("Agotados", value=True, key="graf_agotados")
-            filtro_grafico_criticos = st.checkbox("Críticos", value=True, key="graf_criticos")
-        with col_f2:
-            filtro_grafico_bajos = st.checkbox("Bajos", value=True, key="graf_bajos")
-            filtro_grafico_saludables = st.checkbox("Saludables", value=True, key="graf_saludables")
         
         datos = [
             {"Estado": "Agotados", "Cantidad": agotados, "Color": "#6b7280"},
@@ -372,12 +364,7 @@ def render():
             {"Estado": "Saludables", "Cantidad": saludables, "Color": "#10b981"},
         ]
         
-        datos_filtrados = [d for d in datos if (
-            (d["Estado"] == "Agotados" and filtro_grafico_agotados) or
-            (d["Estado"] == "Críticos" and filtro_grafico_criticos) or
-            (d["Estado"] == "Bajos" and filtro_grafico_bajos) or
-            (d["Estado"] == "Saludables" and filtro_grafico_saludables)
-        )]
+        datos_filtrados = [d for d in datos if d["Cantidad"] > 0]
         
         if datos_filtrados:
             fig = go.Figure()
