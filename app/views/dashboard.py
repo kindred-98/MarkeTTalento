@@ -251,72 +251,22 @@ def render():
         
         st.markdown("<p style='color: #64748b; font-size: 0.75rem; margin-bottom: 10px;'>💡 Haz clic para filtrar:</p>", unsafe_allow_html=True)
         
-        # CSS para botones opacos y pequeños
-        st.markdown("""
-        <style>
-        .filter-btn-container {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-        .filter-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid;
-            background: rgba(30, 41, 59, 0.6);
-        }
-        .filter-btn:hover {
-            transform: translateY(-1px);
-        }
-        .filter-btn.agotados { color: #9ca3af; border-color: rgba(156, 163, 175, 0.3); }
-        .filter-btn.agotados:hover { background: rgba(156, 163, 175, 0.15); }
-        .filter-btn.agotados.active { background: rgba(107, 114, 128, 0.25); border-color: rgba(107, 114, 128, 0.5); }
-        
-        .filter-btn.criticos { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
-        .filter-btn.criticos:hover { background: rgba(248, 113, 113, 0.15); }
-        .filter-btn.criticos.active { background: rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.5); }
-        
-        .filter-btn.bajos { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
-        .filter-btn.bajos:hover { background: rgba(251, 191, 36, 0.15); }
-        .filter-btn.bajos.active { background: rgba(245, 158, 11, 0.25); border-color: rgba(245, 158, 11, 0.5); }
-        
-        .filter-btn.saludables { color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
-        .filter-btn.saludables:hover { background: rgba(52, 211, 153, 0.15); }
-        .filter-btn.saludables.active { background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.5); }
-        </style>
-        """, unsafe_allow_html=True)
-        
         filtros_config = [
-            ("⚫ Agotados", 'agotados', "agotados"),
-            ("🔴 Críticos", 'criticos', "criticos"),
-            ("🟡 Bajos", 'bajos', "bajos"),
-            ("🟢 Saludables", 'saludables', "saludables"),
+            ("⚫ Agotados", 'agotados', "#6b7280"),
+            ("🔴 Críticos", 'criticos', "#ef4444"),
+            ("🟡 Bajos", 'bajos', "#f59e0b"),
+            ("🟢 Saludables", 'saludables', "#10b981"),
         ]
         
         filtros_cols = st.columns(4)
         col_idx = 0
-        for label, filtro_nombre, btn_class in filtros_config:
+        for label, filtro_nombre, color in filtros_config:
             with filtros_cols[col_idx]:
                 is_active = st.session_state['filtros_lista'][filtro_nombre]
-                active_class = "active" if is_active else ""
-                icon = "✓" if is_active else "○"
+                btn_label = f"{'✓' if is_active else '○'} {label}"
                 
-                st.markdown(f"""
-                <div class="filter-btn {btn_class} {active_class}">
-                    <span>{icon}</span>
-                    <span>{label}</span>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Botón invisible para detectar clicks (encima del div visual)
-                if st.button(" ", key=f"btn_lista_{filtro_nombre}"):
+                # Usar botón secundario (opaco) con estilo personalizado
+                if st.button(btn_label, key=f"btn_lista_{filtro_nombre}", use_container_width=True, type="secondary"):
                     st.session_state['filtros_lista'][filtro_nombre] = not is_active
                     st.rerun()
             col_idx += 1
