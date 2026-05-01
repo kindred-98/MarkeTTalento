@@ -329,7 +329,7 @@ def render():
                     <div style="flex: 0.8; text-align: center;">
                         <span style="font-size: 1.1rem; font-weight: 600; color: #ffffff;">{stock}</span>
                         <span style="color: #64748b; font-size: 0.8rem;">/</span>
-                        <span style="font-size: 0.9rem; color: #64748b;">{max_s}</span>
+                        <span style="font-size: 0.9rem; color: #10b981; font-weight: 600;">{max_s}</span>
                     </div>
                     <div style="flex: 1.2; padding: 0 12px;">
                         <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.3); border-radius: 3px; overflow: hidden;">
