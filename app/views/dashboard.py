@@ -434,7 +434,7 @@ def render():
             
             # Controles de paginación (botones pequeños)
             if total_paginas > 1:
-                col_pag1, col_pag2, col_pag3, col_pag4 = st.columns([1, 2, 2, 1])
+                col_pag1, col_pag2, col_pag3 = st.columns([1, 3, 1])
                 
                 with col_pag1:
                     if st.button("◀", disabled=(pagina_actual == 1), key="btn_pagina_anterior", use_container_width=True):
@@ -442,12 +442,9 @@ def render():
                         st.rerun()
                 
                 with col_pag2:
-                    st.markdown(f"<p style='text-align: center; color: #94a3b8; font-size: 0.85rem; margin: 0;'>Página {pagina_actual} de {total_paginas}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='text-align: center; color: #94a3b8; font-size: 0.85rem; margin: 0;'>Página {pagina_actual} de {total_paginas} &nbsp;&nbsp;|&nbsp;&nbsp; {inicio+1}-{fin} de {total_productos} productos</p>", unsafe_allow_html=True)
                 
                 with col_pag3:
-                    st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin: 0;'>{inicio+1}-{fin} de {total_productos} productos</p>", unsafe_allow_html=True)
-                
-                with col_pag4:
                     if st.button("▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente", use_container_width=True):
                         st.session_state['pagina_stock'] = pagina_actual + 1
                         st.rerun()
@@ -492,15 +489,15 @@ def render():
                 legend=dict(
                     orientation="h",
                     yanchor="top",
-                    y=-0.2,
+                    y=-0.15,
                     xanchor="center",
                     x=0.5,
-                    font=dict(color="white", size=10),
+                    font=dict(color="white", size=11),
                     bgcolor="rgba(0,0,0,0)",
                     bordercolor="rgba(255,255,255,0.1)",
                     borderwidth=1,
                 ),
-                height=350,
+                height=400,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="white"),
@@ -521,7 +518,7 @@ def render():
                         st.info(f"Seleccionaste: {estado_clickeado}")
         
         # Centro de Notificaciones
-        st.markdown("<h4 style='color: #f59e0b; font-size: 1.5rem; margin-top: 15px;'>⚡ Centro de Notificaciones y Alertas</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #f59e0b; font-size: 1.5rem; margin-top: 5px;'>⚡ Centro de Notificaciones y Alertas</h4>", unsafe_allow_html=True)
         
         if criticos > 0:
             st.markdown(f"""
