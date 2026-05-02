@@ -120,171 +120,138 @@ def render():
 
 def render_catalogo():
     """Renderiza el catálogo de productos optimizado."""
-    # Usar placeholder para carga
     loading = st.empty()
     with loading:
         st.spinner("Cargando catálogo...")
-    
-    # Obtener datos con cache
+
     productos, inventarios, categorias, proveedores = _get_productos_data()
-    
-    # Construir índice de búsqueda (una sola vez)
-    if '_search_index' not in st.session_state or st.session_state.get('_catalogo_hash') != hashlib.md5(str(len(productos)).encode()).hexdigest():
-        st.session_state['_search_index'] = _build_search_index(productos, inventarios)
-        st.session_state['_catalogo_hash'] = hashlib.md5(str(len(productos)).encode()).hexdigest()
-    
-    search_index = st.session_state['_search_index']
-    
+
     loading.empty()
-    
-    # Filtros
+
+    st.markdown("<h3 style='color: #00f0ff;'>🏪 Catálogo de Productos</h3>", unsafe_allow_html=True)
+
     col_busq1, col_busq2, col_busq3 = st.columns([2, 1, 1])
-    
+
     with col_busq1:
         busqueda = st.text_input("🔍 Buscar", placeholder="Nombre o SKU...", key="cat_busqueda")
-    
+
     with col_busq2:
         cat_options = ["Todas"] + [c.get("nombre", "Sin categoría") for c in categorias]
         cat_filtro = st.selectbox("Categoría", cat_options, key="cat_categoria")
-    
+
     with col_busq3:
         estado_options = ["Todos", "Agotado", "Crítico", "Bajo", "Saludable"]
         estado_filtro = st.selectbox("Estado", estado_options, key="cat_estado")
-    
-    # Filtrar usando índice (más rápido)
+
     productos_filtrados = productos
-    
+
     if busqueda:
         busq_lower = busqueda.lower()
-        productos_filtrados = [p for p in productos_filtrados 
-                              if busq_lower in search_index.get(p.get("id"), {}).get("nombre", "") 
-                              or busq_lower in search_index.get(p.get("id"), {}).get("sku", "")]
-    
+        productos_filtrados = [p for p in productos_filtrados
+                              if busq_lower in p.get("nombre", "").lower()
+                              or busq_lower in p.get("sku", "").lower()]
+
     if cat_filtro != "Todas":
         cat_id = next((c.get("id") for c in categorias if c.get("nombre") == cat_filtro), None)
         productos_filtrados = [p for p in productos_filtrados if p.get("categoria_id") == cat_id]
-    
+
     if estado_filtro != "Todos":
-        productos_filtrados = [p for p in productos_filtrados 
-                              if search_index.get(p.get("id"), {}).get("estado") == estado_filtro]
-    
-    # Contador
-    st.markdown(f"""
-    <div style="padding: 10px 15px; background: rgba(0,240,255,0.1); border-radius: 10px; margin-bottom: 15px;">
-        <span style="color: #00f0ff; font-weight: 600;">{len(productos_filtrados)}</span>
-        <span style="color: #94a3b8;"> productos</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Exportar (solo si hay productos)
-    if productos:
-        # Preparar DataFrame una sola vez
-        df_key = f"df_export_{len(productos)}"
-        if df_key not in st.session_state:
-            df_export = pd.DataFrame([{
-                "ID": p.get("id"),
-                "Nombre": p.get("nombre"),
-                "SKU": p.get("sku"),
-                "Precio Venta": p.get("precio_venta"),
-                "Categoría": next((c.get("nombre") for c in categorias if c.get("id") == p.get("categoria_id")), "")
-            } for p in productos])
-            st.session_state[df_key] = df_export
-        else:
-            df_export = st.session_state[df_key]
-        
-        excel_data = to_excel(df_export)
-        col_exp_izq, _, col_exp_der = st.columns([1, 2, 1])
-        with col_exp_izq:
-            st.download_button("📊 Excel", data=excel_data, file_name="productos.xlsx", use_container_width=True, key="btn_excel_cat")
-        with col_exp_der:
-            json_data = df_export.to_json(orient='records', indent=2)
-            st.download_button("📄 JSON", data=json_data, file_name="productos.json", use_container_width=True, key="btn_json_cat")
-    
-    # Grid de productos con paginación lazy
+        productos_filtrados = [p for p in productos_filtrados
+                              if _get_estado_producto(p.get("id"), inventarios, productos_filtrados) == estado_filtro]
+
+    st.markdown(f"<span style='color: #00f0ff; font-weight: 600;'>{len(productos_filtrados)}</span> <span style='color: #94a3b8;'>productos encontrados</span>", unsafe_allow_html=True)
+    st.markdown("---")
+
     if productos_filtrados:
-        # Mapas de color pre-calculados
-        color_map = {
-            "Agotado": "#6b7280",
-            "Crítico": "#ef4444",
-            "Bajo": "#f59e0b",
-            "Saludable": "#10b981"
-        }
-        
-        # Limitar cantidad mostrada inicialmente para rendimiento
-        items_por_pagina = 10
-        if 'cat_pagina' not in st.session_state:
-            st.session_state['cat_pagina'] = 1
-        
-        total_paginas = max(1, (len(productos_filtrados) + items_por_pagina - 1) // items_por_pagina)
-        pagina_actual = min(st.session_state['cat_pagina'], total_paginas)
-        
-        inicio = (pagina_actual - 1) * items_por_pagina
-        fin = min(inicio + items_por_pagina, len(productos_filtrados))
-        
-        productos_pagina = productos_filtrados[inicio:fin]
-        
-        # Renderizar productos
-        for prod in productos_pagina:
-            pid = prod.get("id")
-            inv = next((i for i in inventarios if i.get("producto_id") == pid), None)
-            stock = inv.get("cantidad", 0) if inv else 0
-            max_s = prod.get("stock_maximo", 100) or 100
-            
-            estado = search_index.get(pid, {}).get("estado", "Saludable")
-            estado_color = color_map.get(estado, "#10b981")
-            pct = calcular_porcentaje(stock, max_s)
-            
-            cat_nombre = next((c.get("nombre") for c in categorias if c.get("id") == prod.get("categoria_id")), "General")
-            emoji = get_categoria_emoji(cat_nombre)
-            
-            with st.container():
-                col_img, col_info = st.columns([1, 3])
-                
-                with col_img:
-                    img_url = prod.get("imagen_url")
-                    if img_url and os.path.exists(img_url):
-                        try:
-                            st.image(img_url, width=150)
-                        except:
-                            st.markdown(f"<div style='font-size: 3rem;'>{emoji}</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"<div style='font-size: 3rem;'>{emoji}</div>", unsafe_allow_html=True)
-                
-                with col_info:
-                    if st.button("✏️ Editar", key=f"edit_{pid}"):
-                        set_editar_producto(pid)
-                        st.rerun()
-                    
-                    st.markdown(f"<h4 style='color: #00f0ff;'>{prod.get('nombre', 'Producto')}</h4>", unsafe_allow_html=True)
-                    st.markdown(f"<h3>€{prod.get('precio_venta', 0):.2f}</h3>", unsafe_allow_html=True)
-                    st.caption(f"📦 SKU: {prod.get('sku', 'N/A')} | 🏷️ {cat_nombre}")
-                    st.write(f"📊 **Stock:** {stock} {prod.get('unidad', 'uds')}")
-                    
-                    st.progress(pct / 100)
-                    st.caption(f"{pct:.0f}% del máximo")
-                    
+        num_cols = 4
+        rows = [productos_filtrados[i:i+num_cols] for i in range(0, len(productos_filtrados), num_cols)]
+
+        for row in rows:
+            cols = st.columns(num_cols)
+            for idx, prod in enumerate(row):
+                pid = prod.get("id")
+                inv = next((i for i in inventarios if i.get("producto_id") == pid), None)
+                stock = inv.get("cantidad", 0) if inv else 0
+                max_s = prod.get("stock_maximo", 100) or 100
+                estado = _get_estado_producto(pid, inventarios, productos_filtrados)
+
+                cat_nombre = next((c.get("nombre") for c in categorias if c.get("id") == prod.get("categoria_id")), "General")
+
+                color_estado = {"Agotado": "#9ca3af", "Crítico": "#ef4444", "Bajo": "#f59e0b", "Saludable": "#10b981"}.get(estado, "#10b981")
+
+                img_url = prod.get("imagen_url")
+                tiene_img = img_url and os.path.exists(img_url)
+
+                descripcion = prod.get("descripcion", "") or f"{prod.get('unidad', 'unidad')} • {cat_nombre}"
+
+                with cols[idx]:
                     st.markdown(f"""
-                    <div style="padding: 8px 16px; border-radius: 8px; text-align: center; 
-                        background: {estado_color}; color: white; font-weight: 600;">
-                        {estado}
+                    <style>
+                        div[data-testid="stHorizontalBlock"] > div:nth-child({idx+1}) .product-card-{pid} {{
+                            background: linear-gradient(145deg, #ffffff, #f8fafc);
+                            border-radius: 16px;
+                            padding: 0;
+                            margin-bottom: 15px;
+                            border: 1px solid #e2e8f0;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+                            transition: all 0.3s ease;
+                            overflow: hidden;
+                        }}
+                        div[data-testid="stHorizontalBlock"] > div:nth-child({idx+1}) .product-card-{pid}:hover {{
+                            transform: translateY(-4px);
+                            box-shadow: 0 8px 25px rgba(0,240,255,0.2);
+                            border-color: #00f0ff;
+                        }}
+                    </style>
+                    """, unsafe_allow_html=True)
+
+                    st.markdown(f"<div class='product-card-{pid}'>", unsafe_allow_html=True)
+
+                    if tiene_img:
+                        try:
+                            st.image(img_url, width=None, use_container_width=True)
+                        except Exception as e:
+                            st.markdown(f"<div style='width:100%;height:130px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='width:100%;height:130px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+
+                    st.markdown(f"<div style='padding:12px 14px;'>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size:14px;font-weight:600;color:#1e293b;margin:0 0 4px 0;line-height:1.3;height:36px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;'>{prod.get('nombre', 'Producto')}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size:11px;color:#64748b;margin:0 0 8px 0;height:14px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;'>{descripcion}</p>", unsafe_allow_html=True)
+
+                    stock_pct = calcular_porcentaje(stock, max_s)
+                    color_barra = "#ef4444" if stock_pct <= 20 else "#f59e0b" if stock_pct <= 50 else "#10b981"
+
+                    st.markdown(f"""
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:18px;font-weight:700;color:#0f172a;">€{prod.get('precio_venta', 0):.2f}</span>
+                        <span style="font-size:10px;background:{color_estado};color:white;padding:3px 8px;border-radius:12px;font-weight:600;">{estado}</span>
                     </div>
                     """, unsafe_allow_html=True)
-                
-                st.markdown("---")
-        
-        # Controles de paginación
-        if total_paginas > 1:
-            col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
-            with col_pag1:
-                if st.button("⬅️ Anterior", disabled=pagina_actual <= 1, key="btn_pag_ant"):
-                    st.session_state['cat_pagina'] = pagina_actual - 1
-                    st.rerun()
-            with col_pag2:
-                st.markdown(f"<p style='text-align: center;'>Página {pagina_actual} de {total_paginas}</p>", unsafe_allow_html=True)
-            with col_pag3:
-                if st.button("Siguiente ➡️", disabled=pagina_actual >= total_paginas, key="btn_pag_sig"):
-                    st.session_state['cat_pagina'] = pagina_actual + 1
-                    st.rerun()
+
+                    stock_txt = f"{stock} {prod.get('unidad', 'uds')}"
+
+                    st.markdown(f"""
+                    <div style="background:#f8fafc;padding:8px 12px;border-radius:0 0 12px 12px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;color:#64748b;">📦 {stock_txt}</span>
+                        <div style="width:50px;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;">
+                            <div style="width:{stock_pct}%;height:100%;background:{color_barra};border-radius:2px;"></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    col_edit, col_del = st.columns(2)
+                    with col_edit:
+                        if st.button("✏️", key=f"edit_card_{pid}", use_container_width=True):
+                            set_editar_producto(pid)
+                            st.session_state['producto_tab_activo'] = 2
+                            st.rerun()
+                    with col_del:
+                        if st.button("🗑️", key=f"del_card_{pid}", use_container_width=True):
+                            pass
+
+                    st.markdown("</div></div>", unsafe_allow_html=True)
+
     else:
         st.info("No hay productos en el catálogo")
 
