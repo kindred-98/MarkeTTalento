@@ -3,6 +3,7 @@ Página de Productos - Optimizada
 """
 import streamlit as st
 import os
+import base64
 import pandas as pd
 import hashlib
 from datetime import datetime
@@ -116,6 +117,67 @@ def render():
     else:
         with content_placeholder.container():
             render_edicion()
+
+
+@st.dialog("Detalle del Producto", width="medium")
+def _ver_producto_modal(pid):
+    productos, inventarios, categorias, proveedores = _get_productos_data()
+    prod = next((p for p in productos if p.get("id") == pid), None)
+    if not prod:
+        st.error("Producto no encontrado")
+        return
+
+    inv = next((i for i in inventarios if i.get("producto_id") == pid), None)
+    stock = inv.get("cantidad", 0) if inv else 0
+    max_s = prod.get("stock_maximo", 100) or 100
+    estado = _get_estado_producto(pid, inventarios, productos)
+    cat_nombre = next((c.get("nombre") for c in categorias if c.get("id") == prod.get("categoria_id")), "General")
+    prov_nombre = next((p.get("nombre") for p in proveedores if p.get("id") == prod.get("proveedor_id")), "Sin proveedor")
+    color_estado = {"Agotado": "#6b7280", "Crítico": "#ef4444", "Bajo": "#f59e0b", "Saludable": "#10b981"}.get(estado, "#10b981")
+    pct = calcular_porcentaje(stock, max_s)
+    color_barra = "#ef4444" if pct <= 20 else "#f59e0b" if pct <= 50 else "#10b981"
+    desc = prod.get("descripcion", "") or f"{prod.get('unidad', 'unidad')} • {cat_nombre}"
+
+    col_img, col_info = st.columns([1, 1])
+
+    with col_img:
+        img_url = prod.get("imagen_url")
+        if img_url and os.path.exists(img_url):
+            st.image(img_url, width=300, use_container_width=True)
+        else:
+            st.markdown(f"<div style='width:100%;height:250px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:5rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+
+    with col_info:
+        st.markdown(f"<h2 style='color:#f8fafc;margin:0 0 6px 0;'>{prod.get('nombre', '')}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#94a3b8;font-size:13px;margin:0 0 12px 0;text-transform:uppercase;'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:2rem;font-weight:700;color:#00f0ff;margin-bottom:4px;'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:14px;color:#94a3b8;font-weight:400;'>€/ud</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<span style='display:inline-block;padding:5px 14px;border-radius:14px;font-size:13px;font-weight:600;color:white;background:{color_estado};margin-bottom:12px;'>{estado}</span>", unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="color:#e2e8f0;font-size:13px;font-weight:600;">📦 {stock} {prod.get('unidad', 'uds')}</span>
+                <span style="color:{color_barra};font-size:12px;font-weight:600;">{pct:.0f}%</span>
+            </div>
+            <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
+                <div style="width:{pct}%;height:100%;background:{color_barra};border-radius:4px;"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown(f"**Descripción:** {desc}")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("SKU", prod.get("sku", "N/A"))
+    c2.metric("Unidad", prod.get("unidad", "N/A"))
+    c3.metric("Proveedor", prov_nombre)
+    c4.metric("Stock máx", prod.get("stock_maximo", 0))
+
+    c5, c6, c7 = st.columns(3)
+    c5.metric("Precio coste", f"€{prod.get('precio_coste') or 0:.2f}")
+    c6.metric("Días reposición", f"{prod.get('tiempo_reposicion', 3)} días")
+    c7.metric("Código barras", prod.get("codigo_barras") or "N/A")
 
 
 def render_catalogo():
@@ -302,14 +364,17 @@ def render_catalogo():
                     </div>
                     """, unsafe_allow_html=True)
 
-                    col_edit, col_del = st.columns(2)
+                    col_vermas, col_edit, col_del = st.columns(3)
+                    with col_vermas:
+                        if st.button("👁️", key=f"vermas_{pid}", use_container_width=True, type="secondary"):
+                            _ver_producto_modal(pid)
                     with col_edit:
-                        if st.button("✏️ Editar", key=f"edit_card_{pid}", use_container_width=True, type="secondary"):
+                        if st.button("✏️", key=f"edit_card_{pid}", use_container_width=True, type="secondary"):
                             set_editar_producto(pid)
                             st.session_state['producto_tab_activo'] = 2
                             st.rerun()
                     with col_del:
-                        if st.button("🗑️ Eliminar", key=f"del_card_{pid}", use_container_width=True, type="secondary"):
+                        if st.button("🗑️", key=f"del_card_{pid}", use_container_width=True, type="secondary"):
                             pass
 
                     st.markdown("</div></div>", unsafe_allow_html=True)
