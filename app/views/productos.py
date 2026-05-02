@@ -136,7 +136,7 @@ def _ver_producto_modal(pid):
     color_estado = {"Agotado": "#6b7280", "Crítico": "#ef4444", "Bajo": "#f59e0b", "Saludable": "#10b981"}.get(estado, "#10b981")
     pct = calcular_porcentaje(stock, max_s)
     color_barra = "#ef4444" if pct <= 20 else "#f59e0b" if pct <= 50 else "#10b981"
-    desc = prod.get("descripcion", "") or f"{prod.get('unidad', 'unidad')} • {cat_nombre}"
+    desc = prod.get("descripcion", "") or "Descripción"
 
     col_img, col_info = st.columns([1, 1])
 
