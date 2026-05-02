@@ -162,6 +162,83 @@ def render_catalogo():
     st.markdown(f"<span style='color: #00f0ff; font-weight: 600;'>{len(productos_filtrados)}</span> <span style='color: #94a3b8;'>productos encontrados</span>", unsafe_allow_html=True)
     st.markdown("---")
 
+    st.markdown("""
+    <style>
+    /* Estilo para cards de productos tipo dashboard */
+    .product-card-dark {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(51, 65, 85, 0.5));
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 0;
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    .product-card-dark:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 240, 255, 0.25);
+        border-color: rgba(0, 240, 255, 0.4);
+    }
+    .product-card-dark:hover .product-img-container {
+        transform: scale(1.05);
+    }
+    .product-img-container {
+        width: 100%;
+        height: 130px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(51, 65, 85, 0.6));
+        transition: transform 0.3s ease;
+    }
+    .product-name-dark {
+        font-size: 16px;
+        font-weight: 700;
+        color: #f8fafc;
+        margin: 0 0 4px 0;
+        line-height: 1.3;
+    }
+    .product-category-dark {
+        font-size: 11px;
+        color: #94a3b8;
+        margin: 0 0 10px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .product-price-dark {
+        font-size: 24px;
+        font-weight: 700;
+        color: #00f0ff;
+    }
+    .product-badge-dark {
+        font-size: 12px;
+        padding: 5px 12px;
+        border-radius: 14px;
+        color: white;
+        font-weight: 600;
+    }
+    /* Botones opacos con animación */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button[data-testid="baseButton-secondary"],
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button[data-testid="baseButton-secondary"] {
+        background: rgba(30, 41, 59, 0.6) !important;
+        border: 1px solid rgba(100, 116, 139, 0.3) !important;
+        color: #e2e8f0 !important;
+        font-size: 0.85rem !important;
+        padding: 6px 8px !important;
+        border-radius: 8px !important;
+        min-height: 36px !important;
+        transition: all 0.3s ease !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button[data-testid="baseButton-secondary"]:hover,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button[data-testid="baseButton-secondary"]:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(0, 240, 255, 0.3) !important;
+        border-color: rgba(0, 240, 255, 0.5) !important;
+        background: rgba(51, 65, 85, 0.8) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     if productos_filtrados:
         num_cols = 4
         rows = [productos_filtrados[i:i+num_cols] for i in range(0, len(productos_filtrados), num_cols)]
@@ -177,7 +254,7 @@ def render_catalogo():
 
                 cat_nombre = next((c.get("nombre") for c in categorias if c.get("id") == prod.get("categoria_id")), "General")
 
-                color_estado = {"Agotado": "#9ca3af", "Crítico": "#ef4444", "Bajo": "#f59e0b", "Saludable": "#10b981"}.get(estado, "#10b981")
+                color_estado = {"Agotado": "#6b7280", "Crítico": "#ef4444", "Bajo": "#f59e0b", "Saludable": "#10b981"}.get(estado, "#10b981")
 
                 img_url = prod.get("imagen_url")
                 tiene_img = img_url and os.path.exists(img_url)
@@ -185,69 +262,54 @@ def render_catalogo():
                 descripcion = prod.get("descripcion", "") or f"{prod.get('unidad', 'unidad')} • {cat_nombre}"
 
                 with cols[idx]:
-                    st.markdown(f"""
-                    <style>
-                        div[data-testid="stHorizontalBlock"] > div:nth-child({idx+1}) .product-card-{pid} {{
-                            background: linear-gradient(145deg, #ffffff, #f8fafc);
-                            border-radius: 16px;
-                            padding: 0;
-                            margin-bottom: 15px;
-                            border: 1px solid #e2e8f0;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-                            transition: all 0.3s ease;
-                            overflow: hidden;
-                        }}
-                        div[data-testid="stHorizontalBlock"] > div:nth-child({idx+1}) .product-card-{pid}:hover {{
-                            transform: translateY(-4px);
-                            box-shadow: 0 8px 25px rgba(0,240,255,0.2);
-                            border-color: #00f0ff;
-                        }}
-                    </style>
-                    """, unsafe_allow_html=True)
-
-                    st.markdown(f"<div class='product-card-{pid}'>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='product-card-dark'>", unsafe_allow_html=True)
 
                     if tiene_img:
                         try:
-                            st.image(img_url, width=None, use_container_width=True)
+                            col_left, col_img, col_right = st.columns([1, 2, 1])
+                            with col_img:
+                                st.image(img_url, width=200, use_container_width=False)
                         except Exception as e:
-                            st.markdown(f"<div style='width:100%;height:130px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='width:100%;height:130px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"<div style='width:100%;height:130px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='width:100%;height:130px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
 
                     st.markdown(f"<div style='padding:12px 14px;'>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='font-size:14px;font-weight:600;color:#1e293b;margin:0 0 4px 0;line-height:1.3;height:36px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;'>{prod.get('nombre', 'Producto')}</p>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='font-size:11px;color:#64748b;margin:0 0 8px 0;height:14px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;'>{descripcion}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p class='product-name-dark'>{prod.get('nombre', 'Producto')}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p class='product-category-dark'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
 
                     stock_pct = calcular_porcentaje(stock, max_s)
                     color_barra = "#ef4444" if stock_pct <= 20 else "#f59e0b" if stock_pct <= 50 else "#10b981"
 
                     st.markdown(f"""
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <span style="font-size:18px;font-weight:700;color:#0f172a;">€{prod.get('precio_venta', 0):.2f}</span>
-                        <span style="font-size:10px;background:{color_estado};color:white;padding:3px 8px;border-radius:12px;font-weight:600;">{estado}</span>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span class='product-price-dark'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:12px;color:#94a3b8;font-weight:400;'>€/ud</span></span>
+                        <span class='product-badge-dark' style='background:{color_estado};'>{estado}</span>
                     </div>
                     """, unsafe_allow_html=True)
 
                     stock_txt = f"{stock} {prod.get('unidad', 'uds')}"
 
                     st.markdown(f"""
-                    <div style="background:#f8fafc;padding:8px 12px;border-radius:0 0 12px 12px;display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:11px;color:#64748b;">📦 {stock_txt}</span>
-                        <div style="width:50px;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;">
-                            <div style="width:{stock_pct}%;height:100%;background:{color_barra};border-radius:2px;"></div>
+                    <div style="background:rgba(0,0,0,0.2);padding:10px 14px;border-radius:8px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <span style="font-size:13px;color:#e2e8f0;font-weight:600;">📦 {stock_txt}</span>
+                            <span style="font-size:12px;color:{color_barra};font-weight:600;">{stock_pct:.0f}%</span>
+                        </div>
+                        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
+                            <div style="width:{stock_pct}%;height:100%;background:{color_barra};border-radius:4px;"></div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
 
                     col_edit, col_del = st.columns(2)
                     with col_edit:
-                        if st.button("✏️", key=f"edit_card_{pid}", use_container_width=True):
+                        if st.button("✏️ Editar", key=f"edit_card_{pid}", use_container_width=True, type="secondary"):
                             set_editar_producto(pid)
                             st.session_state['producto_tab_activo'] = 2
                             st.rerun()
                     with col_del:
-                        if st.button("🗑️", key=f"del_card_{pid}", use_container_width=True):
+                        if st.button("🗑️ Eliminar", key=f"del_card_{pid}", use_container_width=True, type="secondary"):
                             pass
 
                     st.markdown("</div></div>", unsafe_allow_html=True)
