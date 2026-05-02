@@ -172,16 +172,55 @@ def _ver_producto_modal(pid):
 
     st.markdown("---")
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("SKU", prod.get("sku", "N/A"))
-    c2.metric("Unidad", prod.get("unidad", "N/A"))
-    c3.metric("Proveedor", prov_nombre)
-    c4.metric("Stock máx", prod.get("stock_maximo", 0))
+    st.markdown("""
+    <style>
+    .modal-metric {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 12px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        margin-bottom: 8px;
+    }
+    .modal-metric:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        border-color: rgba(0, 240, 255, 0.5);
+        background: rgba(30, 41, 59, 0.8);
+    }
+    .modal-metric-label {
+        font-size: 10px;
+        color: #64748b;
+        text-transform: uppercase;
+        margin: 0 0 4px 0;
+    }
+    .modal-metric-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #f8fafc;
+        margin: 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    c5, c6, c7 = st.columns(3)
-    c5.metric("Precio coste", f"€{prod.get('precio_coste') or 0:.2f}")
-    c6.metric("Días reposición", f"{prod.get('tiempo_reposicion', 3)} días")
-    c7.metric("Código barras", prod.get("codigo_barras") or "N/A")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>SKU</p><p class='modal-metric-value'>{prod.get('sku', 'N/A')}</p></div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Unidad</p><p class='modal-metric-value'>{prod.get('unidad', 'N/A')}</p></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Proveedor</p><p class='modal-metric-value'>{prov_nombre}</p></div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Stock máx</p><p class='modal-metric-value'>{prod.get('stock_maximo', 0)}</p></div>", unsafe_allow_html=True)
+
+    col5, col6, col7 = st.columns(3)
+    with col5:
+        st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Precio coste</p><p class='modal-metric-value'>€{prod.get('precio_coste') or 0:.2f}</p></div>", unsafe_allow_html=True)
+    with col6:
+        st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Días reposición</p><p class='modal-metric-value'>{prod.get('tiempo_reposicion', 3)} días</p></div>", unsafe_allow_html=True)
+    with col7:
+        st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Código barras</p><p class='modal-metric-value'>{prod.get('codigo_barras') or 'N/A'}</p></div>", unsafe_allow_html=True)
 
 
 def render_catalogo():
