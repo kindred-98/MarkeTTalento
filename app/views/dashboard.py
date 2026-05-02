@@ -12,16 +12,16 @@ from app.utils.state import get_filtro_dashboard, update_dashboard_metrics, get_
 from app.logic.inventario import calcular_estado_stock
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=1, show_spinner=False)
 def _get_dashboard_data():
-    """Cachea datos del dashboard por 60 segundos."""
+    """Cachea datos del dashboard por 1 segundo."""
     inventarios = api_get("/api/v1/inventario", use_cache=False)
     productos = api_get("/api/v1/productos", use_cache=False)
     resumen = api_get("/api/v1/inventario/resumen", use_cache=False)
     return inventarios, productos, resumen
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=2, show_spinner=False)
 def _calcular_estados_inventario(inventarios_json: str, productos_json: str):
     """Cachea cálculos de estados basados en datos serializados."""
     inventarios = json.loads(inventarios_json)

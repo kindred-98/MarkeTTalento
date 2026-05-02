@@ -15,7 +15,7 @@ from app.components.success_modal import show_success_modal
 from app.config import PRODUCTOS_POR_PAGINA
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=5, show_spinner=False)
 def _get_productos_data():
     """Cachea datos de productos, inventarios, categorías y proveedores."""
     productos = api_get("/api/v1/productos", use_cache=False)

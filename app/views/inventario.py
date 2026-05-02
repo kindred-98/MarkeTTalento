@@ -16,7 +16,7 @@ from app.logic.inventario import (
 from app.components.stock_badge import render_stock_badge
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=5, show_spinner=False)
 def _get_inventario_data():
     """Cachea datos de inventario y productos."""
     inventarios = api_get("/api/v1/inventario", use_cache=False)
@@ -24,7 +24,7 @@ def _get_inventario_data():
     return inventarios, productos
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=5, show_spinner=False)
 def _procesar_inventario(inventarios_json: str, productos_json: str, filtro_estado: str, orden: str):
     """Cachea el procesamiento de datos de inventario."""
     inventarios = json.loads(inventarios_json)

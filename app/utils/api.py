@@ -8,8 +8,8 @@ from functools import wraps
 from app.config import API_URL
 
 
-# Cache para peticiones GET (5 minutos de TTL)
-@st.cache_data(ttl=300, show_spinner=False)
+# Cache para peticiones GET (10 segundos de TTL)
+@st.cache_data(ttl=10, show_spinner=False)
 def _cached_api_get(endpoint: str, timeout: int = 5) -> tuple:
     """Versión cacheada de petición GET - retorna tupla (status, data)."""
     try:
