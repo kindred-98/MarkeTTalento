@@ -451,19 +451,8 @@ def render():
                     if st.button("▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente", use_container_width=True):
                         st.session_state['pagina_stock'] = pagina_actual + 1
                         st.rerun()
-                
-                with col_pag2:
-                    st.markdown(f"<p style='text-align: center; color: #94a3b8; font-size: 0.85rem; margin: 0;'>Página {pagina_actual} de {total_paginas}</p>", unsafe_allow_html=True)
-                
-                with col_pag3:
-                    st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin: 0;'>{inicio+1}-{fin} de {total_productos}</p>", unsafe_allow_html=True)
-                
-                with col_pag4:
-                    if st.button("▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente"):
-                        st.session_state['pagina_stock'] = pagina_actual + 1
-                        st.rerun()
-        else:
-            st.info("No hay productos para mostrar")
+            else:
+                st.info("No hay productos para mostrar")
     
     # ============================================
     # COLUMNA DERECHA: Gráfico + Alertas
