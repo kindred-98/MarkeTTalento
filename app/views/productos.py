@@ -148,10 +148,15 @@ def _ver_producto_modal(pid):
             st.markdown(f"<div style='width:100%;height:250px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:5rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
 
     with col_info:
-        st.markdown(f"<h2 style='color:#f8fafc;margin:0 0 6px 0;'>{prod.get('nombre', '')}</h2>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#94a3b8;font-size:13px;margin:0 0 12px 0;text-transform:uppercase;'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size:2rem;font-weight:700;color:#00f0ff;margin-bottom:4px;'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:14px;color:#94a3b8;font-weight:400;'>€/ud</span></div>", unsafe_allow_html=True)
-        st.markdown(f"<span style='display:inline-block;padding:5px 14px;border-radius:14px;font-size:13px;font-weight:600;color:white;background:{color_estado};margin-bottom:12px;'>{estado}</span>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:#f8fafc;margin:0 0 4px 0;'>{prod.get('nombre', '')}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#94a3b8;font-size:13px;margin:0 0 6px 0;text-transform:uppercase;'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#cbd5e1;font-size:15px;margin:0 0 120px 0;'>{desc}</p>", unsafe_allow_html=True)
+
+        col_precio, col_estado = st.columns([2, 1])
+        with col_precio:
+            st.markdown(f"<div style='font-size:2rem;font-weight:700;color:#00f0ff;'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:14px;color:#94a3b8;font-weight:400;'>€/ud</span></div>", unsafe_allow_html=True)
+        with col_estado:
+            st.markdown(f"<div style='text-align:right;padding-top:0px;'><span style='display:inline-block;padding:5px 14px;border-radius:14px;font-size:15px;font-weight:600;color:white;background:{color_estado};'>{estado}</span></div>", unsafe_allow_html=True)
 
         st.markdown(f"""
         <div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:10px;">
@@ -166,7 +171,6 @@ def _ver_producto_modal(pid):
         """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown(f"**Descripción:** {desc}")
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("SKU", prod.get("sku", "N/A"))
