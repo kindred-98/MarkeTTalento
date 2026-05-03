@@ -477,78 +477,106 @@ def render_catalogo():
 
 
 def render_nuevo():
-    """Renderiza el formulario de nuevo producto optimizado."""
+    """Renderiza el formulario de nuevo producto compacto."""
     form_version = st.session_state.get('form_version', 0)
     
     st.markdown("<h4 style='color: #00f0ff;'>➕ Nuevo Producto</h4>", unsafe_allow_html=True)
     
-    # Cargar datos solo si es necesario
+    # Cargar datos
     categorias = api_get("/api/v1/categorias", use_cache=True)
     proveedores = api_get("/api/v1/proveedores", use_cache=True)
     productos_existentes = api_get("/api/v1/productos", use_cache=True)
     nombres_existentes = [p.get("nombre", "").lower() for p in productos_existentes]
+    skus_existentes = [p.get("sku", "").lower() for p in productos_existentes]
+    barras_existentes = [p.get("codigo_barras", "").lower() for p in productos_existentes if p.get("codigo_barras")]
     
-    # Formulario con st.form para mejor rendimiento
-    with st.form(f"form_nuevo_producto_{form_version}"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            sku = st.text_input("Código SKU *", placeholder="Ej: PROD-001", key=f"new_sku_{form_version}")
-            nombre = st.text_input("Nombre *", placeholder="Ej: Leche Entera", key=f"new_nombre_{form_version}")
-            codigo_barras = st.text_input("Código de barras", key=f"new_codigo_barras_{form_version}")
-            precio = st.number_input("Precio de venta (€) *", min_value=0.0, value=0.0, step=0.01, key=f"new_precio_{form_version}")
-        
-        with col2:
-            unidad = st.selectbox("Unidad *", ["unidad", "kg", "litro", "paquete", "caja", "botella"], key=f"new_unidad_{form_version}")
-            precio_coste = st.number_input("Precio de coste (€)", min_value=0.0, value=0.0, key=f"new_precio_coste_{form_version}")
-            tiempo_repo = st.number_input("Días de reposición", min_value=1, value=3, key=f"new_tiempo_{form_version}")
-            
-            prov_options = {p.get("nombre", "Sin nombre"): p.get("id") for p in proveedores}
-            prov_options["Sin proveedor"] = None
-            proveedor_nombre = st.selectbox("Proveedor", list(prov_options.keys()), key=f"new_proveedor_{form_version}")
-            proveedor_id = prov_options.get(proveedor_nombre)
-        
-        st.markdown("---")
-        st.markdown("<h5 style='color: #00f0ff;'>📦 Configuración de Stock</h5>", unsafe_allow_html=True)
-        
-        col_stock1, col_stock2 = st.columns(2)
-        with col_stock1:
-            unidad_ingreso = st.number_input("📥 Unidad de ingreso *", min_value=1, value=10, key=f"new_unidad_ingreso_{form_version}")
-        
-        with col_stock2:
-            stock_max = st.number_input("📦 Stock máximo *", min_value=0, value=100, key=f"new_stock_max_{form_version}")
-        
-        col3, col4 = st.columns(2)
-        with col3:
-            cat_options = {c.get("nombre"): c.get("id") for c in categorias}
-            categoria_nombre = st.selectbox("Categoría *", list(cat_options.keys()), key=f"new_cat_{form_version}")
-            categoria_id = cat_options.get(categoria_nombre)
-            
-            descripcion = st.text_area("Descripción", key=f"new_descripcion_{form_version}", height=100)
-        
-        with col4:
-            st.markdown("<label style='color: #94a3b8;'>📷 Foto del producto</label>", unsafe_allow_html=True)
-            imagen_subida = st.file_uploader("", type=['png', 'jpg', 'jpeg'], key=f"new_imagen_{form_version}", label_visibility="collapsed")
-            
-            if imagen_subida:
-                st.image(imagen_subida, width=150, caption="Vista previa")
-        
-        # Validar campos
-        campos_ok = sku and nombre and precio >= 0.01 and categoria_id and stock_max > 0 and unidad_ingreso >= 1
-        
-        col_btn1, col_btn2 = st.columns([3, 1])
-        with col_btn1:
-            submitted = st.form_submit_button("💾 Crear producto", type="primary", use_container_width=True, disabled=not campos_ok)
-        
-        if not campos_ok:
-            with col_btn2:
-                st.caption("⚠️ Completa los campos obligatorios (*)")
+    # Fila 1: SKU, Nombre, Precio venta, Precio coste
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        sku = st.text_input("SKU *", placeholder="PROD-001", key=f"new_sku_{form_version}")
+    with c2:
+        nombre = st.text_input("Nombre *", placeholder="Leche Entera", key=f"new_nombre_{form_version}")
+    with c3:
+        precio = st.number_input("P. Venta € *", min_value=0.0, value=0.0, step=0.01, key=f"new_precio_{form_version}")
+    with c4:
+        precio_coste = st.number_input("P. Coste €", min_value=0.0, value=0.0, key=f"new_precio_coste_{form_version}")
     
-    # Procesar fuera del form
-    if submitted:
-        if nombre.lower() in nombres_existentes:
-            st.error("❌ Ya existe un producto con ese nombre")
-        else:
+    # Fila 2: Unidad, Categoría, Código barras, Tiempo repo
+    c5, c6, c7, c8 = st.columns(4)
+    with c5:
+        unidad = st.selectbox("Unidad *", ["unidad", "kg", "litro", "paquete", "caja", "botella"], key=f"new_unidad_{form_version}")
+    with c6:
+        cat_options = {c.get("nombre"): c.get("id") for c in categorias}
+        categoria_nombre = st.selectbox("Categoría *", list(cat_options.keys()), key=f"new_cat_{form_version}")
+        categoria_id = cat_options.get(categoria_nombre)
+    with c7:
+        codigo_barras = st.text_input("Cód. barras", key=f"new_codigo_barras_{form_version}")
+    with c8:
+        tiempo_repo = st.number_input("Días repo", min_value=1, value=3, key=f"new_tiempo_{form_version}")
+    
+    # Fila 3: Proveedor, Cantidad inicial, Stock máximo, Stock mínimo
+    c9, c10, c11, c12 = st.columns(4)
+    with c9:
+        prov_options = {p.get("nombre", "Sin nombre"): p.get("id") for p in proveedores}
+        prov_options["Sin proveedor"] = None
+        proveedor_nombre = st.selectbox("Proveedor", list(prov_options.keys()), key=f"new_proveedor_{form_version}")
+        proveedor_id = prov_options.get(proveedor_nombre)
+    with c10:
+        unidad_ingreso = st.number_input("Cant. inicial *", min_value=1, value=10, key=f"new_unidad_ingreso_{form_version}")
+    with c11:
+        stock_max = st.number_input("Stock máx *", min_value=1, value=100, key=f"new_stock_max_{form_version}")
+    with c12:
+        st.number_input("Stock mín", min_value=0, value=0, disabled=True, key=f"new_stock_min_{form_version}")
+        stock_min = 0
+    
+    # Fila 4: Descripción + Imagen
+    c13, c14 = st.columns([2, 1])
+    with c13:
+        descripcion = st.text_area("Descripción", key=f"new_descripcion_{form_version}", height=80)
+    with c14:
+        st.markdown("<label style='color: #94a3b8; font-size: 12px;'>📷 Foto</label>", unsafe_allow_html=True)
+        imagen_subida = st.file_uploader("", type=['png', 'jpg', 'jpeg'], key=f"new_imagen_{form_version}", label_visibility="collapsed")
+        if imagen_subida:
+            st.image(imagen_subida, width=100)
+    
+    # Validaciones en tiempo real
+    errores = []
+    if not sku or len(sku) < 3:
+        errores.append("SKU inválido")
+    elif sku.lower() in skus_existentes:
+        errores.append("SKU duplicado")
+    elif not any(c.isalnum() for c in sku):
+        errores.append("SKU sin formato válido")
+    
+    if not nombre:
+        errores.append("Nombre obligatorio")
+    elif nombre.lower() in nombres_existentes:
+        errores.append("Nombre duplicado")
+    
+    if precio < 0.01:
+        errores.append("Precio inválido")
+    
+    if precio_coste > 0 and precio_coste >= precio:
+        errores.append("Coste > venta")
+    
+    if not categoria_id:
+        errores.append("Sin categoría")
+    
+    if stock_max <= 0:
+        errores.append("Stock máx inválido")
+    
+    if unidad_ingreso > stock_max:
+        errores.append("Cant. > stock máx")
+    
+    if codigo_barras and codigo_barras.lower() in barras_existentes:
+        errores.append("Barras duplicado")
+    
+    campos_ok = len(errores) == 0
+    
+    # Botón
+    col_btn, col_info = st.columns([3, 1])
+    with col_btn:
+        if st.button("💾 Crear producto", type="primary", use_container_width=True, disabled=not campos_ok, key=f"btn_crear_{form_version}"):
             # Guardar imagen
             imagen_url = None
             if imagen_subida:
@@ -561,35 +589,29 @@ def render_nuevo():
                 imagen_url = ruta_imagen
             
             data = preparar_producto_data(
-                sku=sku,
-                nombre=nombre,
-                precio_venta=precio,
-                unidad=unidad,
-                stock_maximo=stock_max,
-                categoria_id=categoria_id,
-                codigo_barras=codigo_barras,
-                precio_coste=precio_coste,
-                proveedor_id=proveedor_id,
-                descripcion=descripcion or get_descripcion_default(nombre),
-                imagen_url=imagen_url,
-                cantidad_inicial=unidad_ingreso,
-                unidad_ingreso=unidad_ingreso,
-                tiempo_reposicion=tiempo_repo
+                sku=sku, nombre=nombre, precio_venta=precio, unidad=unidad,
+                stock_maximo=stock_max, categoria_id=categoria_id,
+                codigo_barras=codigo_barras, precio_coste=precio_coste,
+                proveedor_id=proveedor_id, descripcion=descripcion or get_descripcion_default(nombre),
+                imagen_url=imagen_url, cantidad_inicial=unidad_ingreso,
+                unidad_ingreso=unidad_ingreso, tiempo_reposicion=tiempo_repo,
+                stock_minimo=stock_min
             )
             
             result = api_post("/api/v1/productos", data)
             if result:
-                # Limpiar cache de productos
                 _get_productos_data.clear()
-                show_success_modal(
-                    "¡Producto añadido exitosamente!",
-                    "El producto ha sido registrado en el catálogo",
-                    duracion=3
-                )
+                show_success_modal("¡Producto creado!", f"{nombre} registrado en catálogo", duracion=3)
                 st.session_state['form_version'] = form_version + 1
                 st.rerun()
             else:
                 st.error("❌ Error al crear el producto")
+    
+    with col_info:
+        if errores:
+            st.caption(f"⚠️ {len(errores)} error(es): {', '.join(errores[:2])}")
+        else:
+            st.caption("✅ Listo para crear")
 
 
 def render_edicion():
