@@ -7,7 +7,7 @@ import base64
 import pandas as pd
 import hashlib
 from datetime import datetime
-from app.utils.api import api_get, api_post, api_put
+from app.utils.api import api_get, api_post, api_put, api_delete
 from app.utils.helpers import to_excel, calcular_porcentaje, truncate_text
 from app.utils.state import set_editar_producto, clear_editar_producto
 from app.logic.producto import get_categoria_emoji, get_descripcion_default, preparar_producto_data
@@ -55,6 +55,29 @@ def _build_search_index(productos, inventarios):
 def render():
     """Renderiza la página de productos optimizada."""
     st.markdown("<h2>📦 Gestión de Productos</h2>", unsafe_allow_html=True)
+    
+    # Manejar eliminación de producto
+    if 'producto_eliminar' in st.session_state and st.session_state['producto_eliminar']:
+        pid_eliminar = st.session_state['producto_eliminar']
+        prod_eliminar = next((p for p in api_get("/api/v1/productos", use_cache=False) if p.get("id") == pid_eliminar), None)
+        nombre_eliminar = prod_eliminar.get("nombre", "este producto") if prod_eliminar else "este producto"
+        
+        st.warning(f"⚠️ ¿Eliminar **{nombre_eliminar}**? Esta acción no se puede deshacer.")
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✅ Sí, eliminar", type="primary", use_container_width=True):
+                if api_delete(f"/api/v1/productos/{pid_eliminar}"):
+                    _get_productos_data.clear()
+                    show_success_modal("¡Producto eliminado!", f"{nombre_eliminar} ha sido eliminado", duracion=2)
+                    del st.session_state['producto_eliminar']
+                    st.rerun()
+                else:
+                    st.error("❌ Error al eliminar el producto")
+        with col_no:
+            if st.button("❌ Cancelar", use_container_width=True):
+                del st.session_state['producto_eliminar']
+                st.rerun()
+        return
     
     # Inicializar tab activo solo si no existe
     if 'producto_tab_activo' not in st.session_state:
@@ -150,7 +173,7 @@ def _ver_producto_modal(pid):
     with col_info:
         st.markdown(f"<h2 style='color:#f8fafc;margin:0 0 4px 0;'>{prod.get('nombre', '')}</h2>", unsafe_allow_html=True)
         st.markdown(f"<p style='color:#94a3b8;font-size:13px;margin:0 0 6px 0;text-transform:uppercase;'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#cbd5e1;font-size:15px;margin:0 0 120px 0;'>{desc}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#cbd5e1;font-size:15px;margin:0 0 0px 0;'>{desc}</p>", unsafe_allow_html=True)
 
         col_precio, col_estado = st.columns([2, 1])
         with col_precio:
@@ -418,7 +441,8 @@ def render_catalogo():
                             st.rerun()
                     with col_del:
                         if st.button("🗑️", key=f"del_card_{pid}", use_container_width=True, type="secondary"):
-                            pass
+                            st.session_state['producto_eliminar'] = pid
+                            st.rerun()
 
                     st.markdown("</div></div>", unsafe_allow_html=True)
 

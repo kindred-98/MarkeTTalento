@@ -110,7 +110,7 @@ async def actualizar_producto(
 
 @router.delete("/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_producto(producto_id: int, db: Session = Depends(get_db)):
-    """Elimina (soft delete) un producto."""
+    """Elimina un producto y su inventario."""
     db_producto = db.query(Producto).filter(Producto.id == producto_id).first()
     
     if not db_producto:
@@ -119,6 +119,12 @@ async def eliminar_producto(producto_id: int, db: Session = Depends(get_db)):
             detail=f"Producto {producto_id} no encontrado"
         )
     
-    db_producto.activo = False
+    # Eliminar inventario asociado
+    inventario = db.query(Inventario).filter(Inventario.producto_id == producto_id).first()
+    if inventario:
+        db.delete(inventario)
+    
+    # Eliminar producto
+    db.delete(db_producto)
     db.commit()
     return None
