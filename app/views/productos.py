@@ -368,8 +368,20 @@ def render_catalogo():
     """, unsafe_allow_html=True)
 
     if productos_filtrados:
+        # Paginación
+        productos_por_pagina = 8
+        if 'cat_pagina' not in st.session_state:
+            st.session_state['cat_pagina'] = 1
+        
+        total_paginas = max(1, (len(productos_filtrados) + productos_por_pagina - 1) // productos_por_pagina)
+        pagina_actual = min(st.session_state['cat_pagina'], total_paginas)
+        
+        inicio = (pagina_actual - 1) * productos_por_pagina
+        fin = min(inicio + productos_por_pagina, len(productos_filtrados))
+        productos_pagina = productos_filtrados[inicio:fin]
+        
         num_cols = 4
-        rows = [productos_filtrados[i:i+num_cols] for i in range(0, len(productos_filtrados), num_cols)]
+        rows = [productos_pagina[i:i+num_cols] for i in range(0, len(productos_pagina), num_cols)]
 
         for row in rows:
             cols = st.columns(num_cols)
@@ -445,6 +457,20 @@ def render_catalogo():
                             st.rerun()
 
                     st.markdown("</div></div>", unsafe_allow_html=True)
+
+        # Controles de paginación
+        if total_paginas > 1:
+            col_pag1, col_pag2, col_pag3 = st.columns([1, 7.7, 1])
+            with col_pag1:
+                if st.button("⬅️ Anterior", disabled=pagina_actual <= 1, key="btn_pag_ant"):
+                    st.session_state['cat_pagina'] = pagina_actual - 1
+                    st.rerun()
+            with col_pag2:
+                st.markdown(f"<p style='text-align: center; color: #94a3b8;'>Página {pagina_actual} de {total_paginas}</p>", unsafe_allow_html=True)
+            with col_pag3:
+                if st.button("Siguiente ➡️", disabled=pagina_actual >= total_paginas, key="btn_pag_sig"):
+                    st.session_state['cat_pagina'] = pagina_actual + 1
+                    st.rerun()
 
     else:
         st.info("No hay productos en el catálogo")
