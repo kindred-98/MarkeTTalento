@@ -53,7 +53,77 @@ def render():
     if editable_id:
         prod_a_editar = next((d for d in datos_inv if d["producto"].get("id") == editable_id), None)
     
-    st.markdown(f"<span style='color: #00f0ff; font-weight: 600;'>{len(datos_inv)}</span> <span style='color: #94a3b8;'> productos</span>", unsafe_allow_html=True)
+    # Header con contador y exportar
+    col_contador, col_export = st.columns([4, 1])
+    with col_contador:
+        st.markdown(f"<span style='color: #00f0ff; font-weight: 600;'>{len(datos_inv)}</span> <span style='color: #94a3b8;'> productos</span>", unsafe_allow_html=True)
+    with col_export:
+        formato_export = st.selectbox("📤 Exportar", ["Exportar...", "Excel (.xlsx)", "JSON (.json)"], label_visibility="collapsed", key="formato_export")
+        if formato_export and formato_export != "Exportar..." and "Excel" in formato_export:
+            # Exportar TODOS los datos a Excel
+            df_exp = pd.DataFrame([{
+                "ID": d["producto"].get("id"),
+                "Nombre": d["producto"].get("nombre"),
+                "SKU": d["producto"].get("sku"),
+                "Descripcion": d["producto"].get("descripcion", ""),
+                "Unidad": d["producto"].get("unidad", "ud"),
+                "Categoria": d["producto"].get("categoria", {}).get("nombre", "-"),
+                "Proveedor": d["producto"].get("proveedor", {}).get("nombre", "-") if d["producto"].get("proveedor") else "-",
+                "Proveedor_ID": d["producto"].get("proveedor_id"),
+                "Stock_Actual": d["stock"],
+                "Stock_Maximo": d["max_s"],
+                "Stock_Minimo": d["producto"].get("stock_minimo", 0),
+                "Ubicacion": d["ubicacion"],
+                "Estado": d["estado"],
+                "Precio_Coste": d["producto"].get("precio_coste") or 0,
+                "Precio_Venta": d["producto"].get("precio_venta") or 0,
+                "Ganancia": (d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0),
+                "Margen_%": round(((d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0)) / (d["producto"].get("precio_venta") or 1) * 100, 2) if d["producto"].get("precio_venta") else 0,
+                "Codigo_Barras": d["producto"].get("codigo_barras", "-"),
+                "Dias_Reposicion": d["producto"].get("tiempo_reposicion", 3),
+                "Activo": "Si" if d["producto"].get("activo", True) else "No",
+                "Fecha_Creacion": str(d["producto"].get("fecha_creacion", "-"))
+            } for d in datos_inv])
+            excel_data = to_excel(df_exp)
+            st.download_button("⬇️ Descargar Excel", data=excel_data, file_name="inventario.xlsx", 
+                              mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="btn_exp_excel")
+        elif formato_export and formato_export != "Exportar..." and "JSON" in formato_export:
+            import json
+            # Exportar TODOS los datos a JSON
+            json_data = json.dumps([{
+                "id": d["producto"].get("id"),
+                "nombre": d["producto"].get("nombre"),
+                "sku": d["producto"].get("sku"),
+                "descripcion": d["producto"].get("descripcion", ""),
+                "unidad": d["producto"].get("unidad", "ud"),
+                "categoria": d["producto"].get("categoria", {}).get("nombre", "-"),
+                "proveedor": {
+                    "id": d["producto"].get("proveedor_id"),
+                    "nombre": d["producto"].get("proveedor", {}).get("nombre", "-"),
+                    "email": d["producto"].get("proveedor", {}).get("email", "-"),
+                    "telefono": d["producto"].get("proveedor", {}).get("telefono", "-")
+                } if d["producto"].get("proveedor") else None,
+                "inventario": {
+                    "stock_actual": d["stock"],
+                    "stock_maximo": d["max_s"],
+                    "stock_minimo": d["producto"].get("stock_minimo", 0),
+                    "ubicacion": d["ubicacion"],
+                    "estado": d["estado"]
+                },
+                "precios": {
+                    "coste": d["producto"].get("precio_coste") or 0,
+                    "venta": d["producto"].get("precio_venta") or 0,
+                    "ganancia": (d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0),
+                    "margen_porcentaje": round(((d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0)) / (d["producto"].get("precio_venta") or 1) * 100, 2) if d["producto"].get("precio_venta") else 0
+                },
+                "codigo_barras": d["producto"].get("codigo_barras"),
+                "tiempo_reposicion": d["producto"].get("tiempo_reposicion", 3),
+                "activo": d["producto"].get("activo", True),
+                "fecha_creacion": str(d["producto"].get("fecha_creacion", "-"))
+            } for d in datos_inv], indent=2, ensure_ascii=False)
+            st.download_button("⬇️ Descargar JSON", data=json_data, file_name="inventario.json", 
+                              mime="application/json", use_container_width=True, key="btn_exp_json")
+    
     st.markdown("---")
     
     # Formulario de edición
@@ -144,10 +214,22 @@ def render():
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("---")
     
+    # Paginación
+    productos_por_pagina = 8
+    total_paginas = max(1, (len(datos_inv) + productos_por_pagina - 1) // productos_por_pagina)
+    
+    if 'pagina_inv' not in st.session_state:
+        st.session_state['pagina_inv'] = 1
+    
+    pagina_actual = min(st.session_state['pagina_inv'], total_paginas)
+    inicio = (pagina_actual - 1) * productos_por_pagina
+    fin = min(inicio + productos_por_pagina, len(datos_inv))
+    datos_inv_pagina = datos_inv[inicio:fin]
+    
     # Dashboard de Tarjetas
     num_cols = 4
-    for i in range(0, len(datos_inv), num_cols):
-        row_items = datos_inv[i:i+num_cols]
+    for i in range(0, len(datos_inv_pagina), num_cols):
+        row_items = datos_inv_pagina[i:i+num_cols]
         cols = st.columns(num_cols)
         
         for idx, d in enumerate(row_items):
@@ -203,7 +285,7 @@ def render():
                             <div style="font-size: 15px; color: {ganancia_color}; font-weight: 700;">€{ganancia:.2f}</div>
                         </div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b;">
+                    <div style="display: flex; justify-content: space-between; font-size: 15px; color: #64748b;">
                         <span>📍 {d['ubicacion']}</span>
                         <span>#{prod.get('codigo_barras', '-') or '-'}</span>
                     </div>
@@ -216,27 +298,18 @@ def render():
                     st.session_state['editando_producto_id'] = pid
                     st.rerun()
     
-    st.markdown("---")
-    col_exp, _ = st.columns([1, 3])
-    with col_exp:
-        df = pd.DataFrame([{
-            "Producto": d["producto"].get("nombre"),
-            "SKU": d["producto"].get("sku"),
-            "Unidad": d["producto"].get("unidad", "ud"),
-            "Proveedor": d["producto"].get("proveedor", {}).get("nombre", "-") if d["producto"].get("proveedor") else "-",
-            "Stock": d["stock"],
-            "Máx": d["max_s"],
-            "Ubicación": d["ubicacion"],
-            "Estado": d["estado"],
-            "Coste": d["producto"].get("precio_coste") or 0,
-            "Venta": d["producto"].get("precio_venta") or 0,
-            "Ganancia": (d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0)
-        } for d in datos_inv])
-        excel_data = to_excel(df)
-        st.download_button(
-            "📥 Exportar Excel",
-            data=excel_data,
-            file_name="inventario.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
+    # Controles de paginación
+    if total_paginas > 1:
+        st.markdown("---")
+        col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
+        with col_pag1:
+            if st.button("⬅️ Anterior", disabled=pagina_actual <= 1, use_container_width=True):
+                st.session_state['pagina_inv'] = pagina_actual - 1
+                st.rerun()
+        with col_pag2:
+            st.markdown(f"<p style='text-align: center; color: #94a3b8; margin: 0;'>Página {pagina_actual} de {total_paginas} | Mostrando {inicio+1}-{fin} de {len(datos_inv)}</p>", unsafe_allow_html=True)
+        with col_pag3:
+            if st.button("Siguiente ➡️", disabled=pagina_actual >= total_paginas, use_container_width=True):
+                st.session_state['pagina_inv'] = pagina_actual + 1
+                st.rerun()
+    
