@@ -60,6 +60,23 @@ class ProductoCreate(ProductoBase):
     ubicacion: Optional[str] = Field(default="Almacén A", max_length=100, description="Ubicación inicial del producto")
 
 
+class ProductoUpdate(BaseModel):
+    sku: Optional[str] = Field(None, max_length=50)
+    codigo_barras: Optional[str] = Field(None, max_length=50)
+    nombre: Optional[str] = Field(None, max_length=200)
+    descripcion: Optional[str] = Field(None, max_length=1000)
+    precio_venta: Optional[float] = Field(None, gt=0)
+    precio_coste: Optional[float] = Field(None, gt=0)
+    unidad: Optional[str] = Field(None, max_length=50)
+    stock_minimo: Optional[int] = Field(None, ge=0)
+    stock_maximo: Optional[int] = Field(None, ge=0)
+    tiempo_reposicion: Optional[int] = Field(None, ge=1)
+    categoria_id: Optional[int] = None
+    proveedor_id: Optional[int] = None
+    imagen_url: Optional[str] = Field(None, max_length=500)
+    activo: Optional[bool] = None
+
+
 class ProductoResponse(ProductoBase):
     id: int
     activo: bool

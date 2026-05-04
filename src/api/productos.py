@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.core.database.database import get_db
 from src.dominio.entidades.entidades import Producto, Inventario
-from src.aplicacion.schemas.schemas import ProductoCreate, ProductoResponse
+from src.aplicacion.schemas.schemas import ProductoCreate, ProductoResponse, ProductoUpdate
 
 router = APIRouter()
 
@@ -88,7 +88,7 @@ async def obtener_producto_por_sku(sku: str, db: Session = Depends(get_db)):
 @router.put("/{producto_id}", response_model=ProductoResponse)
 async def actualizar_producto(
     producto_id: int,
-    producto_data: ProductoCreate,
+    producto_data: ProductoUpdate,
     db: Session = Depends(get_db)
 ):
     """Actualiza un producto."""
@@ -100,7 +100,8 @@ async def actualizar_producto(
             detail=f"Producto {producto_id} no encontrado"
         )
     
-    for key, value in producto_data.model_dump().items():
+    update_data = producto_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(db_producto, key, value)
     
     db.commit()
