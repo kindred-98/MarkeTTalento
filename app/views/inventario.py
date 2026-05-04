@@ -53,7 +53,6 @@ def render():
         "Unidad": prod.get("unidad", "ud"),
         "Proveedor": prod.get("proveedor", {}).get("nombre", "-") if prod.get("proveedor") else "-",
         "Stock": d["stock"],
-        "Mín": d["min_s"],
         "Máx": d["max_s"],
         "Ubicación": d["ubicacion"],
         "Estado": d["estado"],
@@ -61,7 +60,7 @@ def render():
         "Venta": (prod.get('precio_venta') or 0),
         "Ganancia": (prod.get('precio_venta') or 0) - (prod.get('precio_coste') or 0)
     } for prod, d in [(d["producto"], d) for d in datos_inv]])
-    
+
     st.dataframe(
         df,
         use_container_width=True,
@@ -72,9 +71,8 @@ def render():
             "Unidad": st.column_config.TextColumn("Unidad", width="small"),
             "Proveedor": st.column_config.TextColumn("Proveedor", width="medium"),
             "Stock": st.column_config.NumberColumn("Stock", format="%d"),
-            "Mín": st.column_config.NumberColumn("Mín", format="%d"),
             "Máx": st.column_config.NumberColumn("Máx", format="%d"),
-            "Ubicación": st.column_config.TextColumn("Ubicación", width="medium"),
+            "Ubicación": st.column_config.TextColumn("Ubicación", width="large"),
             "Estado": st.column_config.TextColumn("Estado", width="small"),
             "Coste": st.column_config.NumberColumn("Coste", format="€%.2f"),
             "Venta": st.column_config.NumberColumn("Venta", format="€%.2f"),
@@ -109,7 +107,6 @@ def render():
             "Unidad": d["producto"].get("unidad", "ud"),
             "Proveedor": d["producto"].get("proveedor", {}).get("nombre", "-") if d["producto"].get("proveedor") else "-",
             "Stock": d["stock"],
-            "Mín": d["min_s"],
             "Máx": d["max_s"],
             "Ubicación": d["ubicacion"],
             "Estado": d["estado"],
