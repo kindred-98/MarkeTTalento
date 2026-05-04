@@ -78,7 +78,7 @@ def render():
                 "Precio_Coste": d["producto"].get("precio_coste") or 0,
                 "Precio_Venta": d["producto"].get("precio_venta") or 0,
                 "Ganancia": (d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0),
-                "Margen_%": round(((d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0)) / (d["producto"].get("precio_venta") or 1) * 100, 2) if d["producto"].get("precio_venta") else 0,
+                "Margen_%": round(((d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0)) / (d["producto"].get("precio_coste") or 1) * 100, 2) if d["producto"].get("precio_coste") else 0,
                 "Codigo_Barras": d["producto"].get("codigo_barras", "-"),
                 "Dias_Reposicion": d["producto"].get("tiempo_reposicion", 3),
                 "Activo": "Si" if d["producto"].get("activo", True) else "No",
@@ -114,7 +114,7 @@ def render():
                     "coste": d["producto"].get("precio_coste") or 0,
                     "venta": d["producto"].get("precio_venta") or 0,
                     "ganancia": (d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0),
-                    "margen_porcentaje": round(((d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0)) / (d["producto"].get("precio_venta") or 1) * 100, 2) if d["producto"].get("precio_venta") else 0
+                    "margen_porcentaje": round(((d["producto"].get("precio_venta") or 0) - (d["producto"].get("precio_coste") or 0)) / (d["producto"].get("precio_coste") or 1) * 100, 2) if d["producto"].get("precio_coste") else 0
                 },
                 "codigo_barras": d["producto"].get("codigo_barras"),
                 "tiempo_reposicion": d["producto"].get("tiempo_reposicion", 3),
@@ -159,18 +159,38 @@ def render():
                 
                 if st.button("💾 Crear y usar", key="btn_new_prov_inv", use_container_width=True, type="secondary", disabled=btn_crear_disabled):
                     if nuevo_prov_nombre and nuevo_prov_email:
-                        prov_data = {"nombre": nuevo_prov_nombre, "email": nuevo_prov_email, "telefono": nuevo_prov_telefono or None}
-                        result = api_post("/api/v1/proveedores", prov_data)
-                        if result:
-                            _get_inventario_data.clear()
-                            nuevo_prov_id = result.get("id")
-                            data_prov = {"proveedor_id": nuevo_prov_id}
-                            api_put(f"/api/v1/productos/{editable_id}", data_prov)
-                            st.success("✅ Proveedor creado y asignado")
-                            del st.session_state['editando_producto_id']
-                            st.rerun()
-                        else:
-                            st.error("❌ Error al crear proveedor")
+                        with st.spinner("⏳ Creando proveedor..."):
+                            try:
+                                # Paso 1: Crear proveedor
+                                prov_data = {"nombre": nuevo_prov_nombre, "email": nuevo_prov_email, "telefono": nuevo_prov_telefono or None}
+                                result = api_post("/api/v1/proveedores", prov_data)
+                                
+                                if result and isinstance(result, dict) and "id" in result:
+                                    nuevo_prov_id = result.get("id")
+                                    
+                                    # Paso 2: Asignar proveedor al producto
+                                    data_prov = {"proveedor_id": nuevo_prov_id}
+                                    resultado_asignacion = api_put(f"/api/v1/productos/{editable_id}", data_prov)
+                                    
+                                    if resultado_asignacion and "error" not in str(resultado_asignacion).lower():
+                                        _get_inventario_data.clear()
+                                        st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado y asignado")
+                                        del st.session_state['editando_producto_id']
+                                        st.rerun()
+                                    else:
+                                        error_msg = "Error al asignar proveedor al producto"
+                                        if isinstance(resultado_asignacion, dict) and "error" in resultado_asignacion:
+                                            error_msg = resultado_asignacion["error"]
+                                        st.error(f"❌ {error_msg}")
+                                        st.warning("⚠️ El proveedor se creó pero no se pudo asignar. Intenta editar el producto manualmente.")
+                                else:
+                                    error_msg = "Error desconocido al crear proveedor"
+                                    if isinstance(result, dict) and "error" in result:
+                                        error_msg = result["error"]
+                                    st.error(f"❌ {error_msg}")
+                            except Exception as e:
+                                st.error(f"❌ Error inesperado: {str(e)}")
+                                st.info("💡 Verifica tu conexión o contacta soporte")
                 st.markdown("</div>", unsafe_allow_html=True)
                 nuevo_proveedor = prov_actual_nombre
         
@@ -200,16 +220,27 @@ def render():
         if btn_guardar:
             nuevo_prov_id = prov_options_by_name.get(nuevo_proveedor) if nuevo_proveedor != "Sin proveedor" else None
             
-            data_sku = {"sku": nuevo_sku}
-            api_put(f"/api/v1/productos/{editable_id}", data_sku)
+            # 🔧 UNIFICADO: Una sola llamada API con todos los datos
+            datos_actualizar = {
+                "sku": nuevo_sku,
+                "proveedor_id": nuevo_prov_id
+            }
             
-            data_prov = {"proveedor_id": nuevo_prov_id}
-            api_put(f"/api/v1/productos/{editable_id}", data_prov)
-            
-            _get_inventario_data.clear()
-            st.success("✅ Actualizado")
-            del st.session_state['editando_producto_id']
-            st.rerun()
+            with st.spinner("💾 Guardando cambios..."):
+                try:
+                    resultado = api_put(f"/api/v1/productos/{editable_id}", datos_actualizar)
+                    
+                    if resultado and "error" not in str(resultado).lower():
+                        _get_inventario_data.clear()
+                        st.success("✅ Cambios guardados correctamente")
+                        del st.session_state['editando_producto_id']
+                        st.rerun()
+                    else:
+                        error_msg = resultado.get("error", "Error desconocido del servidor") if isinstance(resultado, dict) else "Error al actualizar"
+                        st.error(f"❌ {error_msg}")
+                except Exception as e:
+                    st.error(f"❌ Error inesperado: {str(e)}")
+                    st.info("💡 Por favor, intenta de nuevo o contacta soporte si el problema persiste")
         
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("---")
