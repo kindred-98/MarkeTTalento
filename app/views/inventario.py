@@ -214,47 +214,50 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     ganancia = (prod.get('precio_venta') or 0) - (prod.get('precio_coste') or 0)
     ganancia_color = "#10b981" if ganancia > 0 else "#ef4444"
     
-    border_color = "#00f0ff" if is_editing else "rgba(255,255,255,0.1)"
-    shadow = "0 0 20px rgba(0,240,255,0.3)" if is_editing else "none"
+    # 🔧 Estilos mejorados para tarjeta en edición
+    if is_editing:
+        # Badge de edición
+        st.markdown('<div style="background: #00f0ff; color: #0f172a; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; margin-bottom: 8px; display: inline-block;">✏️ EDITANDO</div>', unsafe_allow_html=True)
+        border_color = "#00f0ff"
+        bg_color = "rgba(0,240,255,0.08)"
+        shadow = "0 0 30px rgba(0,240,255,0.4)"
+    else:
+        border_color = "rgba(255,255,255,0.1)"
+        bg_color = "rgba(30,41,59,0.95)"
+        shadow = "none"
     
-    card_html = f"""<div style="background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98)); border: 1px solid {border_color}; border-radius: 12px; padding: 16px; margin-bottom: 8px; box-shadow: {shadow};">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-            <div>
-                <div style="font-size: 15px; font-weight: 700; color: #f8fafc; margin-bottom: 2px;">{prod.get('nombre')}</div>
-                <div style="font-size: 11px; color: #64748b;">{prod.get('sku')} | {prod.get('unidad', 'ud')}</div>
-            </div>
-            <div style="background: {color_estado}; padding: 3px 8px; border-radius: 12px; font-size: 9px; font-weight: 700; color: white;">{estado}</div>
-        </div>
-        <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
-        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">🏢 {prov_nombre}</div>
-        <div style="margin-bottom: 12px;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
-                <span style="color: #64748b;">Stock</span>
-                <span style="color: #e2e8f0; font-weight: 600;">{stock} / {max_s}</span>
-            </div>
-            <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
-                <div style="width: {pct}%; height: 100%; background: {color_barra}; border-radius: 2px;"></div>
-            </div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">
-            <div style="text-align: center;">
-                <div style="font-size: 9px; color: #f8fafc; margin-bottom: 2px;">COSTE</div>
-                <div style="font-size: 13px; color: #f59e0b; font-weight: 700;">€{prod.get('precio_coste') or 0:.2f}</div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 9px; color: #f8fafc; margin-bottom: 2px;">VENTA</div>
-                <div style="font-size: 13px; color: #00f0ff; font-weight: 700;">€{prod.get('precio_venta') or 0:.2f}</div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 9px; color: #f8fafc; margin-bottom: 2px;">GANANCIA</div>
-                <div style="font-size: 13px; color: {ganancia_color}; font-weight: 700;">€{ganancia:.2f}</div>
-            </div>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b;">
-            <span>📍 {d['ubicacion']}</span>
-            <span>#{prod.get('codigo_barras', '-') or '-'}</span>
-        </div>
-    </div>"""
+    # Construir HTML de la tarjeta
+    nombre = prod.get('nombre', '')
+    sku = prod.get('sku', '')
+    unidad = prod.get('unidad', 'ud')
+    precio_coste = prod.get('precio_coste') or 0
+    precio_venta = prod.get('precio_venta') or 0
+    codigo_barras = prod.get('codigo_barras', '-') or '-'
+    ubicacion = d['ubicacion']
+    
+    card_html = '<div style="background: linear-gradient(145deg, ' + bg_color + ', rgba(15,23,42,0.98)); border: 2px solid ' + border_color + '; border-radius: 12px; padding: 16px; margin-bottom: 8px; box-shadow: ' + shadow + ';">'
+    card_html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">'
+    card_html += '<div><div style="font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 2px;">' + nombre + '</div>'
+    card_html += '<div style="font-size: 15px; color: #64748b;">' + sku + ' | ' + unidad + '</div></div>'
+    card_html += '<div style="background: ' + color_estado + '; padding: 3px 8px; border-radius: 12px; font-size: 15px; font-weight: 700; color: white;">' + estado + '</div></div>'
+    card_html += '<div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>'
+    card_html += '<div style="font-size: 15px; color: #f8fafc; margin-bottom: 6px;">🏢 ' + prov_nombre + '</div>'
+    card_html += '<div style="margin-bottom: 12px;">'
+    card_html += '<div style="display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 4px;">'
+    card_html += '<span style="color: #64748b;">Stock</span>'
+    card_html += '<span style="color: #e2e8f0; font-weight: 600;">' + str(stock) + ' / ' + str(max_s) + '</span></div>'
+    card_html += '<div style="width: 100%; height: 10px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">'
+    card_html += '<div style="width: ' + str(pct) + '%; height: 100%; background: ' + color_barra + '; border-radius: 2px;"></div></div></div>'
+    card_html += '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">'
+    card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">COSTE</div>'
+    card_html += '<div style="font-size: 20px; color: #f59e0b; font-weight: 700;">€' + f'{precio_coste:.2f}' + '</div></div>'
+    card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">VENTA</div>'
+    card_html += '<div style="font-size: 20px; color: #00f0ff; font-weight: 700;">€' + f'{precio_venta:.2f}' + '</div></div>'
+    card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">GANANCIA</div>'
+    card_html += '<div style="font-size: 20px; color: ' + ganancia_color + '; font-weight: 700;">€' + f'{ganancia:.2f}' + '</div></div></div>'
+    card_html += '<div style="display: flex; justify-content: space-between; font-size: 15px; color: #f8fafc;">'
+    card_html += '<span>📍 ' + ubicacion + '</span>'
+    card_html += '<span>#' + codigo_barras + '</span></div></div>'
     
     st.markdown(card_html, unsafe_allow_html=True)
     
@@ -321,19 +324,45 @@ def _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_i
     if nuevo_sku != sku_actual:
         errores_edit = validar_sku(nuevo_sku, productos, editable_id)
     
+    # 🔧 NUEVO: Checkbox de confirmación antes de guardar
+    cambios_realizados = (nuevo_sku != sku_actual) or (nuevo_proveedor != prov_actual_nombre)
+    
+    if cambios_realizados and not errores_edit:
+        st.markdown("<div style='background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("**⚠️ Cambios detectados:**")
+        if nuevo_sku != sku_actual:
+            st.markdown(f"- SKU: `{sku_actual}` → `{nuevo_sku}`")
+        if nuevo_proveedor != prov_actual_nombre:
+            st.markdown(f"- Proveedor: `{prov_actual_nombre}` → `{nuevo_proveedor}`")
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        confirmar_cambios = st.checkbox("✅ He revisado y confirmo los cambios", key="confirmar_cambios_inv")
+    else:
+        confirmar_cambios = True
+    
     col_btn_guardar, col_btn_cancel = st.columns([1, 4])
     with col_btn_guardar:
-        btn_guardar = st.button("💾 Guardar", type="primary", use_container_width=True, 
-                            disabled=len(errores_edit) > 0, key="btn_save_edit_inv")
+        btn_guardar = st.button("💾 Guardar cambios", type="primary", use_container_width=True, 
+                            disabled=len(errores_edit) > 0 or (cambios_realizados and not confirmar_cambios), 
+                            key="btn_save_edit_inv")
         if errores_edit:
             st.caption(f"⚠️ {', '.join(errores_edit)}")
+        elif cambios_realizados and not confirmar_cambios:
+            st.caption("⚠️ Confirma los cambios para guardar")
     with col_btn_cancel:
         if st.button("❌ Cancelar", use_container_width=True, key="btn_cancel_edit_inv"):
             del st.session_state['editando_producto_id']
+            if 'confirmar_cambios_inv' in st.session_state:
+                del st.session_state['confirmar_cambios_inv']
             st.rerun()
     
     if btn_guardar:
-        _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_options_by_name)
+        # 🔧 FIX: Validar explícitamente que se confirmaron los cambios antes de guardar
+        if cambios_realizados and not confirmar_cambios:
+            st.error("❌ Por favor, marca la casilla 'He revisado y confirmo los cambios' antes de guardar")
+            st.stop()
+        else:
+            _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_options_by_name)
     
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("---")
@@ -404,6 +433,8 @@ def _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_opti
                 _get_inventario_data.clear()
                 st.success("✅ Cambios guardados correctamente")
                 del st.session_state['editando_producto_id']
+                if 'confirmar_cambios_inv' in st.session_state:
+                    del st.session_state['confirmar_cambios_inv']
                 st.rerun()
             else:
                 error_msg = resultado.get("error", "Error desconocido del servidor") if isinstance(resultado, dict) else "Error al actualizar"
@@ -442,8 +473,21 @@ def render():
     if editable_id:
         prod_a_editar = next((d for d in datos_inv if d["producto"].get("id") == editable_id), None)
     
-    # Formulario de edición
+    # 🔧 NUEVO: Auto-scroll al formulario de edición
     if prod_a_editar:
+        st.markdown("<div id='formulario-edicion'></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <script>
+            // Scroll suave al formulario de edición
+            setTimeout(function() {
+                const formulario = document.getElementById('formulario-edicion');
+                if (formulario) {
+                    formulario.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        </script>
+        """, unsafe_allow_html=True)
+        
         _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_id, prov_options_by_name)
     
     # Paginación
@@ -463,3 +507,16 @@ def render():
     
     # Paginación
     _render_paginacion(total_paginas, pagina_actual, inicio, fin, len(datos_inv))
+    
+    # 🔧 NUEVO: Botón volver arriba
+    if prod_a_editar:
+        st.markdown("---")
+        col_volver, _ = st.columns([1, 5])
+        with col_volver:
+            if st.button("⬆️ Volver al formulario", use_container_width=True, type="secondary"):
+                st.markdown("""
+                <script>
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                </script>
+                """, unsafe_allow_html=True)
+                st.rerun()
