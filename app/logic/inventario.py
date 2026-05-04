@@ -59,6 +59,11 @@ def preparar_datos_inventario(inventarios: List[Dict], productos: List[Dict]) ->
             max_s = prod.get("stock_maximo", 100) or 100
             estado = calcular_estado_stock(stock, max_s)
             
+            precio_coste = prod.get("precio_coste", 0) or 0
+            precio_venta = prod.get("precio_venta", 0)
+            ganancia = precio_venta - precio_coste
+            margen = (ganancia / precio_coste * 100) if precio_coste > 0 else 0
+            
             datos.append({
                 "producto": prod,
                 "stock": stock,
@@ -66,6 +71,10 @@ def preparar_datos_inventario(inventarios: List[Dict], productos: List[Dict]) ->
                 "max_s": max_s,
                 "estado": estado,
                 "ubicacion": inv.get("ubicacion", "N/A"),
+                "precio_coste": precio_coste,
+                "precio_venta": precio_venta,
+                "ganancia": ganancia,
+                "margen": margen,
             })
     
     return datos
