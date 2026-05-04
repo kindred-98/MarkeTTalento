@@ -11,6 +11,105 @@ from app.logic.producto import (
 )
 
 
+"""
+Tests para lógica de productos
+"""
+import pytest
+import json
+from app.logic.producto import (
+    get_categoria_emoji,
+    get_descripcion_default,
+    validar_producto,
+    filtrar_productos,
+    preparar_producto_data,
+)
+from app.views.productos import _export_to_json, _export_to_excel
+
+
+class TestExportToJson:
+    """Tests para export JSON"""
+
+    def test_export_devuelve_json_valido(self):
+        productos = [
+            {"id": 1, "sku": "SKU001", "nombre": "Leche", "precio_venta": 1.50,
+             "precio_coste": 1.00, "unidad": "litro", "stock_maximo": 50,
+             "categoria_id": 1, "proveedor_id": 1, "descripcion": "Leche entera",
+             "codigo_barras": None, "tiempo_reposicion": 3}
+        ]
+        inventarios = [{"producto_id": 1, "cantidad": 10}]
+        categorias = [{"id": 1, "nombre": "Lacteos"}]
+        proveedores = [{"id": 1, "nombre": "Proveedor A"}]
+        
+        resultado = _export_to_json(productos, inventarios, categorias, proveedores)
+        data = json.loads(resultado)
+        
+        assert len(data) == 1
+        assert data[0]["sku"] == "SKU001"
+        assert data[0]["nombre"] == "Leche"
+        assert data[0]["precio_venta"] == 1.50
+        assert data[0]["stock"] == 10
+        assert data[0]["categoria"] == "Lacteos"
+        assert data[0]["proveedor"] == "Proveedor A"
+
+    def test_export_sin_proveedor_devuelve_default(self):
+        productos = [
+            {"id": 1, "sku": "SKU001", "nombre": "Leche", "precio_venta": 1.50,
+             "precio_coste": None, "unidad": "litro", "stock_maximo": 50,
+             "categoria_id": 1, "proveedor_id": None, "descripcion": "Leche",
+             "codigo_barras": None, "tiempo_reposicion": 3}
+        ]
+        inventarios = [{"producto_id": 1, "cantidad": 10}]
+        categorias = [{"id": 1, "nombre": "Lacteos"}]
+        proveedores = []
+        
+        resultado = _export_to_json(productos, inventarios, categorias, proveedores)
+        data = json.loads(resultado)
+        
+        assert data[0]["proveedor"] == "Sin proveedor"
+
+    def test_export_con_codigo_barras(self):
+        productos = [
+            {"id": 1, "sku": "SKU001", "nombre": "Leche", "precio_venta": 1.50,
+             "precio_coste": 1.00, "unidad": "litro", "stock_maximo": 50,
+             "categoria_id": 1, "proveedor_id": None, "descripcion": "Leche",
+             "codigo_barras": "123456789", "tiempo_reposicion": 3}
+        ]
+        inventarios = [{"producto_id": 1, "cantidad": 10}]
+        categorias = [{"id": 1, "nombre": "Lacteos"}]
+        proveedores = []
+        
+        resultado = _export_to_json(productos, inventarios, categorias, proveedores)
+        data = json.loads(resultado)
+        
+        assert data[0]["codigo_barras"] == "123456789"
+
+
+class TestExportToExcel:
+    """Tests para export Excel"""
+
+    def test_export_devuelve_bytes(self):
+        productos = [
+            {"id": 1, "sku": "SKU001", "nombre": "Leche", "precio_venta": 1.50,
+             "precio_coste": 1.00, "unidad": "litro", "stock_maximo": 50,
+             "categoria_id": 1, "proveedor_id": 1, "descripcion": "Leche",
+             "codigo_barras": None, "tiempo_reposicion": 3}
+        ]
+        inventarios = [{"producto_id": 1, "cantidad": 10}]
+        categorias = [{"id": 1, "nombre": "Lácteos"}]
+        proveedores = [{"id": 1, "nombre": "Proveedor A"}]
+        
+        resultado = _export_to_excel(productos, inventarios, categorias, proveedores)
+        
+        assert isinstance(resultado, bytes)
+        assert len(resultado) > 0
+
+    def test_export_lista_vacia_devuelve_bytes_vacios(self):
+        resultado = _export_to_excel([], [], [], [])
+        
+        assert isinstance(resultado, bytes)
+        assert len(resultado) == 0
+
+
 class TestGetCategoriaEmoji:
     """Tests para get_categoria_emoji"""
 

@@ -129,7 +129,8 @@ def preparar_producto_data(
         data["imagen_url"] = kwargs["imagen_url"]
     
     # Datos para inventario inicial
-    data["cantidad_inicial"] = kwargs.get("cantidad_inicial", kwargs.get("unidad_ingreso", 10))
+    cantidad = kwargs.get("cantidad_inicial", kwargs.get("unidad_ingreso"))
+    data["cantidad_inicial"] = cantidad if cantidad is not None else 10
     data["ubicacion"] = kwargs.get("ubicacion", "Almacén A")
     
     return data

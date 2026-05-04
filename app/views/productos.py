@@ -6,7 +6,9 @@ import os
 import base64
 import pandas as pd
 import hashlib
+import json
 from datetime import datetime
+from io import BytesIO
 from app.utils.api import api_get, api_post, api_put, api_delete
 from app.utils.helpers import to_excel, calcular_porcentaje, truncate_text
 from app.utils.state import set_editar_producto, clear_editar_producto
@@ -14,6 +16,69 @@ from app.logic.producto import get_categoria_emoji, get_descripcion_default, pre
 from app.logic.inventario import calcular_estado_stock
 from app.components.success_modal import show_success_modal
 from app.config import PRODUCTOS_POR_PAGINA
+
+
+def _get_image_path(img_url):
+    """Resuelve la ruta de una imagen, convirtiendo relative paths a absolutos."""
+    if not img_url:
+        return None
+    if os.path.isabs(img_url):
+        return img_url
+    return os.path.join(os.getcwd(), img_url)
+
+
+def _export_to_json(productos, inventarios, categorias, proveedores):
+    """Exporta productos a JSON con datos relacionados."""
+    cat_map = {c.get("id"): c.get("nombre") for c in categorias}
+    prov_map = {p.get("id"): p.get("nombre") for p in proveedores}
+    inv_map = {i.get("producto_id"): i.get("cantidad", 0) for i in inventarios}
+    
+    exportar = []
+    for p in productos:
+        pid = p.get("id")
+        exportar.append({
+            "sku": p.get("sku"),
+            "nombre": p.get("nombre"),
+            "descripcion": p.get("descripcion"),
+            "categoria": cat_map.get(p.get("categoria_id"), "Sin categoría"),
+            "proveedor": prov_map.get(p.get("proveedor_id"), "Sin proveedor"),
+            "precio_venta": p.get("precio_venta"),
+            "precio_coste": p.get("precio_coste"),
+            "unidad": p.get("unidad"),
+            "stock": inv_map.get(pid, 0),
+            "stock_maximo": p.get("stock_maximo"),
+            "codigo_barras": p.get("codigo_barras"),
+            "tiempo_reposicion": p.get("tiempo_reposicion")
+        })
+    return json.dumps(exportar, ensure_ascii=False, indent=2)
+
+
+def _export_to_excel(productos, inventarios, categorias, proveedores):
+    """Exporta productos a Excel."""
+    cat_map = {c.get("id"): c.get("nombre") for c in categorias}
+    prov_map = {p.get("id"): p.get("nombre") for p in proveedores}
+    inv_map = {i.get("producto_id"): i.get("cantidad", 0) for i in inventarios}
+    
+    data = []
+    for p in productos:
+        pid = p.get("id")
+        data.append({
+            "SKU": p.get("sku"),
+            "Nombre": p.get("nombre"),
+            "Descripción": p.get("descripcion"),
+            "Categoría": cat_map.get(p.get("categoria_id"), "Sin categoría"),
+            "Proveedor": prov_map.get(p.get("proveedor_id"), "Sin proveedor"),
+            "Precio Venta": p.get("precio_venta"),
+            "Precio Coste": p.get("precio_coste"),
+            "Unidad": p.get("unidad"),
+            "Stock": inv_map.get(pid, 0),
+            "Stock Máximo": p.get("stock_maximo"),
+            "Código Barras": p.get("codigo_barras"),
+            "Días Reposición": p.get("tiempo_reposicion")
+        })
+    
+    df = pd.DataFrame(data)
+    return to_excel(df)
 
 
 @st.cache_data(ttl=5, show_spinner=False)
@@ -125,6 +190,30 @@ def render():
     
     # Guardar tab previo
     st.session_state['_tab_previo_productos'] = tab_actual
+    
+    st.markdown("---")
+    
+    # Botones de exportación
+    productos_exp, inventarios_exp, categorias_exp, proveedores_exp = _get_productos_data()
+    col_exp1, col_exp2 = st.columns(2)
+    with col_exp1:
+        st.download_button(
+            label="📥 Exportar JSON",
+            data=_export_to_json(productos_exp, inventarios_exp, categorias_exp, proveedores_exp),
+            file_name="productos.json",
+            mime="application/octet-stream",
+            use_container_width=True,
+            type="secondary"
+        )
+    with col_exp2:
+        st.download_button(
+            label="📊 Exportar Excel",
+            data=_export_to_excel(productos_exp, inventarios_exp, categorias_exp, proveedores_exp),
+            file_name="productos.xlsx",
+            mime="application/octet-stream",
+            use_container_width=True,
+            type="secondary"
+        )
     
     st.markdown("---")
     
@@ -550,7 +639,7 @@ def render_nuevo():
             st.markdown("</div>", unsafe_allow_html=True)
             proveedor_id = None
     with c10:
-        unidad_ingreso = st.number_input("Cantidad inicial *", min_value=1, value=10, key=f"new_unidad_ingreso_{form_version}")
+        unidad_ingreso = st.number_input("Cantidad inicial *", min_value=0, value=10, key=f"new_unidad_ingreso_{form_version}")
     with c11:
         stock_max = st.number_input("Stock máximo *", min_value=1, value=100, key=f"new_stock_max_{form_version}")
     with c12:
@@ -718,12 +807,16 @@ def render_edicion():
         edit_codigo_barras = st.text_input("Cód. barras", value=producto.get('codigo_barras') or '', key="edit_codigo_barras")
     with c7:
         edit_tiempo = st.number_input("Días repo", min_value=1, value=int(producto.get('tiempo_reposicion', 3)), key="edit_tiempo")
+    # Proveedor
     with c8:
-        prov_nombres = [p.get('nombre', 'Sin nombre') for p in proveedores]
-        prov_actual = next((p.get('nombre') for p in proveedores if p.get('id') == producto.get('proveedor_id')), "Sin proveedor")
-        prov_index = prov_nombres.index(prov_actual) if prov_actual in prov_nombres else len(prov_nombres) - 1
-        edit_proveedor = st.selectbox("Proveedor", prov_nombres + ["Sin proveedor"], index=prov_index, key="edit_proveedor")
-        edit_proveedor_id = next((p.get('id') for p in proveedores if p.get('nombre') == edit_proveedor), None)
+        prov_options = {p.get("nombre", "Sin nombre"): p.get("id") for p in proveedores}
+        prov_options["Sin proveedor"] = None
+        prov_actual_id = producto.get('proveedor_id')
+        prov_actual_nombre = next((p.get('nombre') for p in proveedores if p.get('id') == prov_actual_id), "Sin proveedor")
+        prov_nombres_select = list(prov_options.keys())
+        prov_index = prov_nombres_select.index(prov_actual_nombre) if prov_actual_nombre in prov_nombres_select else 0
+        edit_proveedor_nombre = st.selectbox("Proveedor", prov_nombres_select, index=prov_index, key="edit_proveedor")
+        edit_proveedor_id = prov_options.get(edit_proveedor_nombre)
     
     # Fila 3: Stock actual, Ingreso, Stock máximo, Descripción
     c9, c10, c11, c12 = st.columns(4)

@@ -37,3 +37,4 @@ ML avanzado de predicciones
 Tests y Docker
 📍 Próximo paso lógico
 Conectar visión con inventario: Que cuando detectes productos en una imagen, se atualice automáticamente el stock en la base de datos.
+
