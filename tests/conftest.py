@@ -1,85 +1,14 @@
 """
-Configuración de fixtures para tests
+Configuración de pytest para el proyecto.
 """
-import pytest
-from app.logic.inventario import calcular_estado_stock
-from app.utils.helpers import calcular_porcentaje
+import sys
+import os
 
+# Agregar el directorio raíz al path para poder importar app
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-@pytest.fixture
-def producto_ejemplo():
-    return {
-        "id": 1,
-        "sku": "SKU001",
-        "nombre": "Leche Entera",
-        "precio_venta": 1.50,
-        "unidad": "litro",
-        "stock_minimo": 5,
-        "stock_maximo": 50,
-        "categoria_id": 1,
-    }
-
-
-@pytest.fixture
-def producto_sin_stock():
-    return {
-        "id": 2,
-        "sku": "SKU002",
-        "nombre": "Yogur Fresco",
-        "stock": 0,
-        "stock_maximo": 30,
-    }
-
-
-@pytest.fixture
-def producto_critico():
-    return {
-        "id": 3,
-        "sku": "SKU003",
-        "nombre": "Queso Artesanal",
-        "stock": 5,
-        "stock_maximo": 50,
-    }
-
-
-@pytest.fixture
-def producto_bajo():
-    return {
-        "id": 4,
-        "sku": "SKU004",
-        "nombre": "Mantequilla",
-        "stock": 20,
-        "stock_maximo": 50,
-    }
-
-
-@pytest.fixture
-def producto_saludable():
-    return {
-        "id": 5,
-        "sku": "SKU005",
-        "nombre": "Crema de Leche",
-        "stock": 40,
-        "stock_maximo": 50,
-    }
-
-
-@pytest.fixture
-def inventario_ejemplo():
-    return {
-        "id": 1,
-        "producto_id": 1,
-        "cantidad": 25,
-        "ubicacion": "Almacén A",
-    }
-
-
-@pytest.fixture
-def lista_productos():
-    return [
-        {"id": 1, "sku": "SKU001", "nombre": "Leche Entera", "stock_maximo": 50, "categoria_id": 1},
-        {"id": 2, "sku": "SKU002", "nombre": "Yogur Fresco", "stock_maximo": 30, "categoria_id": 1},
-        {"id": 3, "sku": "SKU003", "nombre": "Queso Artesanal", "stock_maximo": 50, "categoria_id": 2},
-        {"id": 4, "sku": "SKU004", "nombre": "Mantequilla", "stock_maximo": 40, "categoria_id": 2},
-        {"id": 5, "sku": "SKU005", "nombre": "Crema de Leche", "stock_maximo": 50, "categoria_id": 1},
-    ]
+# Configuración de pytest
+def pytest_configure(config):
+    """Configuración adicional de pytest."""
+    config.addinivalue_line("markers", "slow: marca tests que son lentos")
+    config.addinivalue_line("markers", "unit: marca tests unitarios")
