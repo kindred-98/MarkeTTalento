@@ -485,11 +485,11 @@ def render_tarjeta_venta(venta):
     <div style="background: linear-gradient(135deg, rgba(26,35,50,0.8), rgba(26,35,50,0.6)); 
                 border: 1px solid rgba(0,240,255,0.15); border-radius: 10px; padding: 12px; margin-bottom: 8px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 14px; font-weight: 600; color: #f8fafc;">{venta['producto_nombre']}</div>
-            <div style="color: #94a3b8; font-size: 12px;">{venta['fecha_formateada']}</div>
+            <div style="font-size: 16px; font-weight: 600; color: #f8fafc;">{venta['producto_nombre']}</div>
+            <div style="color: #94a3b8; font-size: 14px;">{venta['fecha_formateada']}</div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-            <div style="font-size: 12px; color: #64748b;">
+            <div style="font-size: 16px; color: #64748b;">
                 {venta['cantidad']} x €{venta['precio_unitario']:.2f}
             </div>
             <div style="font-size: 16px; font-weight: 700; color: #10b981;">
