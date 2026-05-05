@@ -1,5 +1,16 @@
 # MarkeTTalento - Sistema de Inventario Inteligente
 
+<p align="center">
+  <img src="https://img.shields.io/python/3.10+-blue?style=for-the-badge" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/FastAPI-0.100+-00a859?style=for-the-badge" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Streamlit-1.28+-FF4B4B?style=for-the-badge" alt="Streamlit">
+  <img src="https://img.shields.io/badge/YOLOv8-8.0+-9cf?style=for-the-badge" alt="YOLOv8">
+  <img src="https://img.shields.io/badge/SQLite-003b27?style=for-the-badge" alt="SQLite">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License MIT">
+</p>
+
+---
+
 ## Tabla de Contenidos
 
 1. [Descripción del Proyecto](#descripción-del-proyecto)
@@ -12,8 +23,9 @@
 8. [Visión Artificial - YOLOv8](#visión-artificial---yolov8)
 9. [Base de Datos](#base-de-datos)
 10. [Predicciones de Demanda](#predicciones-de-demanda)
-11. [Ejecución del Proyecto](#ejecución-del-proyecto)
-12. [Estado Actual](#estado-actual)
+11. [Inventario](#inventario)
+12. [Ejecución del Proyecto](#ejecución-del-proyecto)
+13. [Estado Actual](#estado-actual)
 
 ---
 
@@ -66,9 +78,9 @@ El sistema permite:
 │         │                    │                    │             │
 │         └────────────────────┼────────────────────┘             │
 │                              │                                   │
-│                    ┌��────────▼─────────┐                         │
-│                    │   Repositorios    │                         │
-│                    │   (SQLAlchemy)    │                         │
+│                    ┌─────────▼─────────┐                         │
+│                    │   Repositorios  │                         │
+│                    │   (SQLAlchemy)  │                         │
 │                    └─────────┬─────────┘                         │
 │                              │                                   │
 │                    ┌─────────▼─────────┐                         │
@@ -124,80 +136,53 @@ python-dotenv>=1.0.0
 ```
 MarkeTTalento/
 │
-├── 📄 main.py                    # Aplicación FastAPI (API REST)
-├── 📄 streamlit_app.py          # Dashboard web (Streamlit)
-├── 📄 iniciar.py                 # Launcher - Inicia todo el sistema
+├── main.py                    # Aplicación FastAPI (API REST)
+├── run.py                    # Launcher - Inicia todo el sistema
 │
-├── 📁 src/
-│   ├── 📁 core/                  # Configuración central
-│   │   ├── config.py             # Configuración (settings)
-│   │   └── database.py           # Conexión a BD
+├── src/
+│   ├── api/                  # Endpoints de la API
+│   │   ├── productos.py
+│   │   ├── inventario.py
+│   │   ├── ventas.py
+│   │   ├── categorias.py
+│   │   ├── proveedores.py
+│   │   ├── predicciones.py
+│   │   ├── vision.py
+│   │   ├── sistema.py
+│   │   └── router.py
 │   │
-│   ├── 📁 dominio/                # Entidades y contratos
-│   │   ├── entidades.py          # Modelos de datos
-│   │   └── repositorios.py        # Interfaces de repositorios
+│   ├── core/                 # Configuración central
+│   │   ���─�� config.py
+│   │   └── errors.py
 │   │
-│   ├── 📁 aplicacion/             # Lógica de negocio
-│   │   ├── schemas.py            # Schemas Pydantic
-│   │   └── servicios/
-│   │       ├── producto_servicio.py
-│   │       ├── inventario_servicio.py
-│   │       ├── prediccion_servicio.py
-│   │       ├── vision_servicio.py
-│   │       └── inventario_vision.py
+│   ├── implementaciones/     # Implementaciones concretas
+│   │   └── repositorios_impl.py
 │   │
-│   └── 📁 infraestructura/        # Implementaciones
-│       └── repositorios_impl.py  # Implementación SQLAlchemy
+├── app/
+│   ├── main.py               # Dashboard Streamlit
+│   └── styles/              # Estilos CSS
 │
-├── 📁 data/
-│   └── markettalento.db          # Base de datos SQLite
+├── data/
+│   └── markettalento.db      # Base de datos SQLite
 │
-├── 📁 temp/                       # Archivos temporales (YOLO)
+├── docs/
+│   └── productos/           # Imágenes de productos
 │
-├── 📄 .env                       # Variables de entorno
-├── 📄 requirements.txt           # Dependencias Python
-└── 📄 README.md                  # Documentación general
+├── tests/                   # Tests automatizados
+│   ├── test_validators.py
+│   ├── test_inventario_logic.py
+│   ├── test_api.py
+│   ├── test_producto_logic.py
+│   ├── test_venta_logic.py
+│   └── test_helpers.py
+│
+├── logs/                    # Logs de aplicación
+├── scripts/                 # Scripts auxiliares
+│
+├── .env                     # Variables de entorno
+├── requirements.txt         # Dependencias Python
+└── README.md                # Documentación
 ```
-
-### Descripción de Módulos
-
-#### 1. `main.py` - API REST
-- **Responsabilidad**: Exponer todos los endpoints de la API
-- **Puerto**: 8002
-- **Documentación automática**: `/docs` (Swagger) y `/redoc` (ReDoc)
-
-#### 2. `streamlit_app.py` - Dashboard
-- **Responsabilidad**: Interfaz web interactiva
-- **Puerto**: 8501
-- **Tema**: Diseño futurista oscuro con acentos cyan/purple
-
-#### 3. `iniciar.py` - Launcher
-- **Responsabilidad**: Iniciar todos los servicios con un solo comando
-- **Funciones**:
-  - Verifica si la API ya está corriendo
-  - Inicia FastAPI si es necesario
-  - Inicia Streamlit si es necesario
-  - Abre el navegador automáticamente
-
-#### 4. `src/core/` - Configuración Central
-- **config.py**: Settings de la aplicación (puerto, URL de BD)
-- **database.py**: Inicialización de SQLAlchemy y sesión de BD
-
-#### 5. `src/dominio/` - Capa de Dominio
-- **entidades.py**: Modelos SQLAlchemy (Categoria, Proveedor, Producto, Inventario, Venta)
-- **repositorios.py**: Interfaces abstractas para repositorios
-
-#### 6. `src/aplicacion/` - Lógica de Negocio
-- **schemas.py**: Modelos Pydantic para request/response
-- **servicios/**: Lógica de negocio separada por dominio
-  - `producto_servicio.py`: CRUD de productos
-  - `inventario_servicio.py`: Control de stock y alertas
-  - `prediccion_servicio.py`: Algoritmos de predicción de demanda
-  - `vision_servicio.py`: Wrapper para YOLOv8
-  - `inventario_vision.py`: Mapeo objetos detectados → productos BD
-
-#### 7. `src/infraestructura/` - Implementación
-- **repositorios_impl.py**: Implementación concreta de repositorios usando SQLAlchemy
 
 ---
 
@@ -236,22 +221,6 @@ API_HOST=127.0.0.1
 DEBUG=true
 ```
 
-### Archivo `requirements.txt`
-
-```
-fastapi>=0.100.0
-uvicorn>=0.23.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-streamlit>=1.28.0
-plotly>=5.18.0
-sqlalchemy>=2.0.0
-python-multipart>=0.0.6
-python-dotenv>=1.0.0
-ultralytics>=8.0.0
-opencv-python>=4.8.0
-```
-
 ---
 
 ## API REST - FastAPI
@@ -268,25 +237,31 @@ opencv-python>=4.8.0
 
 ### Endpoints Organizados por Tags
 
-#### 📡 Sistema
+#### Sistema
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | GET | `/` | Página principal |
 | GET | `/api/v1/salud` | Estado de salud del sistema |
 
-#### 📁 Categorías
+#### Categorías
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | POST | `/api/v1/categorias` | Crear categoría |
 | GET | `/api/v1/categorias` | Listar todas las categorías |
+| GET | `/api/v1/categorias/{id}` | Obtener categoría por ID |
+| PUT | `/api/v1/categorias/{id}` | Actualizar categoría |
+| DELETE | `/api/v1/categorias/{id}` | Eliminar categoría |
 
-#### 🚚 Proveedores
+#### Proveedores
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | POST | `/api/v1/proveedores` | Crear proveedor |
 | GET | `/api/v1/proveedores` | Listar proveedores |
+| GET | `/api/v1/proveedores/{id}` | Obtener proveedor por ID |
+| PUT | `/api/v1/proveedores/{id}` | Actualizar proveedor |
+| DELETE | `/api/v1/proveedores/{id}` | Eliminar proveedor |
 
-#### 📦 Productos
+#### Productos
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | POST | `/api/v1/productos` | Crear producto |
@@ -296,7 +271,7 @@ opencv-python>=4.8.0
 | PUT | `/api/v1/productos/{id}` | Actualizar producto |
 | DELETE | `/api/v1/productos/{id}` | Eliminar (soft delete) |
 
-#### 📊 Inventario
+#### Inventario
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | POST | `/api/v1/inventario/{producto_id}` | Crear/actualizar stock |
@@ -305,60 +280,30 @@ opencv-python>=4.8.0
 | GET | `/api/v1/inventario/resumen` | Resumen del inventario |
 | GET | `/api/v1/inventario/recomendaciones` | Recomendaciones de reposición |
 
-#### 💰 Ventas
+#### Ventas
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | POST | `/api/v1/ventas` | Registrar venta |
 | GET | `/api/v1/ventas` | Listar ventas |
 | GET | `/api/v1/ventas/producto/{id}` | Ventas por producto |
 
-#### 🔮 Predicciones
+#### Predicciones
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | GET | `/api/v1/predicccion/{producto_id}` | Predicción para un producto |
 | GET | `/api/v1/prediccion/todos` | Predicciones para todos |
 | GET | `/api/v1/prediccion/semanal/{id}` | Pronóstico semanal |
 
-#### 📸 Visión Artificial
+#### Visión Artificial
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | POST | `/api/v1/vision/detectar` | Detectar objetos en imagen |
 | POST | `/api/v1/vision/analizar-y-actualizar` | Detectar + actualizar stock |
 
-#### 📈 Análisis
+#### Análisis
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | GET | `/api/v1/analisis/completo` | Análisis completo del sistema |
-
-### Ejemplo de Uso
-
-```bash
-# Ver estado del sistema
-curl http://localhost:8002/api/v1/salud
-
-# Crear categoría
-curl -X POST http://localhost:8002/api/v1/categorias \
-  -H "Content-Type: application/json" \
-  -d '{"nombre": "Snacks", "descripcion": "Productos de snack"}'
-
-# Listar productos
-curl http://localhost:8002/api/v1/productos
-
-# Crear producto
-curl -X POST http://localhost:8002/api/v1/productos \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sku": "SNK001",
-    "nombre": "Papas Fritas",
-    "precio_venta": 2.50,
-    "precio_coste": 1.20,
-    "unidad": "paquete",
-    "stock_minimo": 10,
-    "stock_maximo": 50,
-    "tiempo_reposicion": 3,
-    "categoria_id": 1
-  }'
-```
 
 ---
 
@@ -372,93 +317,23 @@ curl -X POST http://localhost:8002/api/v1/productos \
 | URL Local | http://localhost:8501 |
 | Tema | Futurista Oscuro |
 
+### Sidebar - Navegación
+
+El sidebar contiene:
+- 🕐 Reloj en tiempo real
+- 🔌 Estado de conexión con la API
+- 🔗 Enlaces rápidos a Dashboard y API Docs
+
 ### Secciones del Dashboard
 
-#### 🏠 Dashboard
-- **Métricas principales**:
-  - Total de productos
-  - Stock total
-  - Productos críticos
-  - Valor total del inventario
-- **Gráfico donut**: Estado del inventario (crítico/bajo/adecuado)
-- **Panel de alertas**: Productos que requieren atención
-- **Recomendaciones**: Sugerencias de reposición
-
-#### 📦 Productos
-- **Vista de catálogo**: Cards visuales con información de cada producto
-- **Formulario de creación**: Alta de nuevos productos
-- **Campos**: SKU, nombre, precio, stock mínimo/máximo, categoría
-
-#### 📊 Inventario
-- **Vista de stock**: Cards con estado del inventario (CRÍTICO/BAJO/OK)
-- **Indicadores visuales**: Color según nivel de stock
-- **Formulario de actualización**: Modificar stock y ubicación
-
-#### 💰 Ventas
-- **Historial de ventas**: Cards con detalle de cada venta
-- **Formulario de registro**: Registrar nueva venta
-- **Cálculo automático**: Total basado en cantidad × precio
-
-#### 🔮 Predicciones
-- **Gráfico de barras**: Días hasta agotarse por producto
-- **Estados**: CRÍTICO, BAJO, MODERADO, ADECUADO
-- **Basado en**: Historial de ventas y consumo promedio
-
-#### 📸 Visión AI
-- **Subida de imagen**: Cargar foto de estantería
-- **Detección YOLOv8**: Identifica objetos en la imagen
-- **Mapeo a inventario**: Asigna objetos detectados a productos BD
-- **Actualización automática**: Modifica stock según detección
-
-### Diseño del Sidebar
-
-```
-┌────────────────────────┐
-│     ⚡ Menú            │
-├────────────────────────┤
-│  ┌──────────────────┐  │
-│  │ 🏠 Dashboard     │  │
-│  └──────────────────┘  │
-│  ┌──────────────��───┐  │
-│  │ 📦 Productos      │  │
-│  └──────────────────┘  │
-│  ┌──────────────────┐  │
-│  │ 📊 Inventario     │  │
-│  └──────────────────┘  │
-│  ┌──────────────────┐  │
-│  │ 💰 Ventas        │  │
-│  └──────────────────┘  │
-│  ┌──────────────────┐  │
-│  │ 🔮 Predicciones  │  │
-│  └──────────────────┘  │
-│  ┌──────────────────┐  │
-│  │ 📸 Visión AI    │  │
-│  └──────────────────┘  │
-├────────────────────────┤
-│  ┌──────────────────┐  │
-│  │ 🟢 API Online    │  │
-│  │    14:35:22      │  │
-│  │  Lunes 28 Abr    │  │
-│  └──────────────────┘  │
-├────────────────────────┤
-│  📊 Dashboard          │
-│  📚 API Docs           │
-├────────────────────────┤
-│  ───────────────       │
-└────────────────────────┘
-```
-
-### Colores del Tema
-
-| Color | Hex | Uso |
-|-------|-----|-----|
-| Cyan | `#00f0ff` | Acentos principales, Dashboard |
-| Purple | `#8b5cf6` | Productos, API Docs |
-| Green | `#10b981` | Inventario, OK, éxito |
-| Red | `#ef4444` | Crítico, errores |
-| Orange | `#f59e0b` | Bajo stock, alertas |
-| Pink | `#ec4899` | Predicciones |
-| Blue | `#3b82f6` | Visión AI |
+| Sección | Estado | Descripción |
+|---------|--------|-------------|
+| 🏠 Dashboard | ✅ LISTO | Métricas, gráficos, alertas, recomendaciones |
+| 📦 Productos | ✅ LISTO | Catálogo, creación, edición de productos |
+| 📊 Inventario | ✅ LISTO | Stock, alertas, filtros, exportación |
+| 💰 Ventas | 🔄 EN PROCESO | Registro de ventas - en desarrollo |
+| 🔮 Predicciones | 🔄 EN PROCESO | Predicción de demanda - en pruebas |
+| 📸 Visión AI | 🔄 EN PROCESO | Detección YOLOv8 - en pruebas |
 
 ---
 
@@ -470,19 +345,7 @@ curl -X POST http://localhost:8002/api/v1/productos \
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Imagen de     │    │   YOLOv8        │    │   Resultados    │
 │   Estantería    │───▶│   (COCO/Retail) │───▶│   Detección     │
-└─────────���───────┘    └─────────────────┘    └─────────────────┘
-                                                    │
-                                                    ▼
-                                            ┌─────────────────┐
-                                            │   Mapeo a       │
-                                            │   Productos BD  │
-                                            └─────────────────┘
-                                                    │
-                                                    ▼
-                                            ┌─────────────────┐
-                                            │   Actualización │
-                                            │   Inventario    │
-                                            └─────────────────┘
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### Modelos Soportados
@@ -507,50 +370,6 @@ MAPA_YOLO_A_PRODUCTO = {
     "banana": {"producto_nombre": "Plátanos", "cantidad_por_defecto": 1},
     "bottle": {"producto_nombre": "Botella de Agua", "cantidad_por_defecto": 1},
     "cup": {"producto_nombre": "Vasos", "cantidad_por_defecto": 2},
-    # ... más mapeos
-}
-```
-
-### Endpoint de Detección
-
-```bash
-# Detectar objetos en imagen
-curl -X POST http://localhost:8002/api/v1/vision/detectar \
-  -F "archivo=@estanteria.jpg" \
-  -F "confianza_min=0.15"
-
-# Detectar y actualizar inventario
-curl -X POST http://localhost:8002/api/v1/vision/analizar-y-actualizar \
-  -F "archivo=@estanteria.jpg" \
-  -F "confianza_min=0.15" \
-  -F "actualizar_stock=true"
-```
-
-### Respuesta de Detección
-
-```json
-{
-  "deteccion": {
-    "total_objetos": 15,
-    "objetos": [
-      {"nombre": "bottle", "confianza": 0.87, "bbox": [x, y, w, h]},
-      {"nombre": "cup", "confianza": 0.92, "bbox": [x, y, w, h]}
-    ]
-  },
-  "mapeo": {
-    "mapeados": [
-      {"producto_nombre": "Botella de Agua", "cantidad_detectada": 3}
-    ],
-    "no_encontrados": [
-      {"objeto": "orange", "cantidad": 2}
-    ]
-  },
-  "actualizacion": {
-    "total": 1,
-    "actualizados": [
-      {"producto": "Botella de Agua", "stock_anterior": 10, "stock_nuevo": 13}
-    ]
-  }
 }
 ```
 
@@ -590,15 +409,15 @@ class Proveedor(Base):
 ```python
 class Producto(Base):
     id: int
-    sku: str  # Código único
+    sku: str
     nombre: str
     descripcion: str
     precio_venta: float
     precio_coste: float
-    unidad: str  # unidad, kg, litro, paquete, caja, botella
+    unidad: str
     stock_minimo: int
     stock_maximo: int
-    tiempo_reposicion: int  # días
+    tiempo_reposicion: int
     categoria_id: int
     activo: bool
     fecha_creacion: datetime
@@ -621,14 +440,8 @@ class Venta(Base):
     producto_id: int
     cantidad: int
     precio_unitario: float
-    tipo_operacion: str  # venta, devolucion
+    tipo_operacion: str
     fecha: datetime
-```
-
-### Ubicación de la Base de Datos
-
-```
-data/markettalento.db
 ```
 
 ---
@@ -654,20 +467,49 @@ dias_hasta_agotarse = stock_actual / consumo_promedio_diario
 consumo_promedio_diario = suma(cantidades_vendidas) / dias_desde_primera_venta
 ```
 
-### Consideraciones
+---
 
-- Si no hay historial de ventas, usa tiempo de reposición como estimado
-- El stock mínimo se usa como umbral de alerta
-- Las predicciones se actualizan en tiempo real con cada venta
+## Inventario
+
+### Funcionalidades Completadas
+
+El módulo de inventario está **100% completo** con las siguientes características:
+
+- ✅ 4 tarjetas por fila con información completa del producto
+- ✅ Barra de progreso visual del stock (colores según nivel)
+- ✅ Precios destacados (coste, venta, ganancia)
+- ✅ Paginación (8 productos por página)
+- ✅ Filtros por búsqueda, estado y ordenamiento
+- ✅ Exportación a Excel y JSON con todos los campos
+- ✅ Edición inline de SKU y Proveedor
+- ✅ Validaciones en tiempo real (longitud, duplicados)
+- ✅ Creación de nuevos proveedores (con validación de email)
+- ✅ Confirmación explícita antes de guardar cambios
+- ✅ Mensajes de error claros y amigables
+- ✅ Auto-scroll al formulario de edición
+- ✅ Indicador visual de tarjeta en edición
+- ✅ Spinner de carga durante operaciones
+- ✅ Botón "Volver arriba" para navegación fácil
+- ✅ 145 tests automatizados implementados
+
+### Tests de Cobertura
+
+| Área | Tests Implementados | Estado |
+|------|---------------------|--------|
+| **Validaciones** | 27 ✅ | **COMPLETO** |
+| **Lógica inventario** | 27 ✅ | **COMPLETO** |
+| **API HTTP** | 24 ✅ | **COMPLETO** |
+| **Integración** | 67 ✅ | **YA EXISTÍAN** |
+| **TOTAL** | **145 tests** | 🎉 **100% COMPLETO** |
 
 ---
 
 ## Ejecución del Proyecto
 
-### Método 1: Launcher (Recomendado)
+### Launcher (Recomendado)
 
 ```bash
-python iniciar.py
+python run.py
 ```
 
 Esto automáticamente:
@@ -675,16 +517,6 @@ Esto automáticamente:
 2. Inicia FastAPI en puerto 8002
 3. Inicia Streamlit en puerto 8501
 4. Abre el navegador con ambas interfaces
-
-### Método 2: Manual
-
-```bash
-# Terminal 1: API
-python main.py
-
-# Terminal 2: Dashboard
-streamlit run streamlit_app.py
-```
 
 ### Acceso a Interfaces
 
@@ -695,81 +527,37 @@ streamlit run streamlit_app.py
 | API Redoc | http://localhost:8002/redoc | Documentación ReDoc |
 | API Base | http://localhost:8002 | Raíz de la API |
 
-### Comprobar Estado
-
-```bash
-# Verificar API
-curl http://localhost:8002/api/v1/salud
-
-# Verificar respuesta esperada
-{
-  "estado": "saludable",
-  "timestamp": "2026-04-28T...",
-  "servicios": ["FastAPI", "SQLite", "YOLOv8"]
-}
-```
-
 ---
 
 ## Estado Actual
 
-### ✅ Completado
+### ✅ Completado (Producción)
 
-- [x] Arquitectura Clean Architecture
-- [x] API REST con FastAPI (26+ endpoints)
-- [x] Dashboard interactivo con Streamlit
-- [x] Diseño futurista con tema oscuro
-- [x] Integración con YOLOv8 para visión artificial
-- [x] Sistema de predicción de demanda
-- [x] Base de datos SQLite
-- [x] Launcher para ejecución simple
-- [x] Documentación de API con tags
-- [x] Sidebar con navegación por botones
-- [x] Reloj en tiempo real en sidebar
-- [x] Estado de API en tiempo real
-- [x] Cards visuales para productos, inventario y ventas
-- [x] Gráficos con Plotly
+| Módulo | Estado | Descripción |
+|--------|--------|-------------|
+| 🏠 Dashboard | ✅ LISTO | Métricas, gráficos, alertas, recomendaciones |
+| 📦 Productos | ✅ LISTO | CRUD completo, CRUD categorías y proveedores |
+| 📊 Inventario | ✅ LISTO | Control stock, alertas, paginación, filtros, 145 tests |
 
-### 🔄 En Desarrollo
+### 🔄 En Desarrollo (No listo para producción)
 
-- [ ] Más mapeos de objetos YOLO → productos
-- [ ] Modelo YOLO personalizado entrenado
-- [ ] Autenticación de usuarios
-- [ ] Tests automatizados
-- [ ] Despliegue con Docker
+| Módulo | Estado | Descripción |
+|--------|--------|-------------|
+| 💰 Ventas | 🔄 EN PROCESO | Registro de ventas - en proceso de ajustes |
+| 🔮 Predicciones | 🔄 EN PROCESO | Algoritmo base implementado - necesita refinamiento |
+| 📸 Visión AI | 🔄 EN PROCESO | Integración YOLOv8 - en etapa de pruebas |
 
 ### 📋 Pendientes
 
-- [ ] Integración con PostgreSQL (producción)
-- [ ] Notificaciones push
-- [ ] App móvil
-- [ ] Dashboard de administración
-
----
-
-## Notas de Desarrollo
-
-### Deprecation Warnings
-
-El código ya incluye correcciones para:
-- `datetime.utcnow()` → `datetime.now(timezone.utc)`
-- `use_container_width` → `width='stretch'`
-- `on_event("startup")` → lifespan handlers (pendiente refactorizar)
-
-### Limitaciones Conocidas
-
-1. **YOLOv8 COCO**: El modelo genérico puede no detectar todos los productos específicos del supermercado
-2. **SQLite**: Adecuado para desarrollo, usar PostgreSQL para producción
-3. **Sin autenticación**: El sistema está abierto actualmente
-4. **Web scraping**: Los sitios como Mercadona pueden bloquear el scraping
-
-### Próximos Pasos Recomendados
-
-1. Entrenar modelo YOLO personalizado con fotos del supermercado
-2. Implementar autenticación JWT
-3. Configurar Docker para despliegue
-4. Agregar tests con pytest
-5. Migrar a PostgreSQL para producción
+| Módulo | Descripción |
+|--------|-------------|
+| 📱 App Móvil | Aplicación móvil paraAndroid/iOS |
+| 🔐 Autenticación | Sistema de login y usuarios |
+| 🐳 Docker | Contenedores para despliegue |
+| 📊 PostgreSQL | Migración a base de datos producción |
+| 📢 Notificaciones | Alertas push |
+| 🧾 Facturación | Módulo de facturación |
+| 📦 Cajas | Control de cajas y movimientos |
 
 ---
 
@@ -785,5 +573,5 @@ Para reportar problemas o solicitar mejoras, crear un issue en el repositorio de
 
 ---
 
-*Documentación actualizada: Abril 2026*
+*Documentación actualizada: Mayo 2026*
 *Versión: 1.0.0*
