@@ -34,3 +34,8 @@ pytest==8.3.5
 httpx==0.28.1
 python-multipart==0.0.27
 
+# Dashboard Ventas - Nuevas librerías
+fpdf2==2.8.3           # Exportar a PDF
+plotly==6.7.0          # Ya existe, gráficos interactivos
+kaleido==0.2.1         # Exportar gráficos plotly a imágenes
+
