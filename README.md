@@ -1,13 +1,15 @@
+<div align="center">
+
 # MarkeTTalento - Sistema de Inventario Inteligente
 
-<p align="center">
+
   <img src="https://img.shields.io/python/3.10+-blue?style=for-the-badge" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-00a859?style=for-the-badge" alt="FastAPI">
   <img src="https://img.shields.io/badge/Streamlit-1.28+-FF4B4B?style=for-the-badge" alt="Streamlit">
   <img src="https://img.shields.io/badge/YOLOv8-8.0+-9cf?style=for-the-badge" alt="YOLOv8">
   <img src="https://img.shields.io/badge/SQLite-003b27?style=for-the-badge" alt="SQLite">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License MIT">
-</p>
+</div>
 
 ---
 
@@ -51,43 +53,43 @@ El sistema permite:
 ## Arquitectura del Sistema
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                        MarkeTTalento                             │
-├─────────────────────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     │
-│  │   Usuario    │     │   Usuario    │     │   Sistema    │     │
-│  │  (Dashboard) │     │   (API)      │     │  Externo     │     │
-│  │  :8501       │     │  :8002/docs  │     │  (YOLOv8)    │     │
-│  └──────┬───────┘     └──────┬───────┘     └──────┬───────┘     │
+│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐      │
+│  │   Usuario    │     │   Usuario    │     │   Sistema    │      │
+│  │  (Dashboard) │     │   (API)      │     │  Externo     │      │
+│  │  :8501       │     │  :8002/docs  │     │  (YOLOv8)    │      │
+│  └──────┬───────┘     └──────┬───────┘     └──────┬───────┘      │
 │         │                    │                    │              │
 │         └────────────────────┼────────────────────┘              │
 │                              │                                   │
 │                    ┌─────────▼─────────┐                         │
-│                    │   API REST       │                         │
-│                    │   FastAPI        │                         │
-│                    │   Puerto 8002    │                         │
+│                    │   API REST       │                          │
+│                    │   FastAPI        │                          │
+│                    │   Puerto 8002    │                          │
 │                    └─────────┬─────────┘                         │
 │                              │                                   │
-│         ┌────────────────────┼────────────────────┐             │
-│         │                    │                    │             │
-│  ┌──────▼───────┐     ┌──────▼───────┐     ┌──────▼───────┐   │
-│  │  Inventario  │     │   Predicción │     │    Visión    │   │
-│  │  Servicio    │     │   Servicio   │     │   Servicio   │   │
-│  └──────┬───────┘     └──────┬───────┘     └──────┬───────┘   │
-│         │                    │                    │             │
-│         └────────────────────┼────────────────────┘             │
+│         ┌────────────────────┼────────────────────┐              │
+│         │                    │                    │              │
+│  ┌──────▼───────┐     ┌──────▼───────┐     ┌──────▼───────┐      │
+│  │  Inventario  │     │   Predicción │     │    Visión    │      │
+│  │  Servicio    │     │   Servicio   │     │   Servicio   │      │
+│  └──────┬───────┘     └──────┬───────┘     └──────┬───────┘      │
+│         │                    │                    │              │
+│         └────────────────────┼────────────────────┘              │
 │                              │                                   │
 │                    ┌─────────▼─────────┐                         │
-│                    │   Repositorios  │                         │
-│                    │   (SQLAlchemy)  │                         │
+│                    │   Repositorios  │                           │
+│                    │   (SQLAlchemy)  │                           │
 │                    └─────────┬─────────┘                         │
 │                              │                                   │
 │                    ┌─────────▼─────────┐                         │
 │                    │   SQLite DB       │                         │
 │                    │   (Desarrollo)    │                         │
 │                    └───────────────────┘                         │
-└─────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -135,12 +137,12 @@ python-dotenv>=1.0.0
 
 ```
 MarkeTTalento/
-│
-├── main.py                    # Aplicación FastAPI (API REST)
-├── run.py                    # Launcher - Inicia todo el sistema
-│
+│   
+├── main.py                           # Aplicación FastAPI (API REST)
+├── run.py                            # Launcher - Inicia todo el sistema
+│ 
 ├── src/
-│   ├── api/                  # Endpoints de la API
+│   ├── api/                          # Endpoints de la API
 │   │   ├── productos.py
 │   │   ├── inventario.py
 │   │   ├── ventas.py
@@ -151,24 +153,24 @@ MarkeTTalento/
 │   │   ├── sistema.py
 │   │   └── router.py
 │   │
-│   ├── core/                 # Configuración central
+│   ├── core/                         # Configuración central
 │   │   ���─�� config.py
 │   │   └── errors.py
 │   │
-│   ├── implementaciones/     # Implementaciones concretas
+│   ├── implementaciones/             # Implementaciones concretas
 │   │   └── repositorios_impl.py
 │   │
 ├── app/
-│   ├── main.py               # Dashboard Streamlit
-│   └── styles/              # Estilos CSS
+│   ├── main.py                       # Dashboard Streamlit
+│   └── styles/                       # Estilos CSS
 │
 ├── data/
-│   └── markettalento.db      # Base de datos SQLite
+│   └── markettalento.db              # Base de datos SQLite
 │
-├── docs/
-│   └── productos/           # Imágenes de productos
+├── docs/   
+│   └── productos/                    # Imágenes de productos
 │
-├── tests/                   # Tests automatizados
+├── tests/                            # Tests automatizados
 │   ├── test_validators.py
 │   ├── test_inventario_logic.py
 │   ├── test_api.py
@@ -176,13 +178,13 @@ MarkeTTalento/
 │   ├── test_venta_logic.py
 │   └── test_helpers.py
 │
-├── logs/                    # Logs de aplicación
-├── scripts/                 # Scripts auxiliares
+├── logs/                              # Logs de aplicación
+├── scripts/                           # Scripts auxiliares
 │
-├── .env                     # Variables de entorno
-├── requirements.txt         # Dependencias Python
-└── README.md                # Documentación
-```
+├── .env                               # Variables de entorno
+├── requirements.txt                   # Dependencias Python
+└── README.md                          # Documentación
+``` 
 
 ---
 
