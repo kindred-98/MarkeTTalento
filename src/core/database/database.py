@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from src.core.database.base import Base
-from src.dominio.entidades.entidades import Categoria, Proveedor, Producto, Inventario, Venta
+from src.dominio.entidades.entidades import Categoria, Proveedor, Producto, Inventario, Venta, Ticket, TicketLinea
 
 URL_DATABASE = os.getenv("DATABASE_URL", "")
 

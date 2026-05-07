@@ -49,3 +49,50 @@
     text-align: center;
     margin-top: 8px;
 }
+
+/* TPV - Teclado numérico */
+.tpv-teclado button {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+    height: 45px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+.tpv-teclado button:hover {
+    background: rgba(0, 240, 255, 0.2) !important;
+    border-color: #00f0ff !important;
+    transform: translateY(-2px) !important;
+}
+
+/* TPV - Línea seleccionada */
+.tpv-linea-seleccionada {
+    background: rgba(0, 240, 255, 0.1) !important;
+    border-left: 3px solid #00f0ff !important;
+}
+
+/* TPV - Grid productos */
+.tpv-producto-card {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.tpv-producto-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2);
+    border-color: rgba(0, 240, 255, 0.4);
+}
+
+.tpv-producto-sin-stock {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #ef4444;
+}

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 class CategoriaBase(BaseModel):
@@ -118,5 +118,49 @@ class VentaCreate(VentaBase):
 class VentaResponse(VentaBase):
     id: int
     fecha: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# TICKETS - Nuevo modelo TPV
+# ============================================================================
+
+class TicketLineaBase(BaseModel):
+    producto_id: int
+    cantidad: int = Field(..., gt=0)
+    precio_unitario: float = Field(..., gt=0)
+
+
+class TicketLineaCreate(TicketLineaBase):
+    pass
+
+
+class TicketLineaResponse(TicketLineaBase):
+    id: int
+    subtotal: float
+    producto: Optional[ProductoResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TicketBase(BaseModel):
+    cajero: str = Field(..., max_length=100)
+    metodo_pago: str = Field(..., max_length=50)
+    entrega_efectivo: Optional[float] = Field(None, ge=0)
+    cambio: Optional[float] = Field(None, ge=0)
+
+
+class TicketCreate(TicketBase):
+    lineas: List[TicketLineaCreate]
+
+
+class TicketResponse(TicketBase):
+    id: int
+    numero_ticket: str
+    fecha: datetime
+    total: float
+    estado: str
+    lineas: List[TicketLineaResponse]
 
     model_config = ConfigDict(from_attributes=True)

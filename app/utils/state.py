@@ -131,3 +131,93 @@ def get_dashboard_metrics() -> tuple:
         st.session_state.get('dashboard_saludables', 0),
         st.session_state.get('dashboard_datos_hash')
     )
+
+
+# ============================================================================
+# TPV - Estado del Terminal Punto de Venta
+# ============================================================================
+
+def init_tpv_state():
+    """Inicializa el estado del TPV si no existe."""
+    defaults = {
+        'tpv_cajero': 'andres',
+        'tpv_carrito': [],
+        'tpv_categoria_activa': 'todos',
+        'tpv_linea_seleccionada': None,
+        'tpv_teclado_buffer': '',
+        'tpv_mostrar_ticket': False,
+        'tpv_ticket_reciente': None,
+        'tpv_pagina_historial': 1,
+        'tpv_filtro_historial_cajero': 'Todos',
+        'tpv_filtro_historial_desde': None,
+        'tpv_filtro_historial_hasta': None,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+def get_tpv_carrito() -> list:
+    """Obtiene el carrito actual del TPV."""
+    return st.session_state.get('tpv_carrito', [])
+
+
+def set_tpv_carrito(carrito: list):
+    """Establece el carrito del TPV."""
+    st.session_state['tpv_carrito'] = carrito
+
+
+def limpiar_carrito():
+    """Limpia el carrito y estado relacionado."""
+    st.session_state['tpv_carrito'] = []
+    st.session_state['tpv_linea_seleccionada'] = None
+    st.session_state['tpv_teclado_buffer'] = ''
+    st.session_state['tpv_mostrar_ticket'] = False
+    st.session_state['tpv_ticket_reciente'] = None
+
+
+def agregar_linea_carrito(producto: dict):
+    """Agrega una línea al carrito o incrementa cantidad si ya existe."""
+    carrito = get_tpv_carrito()
+    prod_id = producto.get('id')
+    
+    for linea in carrito:
+        if linea['producto_id'] == prod_id:
+            linea['cantidad'] += 1
+            linea['subtotal'] = round(linea['cantidad'] * linea['precio_unitario'], 2)
+            set_tpv_carrito(carrito)
+            return
+    
+    carrito.append({
+        'producto_id': prod_id,
+        'nombre': producto.get('nombre'),
+        'precio_unitario': producto.get('precio_venta', 0),
+        'cantidad': 1,
+        'subtotal': producto.get('precio_venta', 0),
+        'imagen_url': producto.get('imagen_url'),
+    })
+    set_tpv_carrito(carrito)
+
+
+def actualizar_cantidad_linea(index: int, cantidad: int):
+    """Actualiza la cantidad de una línea del carrito."""
+    carrito = get_tpv_carrito()
+    if 0 <= index < len(carrito):
+        if cantidad <= 0:
+            carrito.pop(index)
+        else:
+            carrito[index]['cantidad'] = cantidad
+            carrito[index]['subtotal'] = round(cantidad * carrito[index]['precio_unitario'], 2)
+        set_tpv_carrito(carrito)
+        st.session_state['tpv_linea_seleccionada'] = None
+        st.session_state['tpv_teclado_buffer'] = ''
+
+
+def calcular_total_carrito() -> float:
+    """Calcula el total del carrito."""
+    return round(sum(linea['subtotal'] for linea in get_tpv_carrito()), 2)
+
+
+def get_cajeros() -> list:
+    """Lista de cajeros disponibles."""
+    return ["andres", "edu", "carlos", "alberto", "irrael", "YioQueSe", "fernando", "ernesto", "raul"]
