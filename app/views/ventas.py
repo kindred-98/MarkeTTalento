@@ -8,8 +8,15 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import os
 import base64
+import io
 
 from app.utils.api import api_get, api_post, api_delete
+
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 from app.utils.helpers import to_excel, format_currency
 from app.utils.state import (
     init_tpv_state, get_tpv_carrito, set_tpv_carrito, limpiar_carrito,
@@ -27,10 +34,12 @@ PRODUCTOS_POR_PAGINA = 12
 
 
 def _buscar_imagen_producto(producto: dict) -> str:
-    """Intenta encontrar una imagen para el producto."""
+    """Intenta encontrar una imagen para el producto (redimensionada a thumbnail)."""
     imagen_url = producto.get('imagen_url')
+    candidatos = []
     if imagen_url and os.path.exists(imagen_url):
-        return imagen_url
+        candidatos.append(imagen_url)
+
     # Buscar en docs/productos/
     nombre = producto.get('nombre', '').lower().replace(' ', '_')
     docs_dir = 'docs/productos'
@@ -38,9 +47,23 @@ def _buscar_imagen_producto(producto: dict) -> str:
         for ext in ['.jpg', '.jpeg', '.png']:
             for fname in os.listdir(docs_dir):
                 if fname.lower().endswith(ext):
-                    # Match parcial del nombre
                     if nombre in fname.lower() or fname.lower().replace(ext, '') in nombre:
-                        return os.path.join(docs_dir, fname)
+                        candidatos.append(os.path.join(docs_dir, fname))
+
+    for path in candidatos:
+        try:
+            if PIL_AVAILABLE:
+                with Image.open(path) as img:
+                    img.thumbnail((100, 100), Image.Resampling.LANCZOS)
+                    buffer = io.BytesIO()
+                    fmt = 'PNG' if path.lower().endswith('.png') else 'JPEG'
+                    img.save(buffer, format=fmt)
+                    return f"data:image/{fmt.lower()};base64," + base64.b64encode(buffer.getvalue()).decode()
+            else:
+                # Fallback: devolver path directo
+                return path
+        except Exception:
+            continue
     return None
 
 
@@ -84,6 +107,11 @@ def render_tpv():
     # Si se acaba de cobrar y hay ticket para mostrar
     if st.session_state.get('tpv_mostrar_ticket') and st.session_state.get('tpv_ticket_reciente'):
         render_ticket_post_cobro()
+        return
+
+    # Si estamos en modal de cobro, mostrar SOLO el modal centrado
+    if st.session_state.get('tpv_mostrar_cobro'):
+        render_cobro_modal()
         return
 
     col_izq, col_der = st.columns([35, 65])
@@ -175,10 +203,6 @@ def render_panel_ticket():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Modal de cobro (usando expander/conditional)
-    if st.session_state.get('tpv_mostrar_cobro'):
-        render_cobro_modal()
-
 
 def render_teclado_numerico():
     """Teclado numérico funcional para cambiar cantidades."""
@@ -208,7 +232,7 @@ def render_teclado_numerico():
                         st.session_state['tpv_teclado_buffer'] += tecla
                     st.rerun()
 
-    # Botón aplicar
+    # Botón aplicar (teclado)
     if buffer:
         try:
             cantidad = int(float(buffer))
@@ -218,34 +242,167 @@ def render_teclado_numerico():
         except ValueError:
             st.error("Cantidad inválida")
 
+    # Alternativa rápida: input directo
+    st.markdown("<p style='color: #64748b; font-size: 0.75rem; text-align: center; margin-top: 10px;'>— o escribe directamente —</p>", unsafe_allow_html=True)
+    cantidad_rapida = st.number_input(
+        "Cantidad",
+        min_value=1,
+        max_value=999,
+        value=1,
+        key=f"cantidad_rapida_{linea_sel}",
+        label_visibility="collapsed"
+    )
+    if st.button("✅ Aplicar", use_container_width=True, key=f"btn_aplicar_rapido_{linea_sel}"):
+        actualizar_cantidad_linea(linea_sel, int(cantidad_rapida))
+        st.rerun()
+
 
 def render_cobro_modal():
-    """Pantalla de cobro."""
+    """Modal centrado de cobro a pantalla completa."""
     total = calcular_total_carrito()
     metodo = st.session_state.get('tpv_metodo_pago', 'efectivo')
 
-    with st.container():
-        st.markdown("---")
-        st.markdown(f"<h3 style='color: #00f0ff; text-align: center;'>💰 Cobrar - Total: €{total:.2f}</h3>", unsafe_allow_html=True)
-        st.markdown(f"<p style='text-align: center; color: #94a3b8;'>Método: {metodo.upper()}</p>", unsafe_allow_html=True)
+    # Overlay oscuro de fondo
+    st.markdown("""
+    <style>
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(10, 14, 23, 0.92);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-box {
+        background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
+        border: 1px solid rgba(0, 240, 255, 0.25);
+        border-radius: 20px;
+        padding: 40px 30px;
+        max-width: 480px;
+        width: 90%;
+        box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
+        text-align: center;
+    }
+    .modal-title {
+        color: #00f0ff;
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .modal-subtitle {
+        color: #94a3b8;
+        font-size: 1rem;
+        margin-bottom: 25px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .modal-total {
+        color: #00f0ff;
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin: 15px 0;
+    }
+    .modal-cambio {
+        color: #10b981;
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin: 10px 0 20px 0;
+    }
+    .modal-checkbox label {
+        color: #f8fafc !important;
+        font-size: 1.05rem !important;
+    }
+    .btn-cancelar {
+        background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        padding: 14px 20px !important;
+        font-size: 1.05rem !important;
+        transition: all 0.3s ease !important;
+    }
+    .btn-cancelar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4) !important;
+    }
+    .btn-finalizar {
+        background: linear-gradient(135deg, #00f0ff, #00a8e8) !important;
+        color: #0f172a !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        padding: 14px 20px !important;
+        font-size: 1.05rem !important;
+        transition: all 0.3s ease !important;
+    }
+    .btn-finalizar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 240, 255, 0.4) !important;
+    }
+    .btn-finalizar:disabled {
+        background: #334155 !important;
+        color: #64748b !important;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Centrar el modal usando columnas
+    _, col_center, _ = st.columns([1, 2.5, 1])
+
+    with col_center:
+        st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)  # Espaciado superior
+
+        # Caja del modal
+        st.markdown("""
+        <div style="background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
+                    border: 1px solid rgba(0, 240, 255, 0.25);
+                    border-radius: 20px;
+                    padding: 35px 25px;
+                    box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
+                    text-align: center;">
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"<div class='modal-title'>💰 Cobrar</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='modal-total'>Total: €{total:.2f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='modal-subtitle'>Método: {metodo.upper()}</div>", unsafe_allow_html=True)
 
         entrega = total
         cambio = 0.0
 
         if metodo == 'efectivo':
-            entrega = st.number_input("💶 Entrega (€)", min_value=float(total), value=float(total * 1.1), step=0.5, format="%.2f")
+            entrega = st.number_input(
+                "💶 Entrega (€)",
+                min_value=float(total),
+                value=float(total * 1.1),
+                step=0.5,
+                format="%.2f",
+                key="modal_entrega"
+            )
             cambio = round(entrega - total, 2)
-            st.markdown(f"<h4 style='color: #10b981; text-align: center;'>Cambio: €{cambio:.2f}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<div class='modal-cambio'>Cambio: €{cambio:.2f}</div>", unsafe_allow_html=True)
 
-        confirmar = st.checkbox("✅ Confirmar cobro", key="confirmar_cobro")
+        # Checkbox con estilo
+        st.markdown("<div class='modal-checkbox'>", unsafe_allow_html=True)
+        confirmar = st.checkbox("✅ Confirmar cobro", key="confirmar_cobro_modal")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("❌ Cancelar", use_container_width=True):
+        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+
+        # Botones
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("❌ Cancelar", use_container_width=True, key="modal_btn_cancel"):
                 st.session_state['tpv_mostrar_cobro'] = False
                 st.rerun()
-        with col2:
-            if st.button("✅ Finalizar Venta", use_container_width=True, type="primary", disabled=not confirmar):
+        with c2:
+            disabled = not confirmar
+            btn_type = "primary" if confirmar else "secondary"
+            if st.button("✅ Finalizar Venta", use_container_width=True, type=btn_type, disabled=disabled, key="modal_btn_ok"):
                 with st.spinner("Registrando venta..."):
                     lineas_api = []
                     for linea in get_tpv_carrito():
@@ -272,7 +429,9 @@ def render_cobro_modal():
                         st.rerun()
                     else:
                         st.error("❌ Error al registrar el ticket")
-        st.markdown("---")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)
 
 
 def render_ticket_post_cobro():
@@ -398,11 +557,16 @@ def render_panel_productos():
                         justify-content: space-between;">
             """
 
-            if imagen and os.path.exists(imagen):
+            if imagen and imagen.startswith("data:image"):
+                # Ya es un data URI (PIL redimensionó)
+                card_html += f'<img src="{imagen}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
+            elif imagen and os.path.exists(imagen):
+                # Fallback sin PIL: leer directo
                 try:
                     with open(imagen, "rb") as f:
                         img_b64 = base64.b64encode(f.read()).decode()
-                    card_html += f'<img src="data:image/jpeg;base64,{img_b64}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
+                    fmt = 'png' if imagen.lower().endswith('.png') else 'jpeg'
+                    card_html += f'<img src="data:image/{fmt};base64,{img_b64}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
                 except Exception:
                     card_html += f'<div style="font-size: 2rem; margin: 0 auto;">📦</div>'
             else:
