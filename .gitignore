@@ -86,10 +86,10 @@ logs/
 # ARCHIVOS DE USUARIO / UPLOADS
 # ===============================
 # Imágenes de productos subidas por usuarios
-docs/productos/*.jpg
-docs/productos/*.jpeg
-docs/productos/*.png
-docs/productos/*.gif
+docs/img_productos/*.jpg
+docs/img_productos/*.jpeg
+docs/img_productos/*.png
+docs/img_productos/*.gif
 
 # Archivos temporales
 temp_*
@@ -110,4 +110,4 @@ $RECYCLE.BIN/
 *.backup
 *~
 *.old
-docs/PlandeVenta.md
+docs

@@ -2,6 +2,7 @@
 Ventas - TPV Profesional + Dashboard + Historial
 """
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -9,6 +10,7 @@ from datetime import datetime, timedelta
 import os
 import base64
 import io
+import time
 
 from app.utils.api import api_get, api_post, api_delete
 
@@ -40,9 +42,9 @@ def _buscar_imagen_producto(producto: dict) -> str:
     if imagen_url and os.path.exists(imagen_url):
         candidatos.append(imagen_url)
 
-    # Buscar en docs/productos/
+    # Buscar en docs/img_productos/
     nombre = producto.get('nombre', '').lower().replace(' ', '_')
-    docs_dir = 'docs/productos'
+    docs_dir = 'docs/img_productos'
     if os.path.exists(docs_dir):
         for ext in ['.jpg', '.jpeg', '.png']:
             for fname in os.listdir(docs_dir):
@@ -124,7 +126,7 @@ def render_tpv():
 
 
 def render_panel_ticket():
-    """Panel izquierdo: Ticket actual."""
+    """Panel izquierdo: Ticket actual con scroll, barcode, descuento y alertas."""
     st.markdown("<div style='background: rgba(30,41,59,0.6); border-radius: 10px; padding: 15px; border: 1px solid rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
 
     # Header
@@ -132,11 +134,17 @@ def render_panel_ticket():
     st.session_state['tpv_cajero'] = cajero
     st.markdown(f"<p style='color: #64748b; font-size: 0.8rem;'>📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>", unsafe_allow_html=True)
 
+    # Input código de barras
+    barcode = st.text_input("🔍 Código de barras / Nombre", placeholder="Escanea o escribe...", key="tpv_barcode", label_visibility="collapsed")
+    if barcode:
+        _procesar_barcode(barcode)
+
     st.markdown("---")
 
     carrito = get_tpv_carrito()
 
-    # Lista de líneas
+    # Scroll de líneas
+    st.markdown("<div class='tpv-panel-scroll'>", unsafe_allow_html=True)
     if not carrito:
         st.markdown("<p style='color: #64748b; text-align: center; padding: 30px 0;'>🛒 Ticket vacío<br>Haz clic en un producto para agregarlo</p>", unsafe_allow_html=True)
     else:
@@ -171,6 +179,7 @@ def render_panel_ticket():
                     st.rerun()
 
             st.markdown(f"<div style='background: {bg_color}; border: 1px solid {border_color}; border-radius: 6px; margin: 2px -5px; padding: 4px 8px;'></div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -180,28 +189,113 @@ def render_panel_ticket():
 
     st.markdown("---")
 
-    # Total
+    # Total y descuento
     total = calcular_total_carrito()
-    st.markdown(f"<h2 style='text-align: center; color: #00f0ff; margin: 10px 0;'>Total: €{total:.2f}</h2>", unsafe_allow_html=True)
+    descuento_pct = st.session_state.get('tpv_descuento', 0)
+    total_con_desc = round(total * (1 - descuento_pct / 100), 2)
 
-    # Botones de acción
+    if descuento_pct > 0:
+        st.markdown(f"<p style='text-align: center; color: #f59e0b; font-size: 0.85rem;'>Descuento: {descuento_pct}% | Original: €{total:.2f}</p>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: #00f0ff; margin: 5px 0;'>Total: €{total_con_desc:.2f}</h2>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<h2 style='text-align: center; color: #00f0ff; margin: 10px 0;'>Total: €{total:.2f}</h2>", unsafe_allow_html=True)
+
+    # Botón descuento rápido
+    if carrito:
+        col_dto1, col_dto2, col_dto3 = st.columns(3)
+        for col, pct in zip([col_dto1, col_dto2, col_dto3], [5, 10, 20]):
+            with col:
+                if st.button(f"DTO {pct}%", key=f"dto_{pct}", use_container_width=True):
+                    st.session_state['tpv_descuento'] = pct if st.session_state.get('tpv_descuento') != pct else 0
+                    st.rerun()
+
+    # Botones de acción con gradientes (usando markdown HTML porque Streamlit no permite clases CSS en buttons)
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("💶 Efectivo", use_container_width=True, type="primary", disabled=not carrito):
+        st.markdown("""
+        <style>
+        div[data-testid="stHorizontalBlock"] div:nth-child(1) button[data-testid="baseButton-primary"],
+        div[data-testid="stHorizontalBlock"] div:nth-child(1) button[data-testid="baseButton-secondary"] {
+            background: linear-gradient(135deg, #10b981, #059669) !important;
+            color: white !important; border: none !important;
+            border-radius: 10px !important; font-weight: 700 !important;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.3) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        if st.button("💶 Efectivo", use_container_width=True, type="primary", disabled=not carrito, key="btn_efectivo_grad"):
             st.session_state['tpv_metodo_pago'] = 'efectivo'
             st.session_state['tpv_mostrar_cobro'] = True
             st.rerun()
     with col2:
-        if st.button("💳 Tarjeta", use_container_width=True, type="primary", disabled=not carrito):
+        st.markdown("""
+        <style>
+        div[data-testid="stHorizontalBlock"] div:nth-child(2) button[data-testid="baseButton-primary"],
+        div[data-testid="stHorizontalBlock"] div:nth-child(2) button[data-testid="baseButton-secondary"] {
+            background: linear-gradient(135deg, #00f0ff, #00a8e8) !important;
+            color: #0f172a !important; border: none !important;
+            border-radius: 10px !important; font-weight: 700 !important;
+            box-shadow: 0 4px 12px rgba(0,240,255,0.3) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        if st.button("💳 Tarjeta", use_container_width=True, type="primary", disabled=not carrito, key="btn_tarjeta_grad"):
             st.session_state['tpv_metodo_pago'] = 'tarjeta'
             st.session_state['tpv_mostrar_cobro'] = True
             st.rerun()
     with col3:
-        if st.button("🧹 Limpiar", use_container_width=True, type="secondary"):
+        st.markdown("""
+        <style>
+        div[data-testid="stHorizontalBlock"] div:nth-child(3) button[data-testid="baseButton-primary"],
+        div[data-testid="stHorizontalBlock"] div:nth-child(3) button[data-testid="baseButton-secondary"] {
+            background: linear-gradient(135deg, #64748b, #475569) !important;
+            color: white !important; border: none !important;
+            border-radius: 10px !important; font-weight: 600 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        if st.button("🧹 Limpiar", use_container_width=True, type="secondary", key="btn_limpiar_grad"):
+            st.session_state['tpv_descuento'] = 0
             limpiar_carrito()
             st.rerun()
 
+    # Alerta de stock bajo
+    if carrito:
+        _render_alerta_stock_bajo(carrito)
+
     st.markdown("</div>", unsafe_allow_html=True)
+
+
+def _procesar_barcode(texto: str):
+    """Busca producto por código de barras o nombre y lo agrega al carrito."""
+    texto = texto.strip().lower()
+    if not texto:
+        return
+    productos = api_get("/api/v1/productos", use_cache=False)
+    for prod in productos:
+        sku = (prod.get('sku') or '').lower()
+        cod = (prod.get('codigo_barras') or '').lower()
+        nombre = (prod.get('nombre') or '').lower()
+        if texto == sku or texto == cod or texto in nombre:
+            agregar_linea_carrito(prod)
+            st.session_state['tpv_barcode'] = ''
+            st.rerun()
+            return
+    st.warning(f"❌ Producto no encontrado: '{texto}'")
+
+
+def _render_alerta_stock_bajo(carrito: list):
+    """Muestra alerta si algún producto del carrito queda con stock < 5."""
+    inventarios = api_get("/api/v1/inventario", use_cache=False)
+    inv_dict = {i['producto_id']: i['cantidad'] for i in inventarios}
+    alertas = []
+    for linea in carrito:
+        stock_restante = inv_dict.get(linea['producto_id'], 0)
+        if stock_restante < 5:
+            alertas.append(f"⚠️ {linea['nombre']}: quedan {stock_restante} unidades")
+    if alertas:
+        st.markdown(f"<div class='alerta-stock-bajo'>{'<br>'.join(alertas)}</div>", unsafe_allow_html=True)
 
 
 def render_teclado_numerico():
@@ -261,148 +355,105 @@ def render_cobro_modal():
     """Modal centrado de cobro a pantalla completa."""
     total = calcular_total_carrito()
     metodo = st.session_state.get('tpv_metodo_pago', 'efectivo')
+    icono = "💵" if metodo == 'efectivo' else "💳"
 
-    # Overlay oscuro de fondo
-    st.markdown("""
-    <style>
-    .modal-overlay {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(10, 14, 23, 0.92);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .modal-box {
-        background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
-        border: 1px solid rgba(0, 240, 255, 0.25);
-        border-radius: 20px;
-        padding: 40px 30px;
-        max-width: 480px;
-        width: 90%;
-        box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
-        text-align: center;
-    }
-    .modal-title {
-        color: #00f0ff;
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-    .modal-subtitle {
-        color: #94a3b8;
-        font-size: 1rem;
-        margin-bottom: 25px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .modal-total {
-        color: #00f0ff;
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin: 15px 0;
-    }
-    .modal-cambio {
-        color: #10b981;
-        font-size: 1.4rem;
-        font-weight: 600;
-        margin: 10px 0 20px 0;
-    }
-    .modal-checkbox label {
-        color: #f8fafc !important;
-        font-size: 1.05rem !important;
-    }
-    .btn-cancelar {
-        background: linear-gradient(135deg, #ef4444, #dc2626) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        font-weight: 600 !important;
-        padding: 14px 20px !important;
-        font-size: 1.05rem !important;
-        transition: all 0.3s ease !important;
-    }
-    .btn-cancelar:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4) !important;
-    }
-    .btn-finalizar {
-        background: linear-gradient(135deg, #00f0ff, #00a8e8) !important;
-        color: #0f172a !important;
-        border: none !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        padding: 14px 20px !important;
-        font-size: 1.05rem !important;
-        transition: all 0.3s ease !important;
-    }
-    .btn-finalizar:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0, 240, 255, 0.4) !important;
-    }
-    .btn-finalizar:disabled {
-        background: #334155 !important;
-        color: #64748b !important;
-        cursor: not-allowed;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # ========== SONIDO AL COBRAR (precarga) ==========
+    components.html("""
+    <audio id="sonido-cobro" preload="auto">
+      <source src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" type="audio/mpeg">
+    </audio>
+    <script>
+      setTimeout(() => {
+        const input = document.querySelector('input[data-testid="stNumberInput"]');
+        if (input) input.focus();
+      }, 400);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          const checkbox = document.querySelector('input[type="checkbox"]');
+          const btn = document.querySelector('button[kind="primary"]');
+          if (checkbox && checkbox.checked && btn && !btn.disabled) { btn.click(); }
+        }
+      });
+    </script>
+    """, height=0)
 
-    # Centrar el modal usando columnas
-    _, col_center, _ = st.columns([1, 2.5, 1])
+    # ========== LAYOUT DEL MODAL ==========
+    # Centramos todo usando columnas de Streamlit (sin position:fixed que tapa widgets)
+    _, col_center, _ = st.columns([1, 3, 1])
 
     with col_center:
-        st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)  # Espaciado superior
-
-        # Caja del modal
-        st.markdown("""
-        <div style="background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
-                    border: 1px solid rgba(0, 240, 255, 0.25);
-                    border-radius: 20px;
-                    padding: 35px 25px;
-                    box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
-                    text-align: center;">
+        # Caja del modal con animación CSS inline
+        st.markdown(f"""
+        <style>
+        @keyframes modalFadeIn {{ from {{ opacity:0; transform:scale(0.92); }} to {{ opacity:1; transform:scale(1); }} }}
+        @keyframes iconoPop {{ 0% {{ transform:scale(0); }} 50% {{ transform:scale(1.2); }} 100% {{ transform:scale(1); }} }}
+        .modal-caja {{
+            animation: modalFadeIn 0.35s ease forwards;
+            background: linear-gradient(145deg, rgba(30,41,59,0.98), rgba(15,23,42,1));
+            border: 1px solid rgba(0,240,255,0.25);
+            border-radius: 18px;
+            padding: 25px 20px;
+            box-shadow: 0 0 40px rgba(0,240,255,0.12);
+            text-align: center;
+            margin: 15px 0;
+        }}
+        .modal-icon {{ font-size: 3rem; display:inline-block; animation: iconoPop 0.5s ease 0.1s both; margin-bottom: 5px; }}
+        .modal-titulo {{ color: #00f0ff; font-size: 1.6rem; font-weight: 700; }}
+        .modal-total {{ color: #00f0ff; font-size: 1.9rem; font-weight: 800; margin: 8px 0; }}
+        .modal-sub {{ color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }}
+        .modal-cambio {{ color: #10b981; font-size: 1.15rem; font-weight: 700; margin: 6px 0 12px 0; }}
+        </style>
+        <div class="modal-caja">
+            <div class="modal-icon">{icono}</div>
+            <div class="modal-titulo">Cobrar</div>
+            <div class="modal-total">Total: €{total:.2f}</div>
+            <div class="modal-sub">Método: {metodo.upper()}</div>
+        </div>
         """, unsafe_allow_html=True)
-
-        st.markdown(f"<div class='modal-title'>💰 Cobrar</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='modal-total'>Total: €{total:.2f}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='modal-subtitle'>Método: {metodo.upper()}</div>", unsafe_allow_html=True)
 
         entrega = total
         cambio = 0.0
 
         if metodo == 'efectivo':
+            # Botones rápidos de billetes
+            st.markdown("<p style='color:#64748b; font-size:0.75rem; margin:0 0 6px 0; text-align:center;'>Rápido:</p>", unsafe_allow_html=True)
+            bc1, bc2, bc3, bc4 = st.columns(4)
+            for col, val in zip([bc1, bc2, bc3, bc4], [5, 10, 20, 50]):
+                with col:
+                    if st.button(f"€{val}", key=f"billete_{val}", use_container_width=True):
+                        st.session_state['tpv_billete_pulsado'] = float(val)
+                        st.rerun()
+
+            # Si se pulsó un billete, usar ese valor
+            billete_pulsado = st.session_state.pop('tpv_billete_pulsado', None)
+            default_val = float(billete_pulsado) if billete_pulsado and billete_pulsado >= total else float(total * 1.1)
+
             entrega = st.number_input(
-                "💶 Entrega (€)",
-                min_value=float(total),
-                value=float(total * 1.1),
-                step=0.5,
-                format="%.2f",
-                key="modal_entrega"
+                "💶 Entrega (€)", min_value=float(total), value=default_val,
+                step=0.5, format="%.2f", key="modal_entrega_v2"
             )
             cambio = round(entrega - total, 2)
-            st.markdown(f"<div class='modal-cambio'>Cambio: €{cambio:.2f}</div>", unsafe_allow_html=True)
+            st.markdown(f"<p class='modal-cambio' style='text-align:center;'>Cambio: €{cambio:.2f}</p>", unsafe_allow_html=True)
 
-        # Checkbox con estilo
-        st.markdown("<div class='modal-checkbox'>", unsafe_allow_html=True)
-        confirmar = st.checkbox("✅ Confirmar cobro", key="confirmar_cobro_modal")
-        st.markdown("</div>", unsafe_allow_html=True)
+        # Checkbox
+        confirmar = st.checkbox("✅ Confirmar cobro", key="confirmar_cobro_modal_v2")
 
-        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-        # Botones
+        # Botones de acción
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("❌ Cancelar", use_container_width=True, key="modal_btn_cancel"):
+            if st.button("❌ Cancelar", use_container_width=True, key="modal_btn_cancel_v2"):
                 st.session_state['tpv_mostrar_cobro'] = False
                 st.rerun()
         with c2:
             disabled = not confirmar
             btn_type = "primary" if confirmar else "secondary"
-            if st.button("✅ Finalizar Venta", use_container_width=True, type=btn_type, disabled=disabled, key="modal_btn_ok"):
+            if st.button("✅ Finalizar Venta", use_container_width=True, type=btn_type, disabled=disabled, key="modal_btn_ok_v2"):
+                # Reproducir sonido
+                components.html("""
+                <script>document.getElementById('sonido-cobro').play();</script>
+                """, height=0)
                 with st.spinner("Registrando venta..."):
                     lineas_api = []
                     for linea in get_tpv_carrito():
@@ -411,7 +462,6 @@ def render_cobro_modal():
                             "cantidad": linea['cantidad'],
                             "precio_unitario": linea['precio_unitario']
                         })
-
                     payload = {
                         "cajero": st.session_state['tpv_cajero'],
                         "metodo_pago": metodo,
@@ -419,24 +469,48 @@ def render_cobro_modal():
                         "cambio": cambio if metodo == 'efectivo' else None,
                         "lineas": lineas_api
                     }
-
                     result = api_post("/api/v1/tickets", payload)
                     if result:
                         st.session_state['tpv_mostrar_cobro'] = False
                         st.session_state['tpv_mostrar_ticket'] = True
                         st.session_state['tpv_ticket_reciente'] = result
+                        st.session_state['tpv_ticket_time'] = time.time()
                         limpiar_carrito()
                         st.rerun()
                     else:
                         st.error("❌ Error al registrar el ticket")
 
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)
-
 
 def render_ticket_post_cobro():
-    """Muestra el ticket simplificado después del cobro."""
+    """Muestra el ticket simplificado después del cobro con auto-cierre e impresión."""
     ticket = st.session_state['tpv_ticket_reciente']
+
+    # Sonido de éxito + auto-cierre 5s + impresión
+    components.html(f"""
+    <audio autoplay>
+      <source src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" type="audio/mpeg">
+    </audio>
+    <div id="ticket-para-imprimir" style="display:none;">
+      <pre style="font-family:monospace; font-size:12px; color:#000;">
+{'-'*42}
+           MARKE TTALENTO
+         Ticket N° {ticket['numero_ticket']}
+    {ticket['fecha'][:16].replace('T', ' ')}
+    Cajero: {ticket['cajero']}
+{'-'*42}
+      </pre>
+    </div>
+    <script>
+      // Auto-cierre contador visual
+      let seg = 5;
+      const span = document.getElementById('contador-cierre');
+      const timer = setInterval(() => {{
+        seg--;
+        if (span) span.innerText = seg;
+        if (seg <= 0) clearInterval(timer);
+      }}, 1000);
+    </script>
+    """, height=0)
 
     st.markdown("<div style='background: rgba(30,41,59,0.8); border-radius: 12px; padding: 25px; border: 1px solid rgba(0,240,255,0.3); max-width: 400px; margin: 0 auto;'>", unsafe_allow_html=True)
 
@@ -466,17 +540,32 @@ def render_ticket_post_cobro():
     st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 15px;'>¡Gracias por su visita!</p>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Botón descargar ticket
+    # Botones de acción
     ticket_txt = generar_ticket_txt(ticket)
-    st.download_button(
-        "📥 Descargar Ticket",
-        data=ticket_txt,
-        file_name=f"ticket_{ticket['numero_ticket']}.txt",
-        mime="text/plain",
-        use_container_width=True
-    )
+    col_d1, col_d2, col_d3 = st.columns(3)
+    with col_d1:
+        st.download_button(
+            "📥 Descargar",
+            data=ticket_txt,
+            file_name=f"ticket_{ticket['numero_ticket']}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+    with col_d2:
+        if st.button("🖨️ Imprimir", use_container_width=True):
+            components.html("<script>window.print();</script>", height=0)
+    with col_d3:
+        if st.button("🔄 Nueva Venta", use_container_width=True, type="primary"):
+            st.session_state['tpv_mostrar_ticket'] = False
+            st.session_state['tpv_ticket_reciente'] = None
+            st.rerun()
 
-    if st.button("🔄 Nueva Venta", use_container_width=True, type="primary"):
+    # Contador de cierre automático
+    st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 10px;'>⏱️ Cierre automático en <span id='contador-cierre' style='color: #00f0ff; font-weight: 700;'>5</span> segundos</p>", unsafe_allow_html=True)
+
+    # Cierre automático real via Python (cada rerun verifica el tiempo)
+    ticket_time = st.session_state.get('tpv_ticket_time')
+    if ticket_time and (time.time() - ticket_time > 5):
         st.session_state['tpv_mostrar_ticket'] = False
         st.session_state['tpv_ticket_reciente'] = None
         st.rerun()
@@ -507,7 +596,7 @@ def generar_ticket_txt(ticket: dict) -> str:
 
 
 def render_panel_productos():
-    """Panel derecho: Categorías y productos."""
+    """Panel derecho: Categorías y productos con búsqueda, colores, badges y favoritos."""
     productos = api_get("/api/v1/productos", use_cache=False)
     categorias = api_get("/api/v1/categorias", use_cache=False)
     inventarios = api_get("/api/v1/inventario", use_cache=False)
@@ -518,50 +607,94 @@ def render_panel_productos():
 
     cat_activa = st.session_state.get('tpv_categoria_activa', 'todos')
 
+    # ========== BARRA DE BÚSQUEDA ==========
+    busqueda = st.text_input("🔍 Buscar producto...", key="tpv_busqueda_prod", label_visibility="collapsed")
+    if busqueda:
+        productos = [p for p in productos if busqueda.lower() in p.get('nombre', '').lower()]
+
+    # ========== COLORES POR CATEGORÍA ==========
+    COLORES_CAT = {
+        'Bebidas': '#f59e0b', 'Cervezas': '#fbbf24', 'Whiskies': '#a78bfa',
+        'Cafés': '#92400e', 'Refrescos': '#ef4444', 'Hamburguesas': '#f97316',
+        'Pizzas': '#f59e0b', 'Bocadillos': '#10b981', 'Menus': '#3b82f6',
+        'Todos': '#00f0ff'
+    }
+
     # Fila de categorías
     cats_filtradas = [{"id": "todos", "nombre": "Todos"}] + [{"id": c["id"], "nombre": c["nombre"]} for c in categorias]
     cols_cats = st.columns(min(len(cats_filtradas), 6))
     for i, cat in enumerate(cats_filtradas[:6]):
         with cols_cats[i]:
             es_activa = cat_activa == cat["id"]
-            color = "#00f0ff" if es_activa else "#64748b"
-            bg = "rgba(0,240,255,0.15)" if es_activa else "rgba(30,41,59,0.6)"
+            color_cat = COLORES_CAT.get(cat["nombre"], '#00f0ff')
+            bg = f"rgba({int(color_cat[1:3],16)},{int(color_cat[3:5],16)},{int(color_cat[5:7],16)},0.15)" if es_activa else "rgba(30,41,59,0.6)"
+            border = f"1px solid {color_cat}" if es_activa else "1px solid rgba(255,255,255,0.1)"
+            st.markdown(f"""
+            <style>
+            div[data-testid="stHorizontalBlock"] div:nth-child({i+1}) button[data-testid="baseButton-secondary"] {{
+                background: {bg} !important;
+                border: {border} !important;
+                color: {color_cat if es_activa else '#94a3b8'} !important;
+                border-radius: 10px !important;
+                font-weight: {'700' if es_activa else '500'} !important;
+            }}
+            </style>
+            """, unsafe_allow_html=True)
             if st.button(cat["nombre"], key=f"cat_{cat['id']}", use_container_width=True):
                 st.session_state['tpv_categoria_activa'] = cat["id"]
                 st.rerun()
 
     st.markdown("<hr style='margin: 10px 0; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
 
-    # Filtrar productos
-    productos_filtrados = productos
+    # Filtrar por categoría
     if cat_activa != 'todos':
-        productos_filtrados = [p for p in productos if p.get('categoria_id') == cat_activa]
+        productos = [p for p in productos if p.get('categoria_id') == cat_activa]
+
+    # ========== ORDENAR POR MÁS VENDIDOS (FAVORITOS) ==========
+    try:
+        top = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=unidades&limite=50", use_cache=True)
+        top_ids = {t['producto'] for t in top} if top else set()
+        productos.sort(key=lambda p: (p.get('nombre') not in top_ids, p.get('nombre', '')))
+    except Exception:
+        pass
+
+    # ========== MODAL CANTIDAD (doble-click simulado) ==========
+    if st.session_state.get('tpv_modal_cantidad_prod_id'):
+        _render_modal_cantidad(productos, inventarios)
 
     # Grid de productos
     cols_grid = st.columns(4)
-    for idx, prod in enumerate(productos_filtrados):
+    for idx, prod in enumerate(productos):
         stock = _get_stock(prod.get('id'), inventarios)
         sin_stock = stock <= 0
         imagen = _buscar_imagen_producto(prod)
+        es_favorito = prod.get('nombre') in top_ids if 'top_ids' in locals() else False
 
         with cols_grid[idx % 4]:
             opacity = "0.4" if sin_stock else "1"
             cursor = "not-allowed" if sin_stock else "pointer"
-            border = "2px solid #ef4444" if sin_stock else "1px solid rgba(255,255,255,0.1)"
+            border_color = "#ef4444" if sin_stock else ("#f59e0b" if es_favorito else "rgba(255,255,255,0.1)")
+            border_width = "2px" if (sin_stock or es_favorito) else "1px"
 
-            # Tarjeta de producto
+            # Badge stock
+            badge_class = "tpv-badge-stock"
+            if stock <= 0:
+                badge_class += " tpv-badge-stock-critico"
+            elif stock < 5:
+                badge_class += " tpv-badge-stock-bajo"
+            badge_html = f'<div class="{badge_class}">{stock}</div>' if not sin_stock else ''
+
             card_html = f"""
-            <div style="opacity: {opacity}; border: {border}; border-radius: 10px; padding: 10px;
+            <div style="position: relative; opacity: {opacity}; border: {border_width} solid {border_color}; border-radius: 10px; padding: 10px;
                         background: rgba(30,41,59,0.8); cursor: {cursor}; text-align: center;
-                        margin-bottom: 10px; height: 140px; display: flex; flex-direction: column;
+                        margin-bottom: 10px; height: 150px; display: flex; flex-direction: column;
                         justify-content: space-between;">
+                {badge_html}
             """
 
             if imagen and imagen.startswith("data:image"):
-                # Ya es un data URI (PIL redimensionó)
                 card_html += f'<img src="{imagen}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
             elif imagen and os.path.exists(imagen):
-                # Fallback sin PIL: leer directo
                 try:
                     with open(imagen, "rb") as f:
                         img_b64 = base64.b64encode(f.read()).decode()
@@ -572,18 +705,59 @@ def render_panel_productos():
             else:
                 card_html += f'<div style="font-size: 2rem; margin: 0 auto;">📦</div>'
 
+            nombre_display = prod.get('nombre') + (' ⭐' if es_favorito else '')
             card_html += f"""
-                <div style="font-size: 0.85rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{prod.get('nombre')}</div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{nombre_display}</div>
                 <div style="font-size: 0.9rem; color: #00f0ff; font-weight: 700;">€{prod.get('precio_venta', 0):.2f}</div>
-                <div style="font-size: 0.75rem; color: {'#ef4444' if sin_stock else '#10b981'};">{'❌ Sin stock' if sin_stock else f'✅ Stock: {stock}'}</div>
             </div>
             """
             st.markdown(card_html, unsafe_allow_html=True)
 
             if not sin_stock:
-                if st.button("Agregar", key=f"add_prod_{prod.get('id')}", use_container_width=True):
-                    agregar_linea_carrito(prod)
-                    st.rerun()
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button("➕", key=f"add_prod_{prod.get('id')}", use_container_width=True):
+                        agregar_linea_carrito(prod)
+                        st.rerun()
+                with c2:
+                    if st.button("#️⃣", key=f"cant_prod_{prod.get('id')}", use_container_width=True, help="Cantidad"):
+                        st.session_state['tpv_modal_cantidad_prod_id'] = prod.get('id')
+                        st.rerun()
+
+
+def _render_modal_cantidad(productos, inventarios):
+    """Modal para elegir cantidad al agregar producto."""
+    prod_id = st.session_state.get('tpv_modal_cantidad_prod_id')
+    prod = next((p for p in productos if p.get('id') == prod_id), None)
+    if not prod:
+        st.session_state['tpv_modal_cantidad_prod_id'] = None
+        return
+    stock = _get_stock(prod.get('id'), inventarios)
+
+    st.markdown("""
+    <style>
+    @keyframes modalFadeIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+    .mini-modal { animation: modalFadeIn 0.25s ease forwards; background: rgba(30,41,59,0.95); border: 1px solid rgba(0,240,255,0.3); border-radius: 14px; padding: 20px; margin: 10px 0; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"<div class='mini-modal'>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #00f0ff; text-align: center;'>📦 {prod.get('nombre')}</h4>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #94a3b8;'>Stock disponible: {stock}</p>", unsafe_allow_html=True)
+
+    cantidad = st.number_input("Cantidad", min_value=1, max_value=stock, value=1, key="modal_cantidad_val")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("❌ Cancelar", use_container_width=True, key="modal_cant_cancel"):
+            st.session_state['tpv_modal_cantidad_prod_id'] = None
+            st.rerun()
+    with c2:
+        if st.button("✅ Agregar", use_container_width=True, type="primary", key="modal_cant_ok"):
+            for _ in range(int(cantidad)):
+                agregar_linea_carrito(prod)
+            st.session_state['tpv_modal_cantidad_prod_id'] = None
+            st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ============================================================================
@@ -618,6 +792,16 @@ def render_dashboard():
         st.metric("📦 Unidades", resumen['total_unidades'])
     with c4:
         st.metric("📈 Ticket Promedio", f"€{resumen['ticket_promedio']:.2f}")
+    st.markdown("---")
+
+    # Meta diaria
+    col_meta, col_chart = st.columns([1, 3])
+    with col_meta:
+        meta = st.number_input("🎯 Meta diaria (€)", min_value=0.0, value=float(st.session_state.get('tpv_meta_diaria', 200.0)), step=50.0, key="input_meta_diaria")
+        st.session_state['tpv_meta_diaria'] = meta
+    with col_chart:
+        grafica_objetivos(resumen, meta)
+
     st.markdown("---")
 
     # Gráficas fila 1
@@ -848,15 +1032,62 @@ def grafica_comparativa_mes(datos):
     st.plotly_chart(_plotly_config(fig), use_container_width=True)
 
 
+def grafica_objetivos(resumen, meta):
+    """Gráfica de meta diaria vs ventas reales."""
+    if not resumen:
+        st.info("Sin datos")
+        return
+    ingresos_hoy = resumen.get('total_ingresos', 0)
+    pct = min((ingresos_hoy / meta * 100), 100) if meta > 0 else 0
+    restante = max(meta - ingresos_hoy, 0)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=['Meta', 'Real'], y=[meta, ingresos_hoy],
+        marker_color=['#64748b', '#00f0ff'],
+        text=[f"€{meta:.0f}", f"€{ingresos_hoy:.2f}"],
+        textposition='auto',
+        textfont=dict(size=14, color='white')
+    ))
+    fig.add_hline(y=meta, line_dash="dash", line_color="#f59e0b", annotation_text="🎯 Meta")
+    fig.update_layout(title_text=f"Progreso: {pct:.0f}%", title_font_size=12, showlegend=False)
+    st.plotly_chart(_plotly_config(fig, height=220), use_container_width=True)
+    if restante > 0:
+        st.markdown(f"<p style='text-align:center; color:#94a3b8; font-size:0.8rem;'>Faltan €{restante:.2f} para la meta</p>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<p style='text-align:center; color:#10b981; font-size:0.85rem; font-weight:600;'>🎉 ¡Meta alcanzada!</p>", unsafe_allow_html=True)
+
+
 # ============================================================================
 # TAB HISTORIAL
 # ============================================================================
 
 def render_historial():
-    """Historial de tickets con filtros y anulación."""
+    """Historial de tickets con filtros rápidos y anulación."""
     st.markdown("### 📋 Historial de Tickets")
 
-    # Filtros
+    # Botones de filtro rápido de fecha
+    st.markdown("<p style='color: #64748b; font-size: 0.85rem; margin-bottom: 5px;'>📅 Filtro rápido:</p>", unsafe_allow_html=True)
+    cols_fecha = st.columns(5)
+    opciones_fecha = [
+        ("Hoy", 0, 0), ("Ayer", 1, 1), ("Últimos 7 días", 7, 0),
+        ("Este mes", 30, 0), ("Todo", 365, 0)
+    ]
+    fecha_desde = None
+    fecha_hasta = None
+    for col, (label, dias_atras, dias_fin) in zip(cols_fecha, opciones_fecha):
+        with col:
+            if st.button(label, use_container_width=True, key=f"hist_fecha_{label.replace(' ', '_')}"):
+                hoy = datetime.now().date()
+                if dias_atras == 365:
+                    st.session_state['hist_fecha_desde'] = None
+                    st.session_state['hist_fecha_hasta'] = None
+                else:
+                    st.session_state['hist_fecha_desde'] = (hoy - timedelta(days=dias_atras)).isoformat()
+                    st.session_state['hist_fecha_hasta'] = (hoy - timedelta(days=dias_fin)).isoformat()
+                st.rerun()
+
+    # Filtros avanzados
     col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
 
     with col1:
@@ -864,10 +1095,16 @@ def render_historial():
         filtro_cajero = st.selectbox("Cajero", cajeros_opciones, key="hist_cajero")
 
     with col2:
-        fecha_desde = st.date_input("Desde", value=None, key="hist_desde")
+        default_desde = None
+        if st.session_state.get('hist_fecha_desde'):
+            default_desde = datetime.fromisoformat(st.session_state['hist_fecha_desde']).date()
+        fecha_desde = st.date_input("Desde", value=default_desde, key="hist_desde")
 
     with col3:
-        fecha_hasta = st.date_input("Hasta", value=None, key="hist_hasta")
+        default_hasta = None
+        if st.session_state.get('hist_fecha_hasta'):
+            default_hasta = datetime.fromisoformat(st.session_state['hist_fecha_hasta']).date()
+        fecha_hasta = st.date_input("Hasta", value=default_hasta, key="hist_hasta")
 
     with col4:
         st.markdown("<br>", unsafe_allow_html=True)

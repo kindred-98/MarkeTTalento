@@ -721,10 +721,10 @@ def render_nuevo():
             # Guardar imagen
             imagen_url = None
             if imagen_subida:
-                os.makedirs("docs/productos", exist_ok=True)
+                os.makedirs("docs/img_productos", exist_ok=True)
                 extension = imagen_subida.name.split('.')[-1]
                 nombre_imagen = f"{sku.replace(' ', '_').replace('/', '_')}_{form_version}.{extension}"
-                ruta_imagen = f"docs/productos/{nombre_imagen}"
+                ruta_imagen = f"docs/img_productos/{nombre_imagen}"
                 with open(ruta_imagen, "wb") as f:
                     f.write(imagen_subida.getbuffer())
                 imagen_url = ruta_imagen
@@ -899,10 +899,10 @@ def render_edicion():
             
             nueva_imagen_url = producto.get('imagen_url')
             if edit_imagen:
-                os.makedirs("docs/productos", exist_ok=True)
+                os.makedirs("docs/img_productos", exist_ok=True)
                 extension = edit_imagen.name.split('.')[-1]
                 nombre_imagen = f"{producto.get('sku', 'prod').replace(' ', '_').replace('/', '_')}_edit.{extension}"
-                ruta_imagen = f"docs/productos/{nombre_imagen}"
+                ruta_imagen = f"docs/img_productos/{nombre_imagen}"
                 with open(ruta_imagen, "wb") as f:
                     f.write(edit_imagen.getbuffer())
                 nueva_imagen_url = ruta_imagen
