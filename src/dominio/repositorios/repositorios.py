@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from src.dominio.entidades.entidades import Producto, Inventario, Venta
+from src.dominio.entidades.entidades import Producto, Inventario, Venta, Ticket, TicketLinea
 
 
 class ProductoRepositorio(ABC):
@@ -87,4 +87,28 @@ class VentaRepositorio(ABC):
     @abstractmethod
     def obtener_todas(self, limite: int = 100) -> List[Venta]:
         """Lista últimas ventas."""
+        pass
+
+
+class TicketRepositorio(ABC):
+    """Contrato para acceso a datos de tickets."""
+
+    @abstractmethod
+    def obtener_por_producto(self, producto_id: int, dias: int = 90) -> List[TicketLinea]:
+        """Obtiene líneas de tickets de un producto en los últimos N días."""
+        pass
+
+    @abstractmethod
+    def obtener_por_fecha(self, fecha_inicio, fecha_fin) -> List[Ticket]:
+        """Obtiene tickets en un rango de fechas."""
+        pass
+
+    @abstractmethod
+    def obtener_todos_completados(self, limite: int = 500) -> List[Ticket]:
+        """Lista tickets completados."""
+        pass
+
+    @abstractmethod
+    def obtener_lineas_por_categoria(self, categoria_id: int, dias: int = 90) -> List[TicketLinea]:
+        """Obtiene líneas de tickets de una categoría."""
         pass

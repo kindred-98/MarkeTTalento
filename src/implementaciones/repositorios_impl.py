@@ -1,12 +1,14 @@
 from typing import List, Optional
-from src.dominio.entidades.entidades import Producto, Inventario, Venta
+from sqlalchemy.orm import joinedload
+from src.dominio.entidades.entidades import Producto, Inventario, Venta, Ticket, TicketLinea
 from src.dominio.repositorios.repositorios import (
     ProductoRepositorio as IProductoRepositorio,
     InventarioRepositorio as IInventarioRepositorio,
     VentaRepositorio as IVentaRepositorio,
+    TicketRepositorio as ITicketRepositorio,
 )
 from src.core.database.database import SessionLocal, engine
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class SQLAlchemyProductoRepositorio(IProductoRepositorio):
@@ -187,5 +189,62 @@ class SQLAlchemyVentaRepositorio(IVentaRepositorio):
             return self.db.query(Venta).order_by(
                 Venta.fecha.desc()
             ).limit(limite).all()
+        finally:
+            self.db.close()
+
+
+class SQLAlchemyTicketRepositorio(ITicketRepositorio):
+    """Implementación SQLAlchemy para tickets."""
+
+    def __init__(self):
+        self.db = SessionLocal()
+
+    def obtener_por_producto(self, producto_id: int, dias: int = 90) -> List[TicketLinea]:
+        try:
+            fecha_limite = datetime.utcnow() - timedelta(days=dias)
+            return self.db.query(TicketLinea).options(
+                joinedload(TicketLinea.ticket),
+                joinedload(TicketLinea.producto)
+            ).join(Ticket).filter(
+                TicketLinea.producto_id == producto_id,
+                Ticket.estado == "completado",
+                Ticket.fecha >= fecha_limite
+            ).order_by(Ticket.fecha.desc()).all()
+        finally:
+            self.db.close()
+
+    def obtener_por_fecha(self, fecha_inicio, fecha_fin) -> List[Ticket]:
+        try:
+            return self.db.query(Ticket).options(
+                joinedload(Ticket.lineas).joinedload(TicketLinea.producto).joinedload(Producto.categoria)
+            ).filter(
+                Ticket.estado == "completado",
+                Ticket.fecha >= fecha_inicio,
+                Ticket.fecha <= fecha_fin
+            ).order_by(Ticket.fecha.desc()).all()
+        finally:
+            self.db.close()
+
+    def obtener_todos_completados(self, limite: int = 500) -> List[Ticket]:
+        try:
+            return self.db.query(Ticket).options(
+                joinedload(Ticket.lineas).joinedload(TicketLinea.producto).joinedload(Producto.categoria)
+            ).filter(
+                Ticket.estado == "completado"
+            ).order_by(Ticket.fecha.desc()).limit(limite).all()
+        finally:
+            self.db.close()
+
+    def obtener_lineas_por_categoria(self, categoria_id: int, dias: int = 90) -> List[TicketLinea]:
+        try:
+            fecha_limite = datetime.utcnow() - timedelta(days=dias)
+            return self.db.query(TicketLinea).options(
+                joinedload(TicketLinea.ticket),
+                joinedload(TicketLinea.producto)
+            ).join(Ticket).join(Producto).filter(
+                Producto.categoria_id == categoria_id,
+                Ticket.estado == "completado",
+                Ticket.fecha >= fecha_limite
+            ).order_by(Ticket.fecha.desc()).all()
         finally:
             self.db.close()

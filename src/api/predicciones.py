@@ -1,63 +1,72 @@
 """
-Router de Predicciones
-Endpoints de Machine Learning para predicción de demanda
+Router de Predicciones ML
+Endpoints de Machine Learning para predicción de demanda e inteligencia de negocio
 """
-from typing import List
-from fastapi import APIRouter, Depends
+from typing import List, Optional
+from fastapi import APIRouter, HTTPException
 
-from src.dominio.repositorios.repositorios import VentaRepositorio
-from src.implementaciones.repositorios_impl import SQLAlchemyVentaRepositorio
-from src.aplicacion.servicios.prediccion_servicio import PrediccionServicio
+from src.aplicacion.servicios.prediccion_ml import PrediccionServicioML
 
 router = APIRouter()
 
 
-def get_venta_repo() -> VentaRepositorio:
-    return SQLAlchemyVentaRepositorio()
+def _get_servicio() -> PrediccionServicioML:
+    return PrediccionServicioML()
 
 
-@router.get("/{producto_id}")
-async def predecir_demanda(
-    producto_id: int,
-    venta_repo: VentaRepositorio = Depends(get_venta_repo)
-):
-    """Predice la demanda para un producto específico."""
-    servicio = PrediccionServicio(venta_repo)
-    prediccion = servicio.predecir_demanda(producto_id)
-    
-    return {
-        "producto": prediccion.producto_nombre,
-        "dias_hasta_agotarse": round(prediccion.dias_hasta_agotarse, 1),
-        "consumo_promedio_diario": round(prediccion.consumo_promedio, 2),
-        "tendencia": prediccion.tendencia,
-        "estado": prediccion.estado,
-        "historial": prediccion.datos_grafico
-    }
+@router.get("/producto/{producto_id}")
+async def predecir_demanda_producto(producto_id: int, dias_historia: int = 90, dias_futuro: int = 30):
+    """Predice la demanda futura para un producto específico."""
+    servicio = _get_servicio()
+    resultado = servicio.predecir_demanda_producto(producto_id, dias_historia, dias_futuro)
+    if not resultado:
+        raise HTTPException(status_code=404, detail="No hay datos suficientes para este producto")
+    return resultado.to_dict()
 
 
-@router.get("/todos")
-async def predecir_todos(venta_repo: VentaRepositorio = Depends(get_venta_repo)):
-    """Predice demanda para todos los productos."""
-    servicio = PrediccionServicio(venta_repo)
-    predicciones = servicio.predecir_todos()
-    
-    return [
-        {
-            "producto": p.producto_nombre,
-            "dias_hasta_agotarse": round(p.dias_hasta_agotarse, 1),
-            "consumo_promedio_diario": round(p.consumo_promedio, 2),
-            "tendencia": p.tendencia,
-            "estado": p.estado
-        }
-        for p in predicciones
-    ]
+@router.get("/categoria/{categoria_id}")
+async def predecir_demanda_categoria(categoria_id: int, dias_historia: int = 90, dias_futuro: int = 30):
+    """Predice la demanda agregada para una categoría."""
+    servicio = _get_servicio()
+    resultado = servicio.predecir_demanda_categoria(categoria_id, dias_historia, dias_futuro)
+    if not resultado:
+        raise HTTPException(status_code=404, detail="No hay datos suficientes para esta categoría")
+    return resultado.to_dict()
 
 
-@router.get("/semanal/{producto_id}")
-async def pronostico_semanal(
-    producto_id: int,
-    venta_repo: VentaRepositorio = Depends(get_venta_repo)
-):
-    """Genera pronóstico semanal para un producto."""
-    servicio = PrediccionServicio(venta_repo)
-    return servicio.generar_pronostico_semanal(producto_id)
+@router.get("/alertas")
+async def alertas_reposicion(dias_seguridad: int = 14):
+    """Genera alertas de reposición para todos los productos."""
+    servicio = _get_servicio()
+    alertas = servicio.generar_alertas_reposicion(dias_seguridad)
+    return [a.to_dict() for a in alertas]
+
+
+@router.get("/abc")
+async def analisis_abc(dias: int = 90):
+    """Clasifica productos por método ABC (Pareto 80/20)."""
+    servicio = _get_servicio()
+    productos = servicio.analisis_abc(dias)
+    return [p.to_dict() for p in productos]
+
+
+@router.get("/precios")
+async def sugerencias_precio(dias: int = 60):
+    """Genera sugerencias de ajuste de precio basado en demanda y rotación."""
+    servicio = _get_servicio()
+    sugerencias = servicio.sugerencias_precio(dias)
+    return [s.to_dict() for s in sugerencias]
+
+
+@router.get("/estacionalidad")
+async def analisis_estacionalidad():
+    """Analiza patrones estacionales comparando mes actual vs anterior."""
+    servicio = _get_servicio()
+    return servicio.analisis_estacionalidad()
+
+
+@router.get("/dashboard")
+async def dashboard_predictivo():
+    """Resumen global con todas las métricas predictivas."""
+    servicio = _get_servicio()
+    return servicio.dashboard_global()
