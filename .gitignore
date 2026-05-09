@@ -82,15 +82,6 @@ runs/
 logs/
 *.log
 
-# ===============================
-# ARCHIVOS DE USUARIO / UPLOADS
-# ===============================
-# Imágenes de productos subidas por usuarios
-docs/img_productos/*.jpg
-docs/img_productos/*.jpeg
-docs/img_productos/*.png
-docs/img_productos/*.gif
-
 # Archivos temporales
 temp_*
 *.tmp
@@ -110,4 +101,3 @@ $RECYCLE.BIN/
 *.backup
 *~
 *.old
-docs
