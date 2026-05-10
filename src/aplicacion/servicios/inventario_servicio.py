@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from src.dominio.entidades.entidades import Producto, Inventario, Venta
 from src.dominio.repositorios.repositorios import InventarioRepositorio, VentaRepositorio
+from src.aplicacion.utils.estado_stock import calcular_estado_stock, calcular_necesita_reposicion
 
 
 class InventarioAnalisis:
@@ -28,33 +29,21 @@ class InventarioAnalisis:
     
     @property
     def estado(self) -> str:
-        """Calcula el estado basado en el porcentaje del stock máximo."""
-        stock_maximo = self.producto.stock_maximo or 100
-        
-        if self.stock_actual <= 0:
-            return "AGOTADO"
-        
-        if stock_maximo > 0:
-            pct = (self.stock_actual / stock_maximo) * 100
-            if pct <= 25:
-                return "CRÍTICO"
-            elif pct <= 50:
-                return "BAJO"
-            elif pct <= 75:
-                return "MODERADO"
-        
-        return "ADECUADO"
-    
+        """Calcula el estado del stock de forma unificada."""
+        return calcular_estado_stock(
+            self.stock_actual,
+            self.producto.stock_minimo,
+            self.producto.stock_maximo
+        )
+
     @property
     def necesita_reposicion(self) -> bool:
-        """Determina si necesita reposición basado en el porcentaje del stock."""
-        stock_maximo = self.producto.stock_maximo or 100
-        
-        if stock_maximo > 0:
-            pct = (self.stock_actual / stock_maximo) * 100
-            return pct <= 25  # Necesita reposición si está en 25% o menos
-        
-        return False
+        """Determina si necesita reposición."""
+        return calcular_necesita_reposicion(
+            self.stock_actual,
+            self.producto.stock_minimo,
+            self.producto.stock_maximo
+        )
     
     @property
     def cantidad_recomendada(self) -> int:

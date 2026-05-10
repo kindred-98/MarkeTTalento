@@ -6,10 +6,11 @@ import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 
 from src.aplicacion.servicios.vision_stock_servicio import VisionStockServicio
 from src.core.database.database import SessionLocal
+from src.core.security.auth import get_current_user
 from src.dominio.entidades.entidades import ProductoImagenReferencia, Producto
 
 router = APIRouter()
@@ -48,7 +49,8 @@ async def listar_referencias():
 @router.post("/referencias")
 async def agregar_referencia(
     producto_id: int = Form(...),
-    archivo: UploadFile = File(...)
+    archivo: UploadFile = File(...),
+    current_user = Depends(get_current_user)
 ):
     """Sube una nueva imagen de referencia para un producto."""
     db = SessionLocal()
@@ -85,7 +87,7 @@ async def agregar_referencia(
 
 
 @router.delete("/referencias/{imagen_id}")
-async def eliminar_referencia(imagen_id: int):
+async def eliminar_referencia(imagen_id: int, current_user = Depends(get_current_user)):
     """Elimina una imagen de referencia por ID."""
     db = SessionLocal()
     try:

@@ -14,9 +14,18 @@ from src.core.config.config import settings
 from src.core.database.database import get_db
 from src.dominio.entidades.entidades import Usuario
 
-SECRET_KEY = getattr(settings, 'SECRET_KEY', 'markettalento-secret-key-change-in-production')
+SECRET_KEY = settings.SECRET_KEY
+if not SECRET_KEY or SECRET_KEY == "markettalento-secret-key-change-in-production":
+    import warnings
+    warnings.warn(
+        "SECRET_KEY no configurada o usando valor por defecto. "
+        "Configura SECRET_KEY en variables de entorno para produccion.",
+        RuntimeWarning,
+        stacklevel=2
+    )
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 horas
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 4  # 4 horas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")

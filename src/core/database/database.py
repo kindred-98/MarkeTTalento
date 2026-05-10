@@ -8,7 +8,7 @@ from src.dominio.entidades.entidades import Categoria, Proveedor, Producto, Inve
 URL_DATABASE = os.getenv("DATABASE_URL", "")
 
 if URL_DATABASE.startswith("postgresql"):
-    engine = create_engine(URL_DATABASE, poolclass=StaticPool, echo=False)
+    engine = create_engine(URL_DATABASE, pool_pre_ping=True, echo=False)
 elif URL_DATABASE.startswith("sqlite"):
     engine = create_engine(URL_DATABASE, connect_args={"check_same_thread": False})
 else:

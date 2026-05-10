@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.core.database.database import get_db
+from src.core.security.auth import get_current_user
 from src.dominio.entidades.entidades import Proveedor
 from src.aplicacion.schemas.schemas import ProveedorCreate, ProveedorResponse
 
@@ -15,7 +16,8 @@ router = APIRouter()
 @router.post("", response_model=ProveedorResponse, status_code=status.HTTP_201_CREATED)
 async def crear_proveedor(
     proveedor: ProveedorCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Crea un nuevo proveedor."""
     db_proveedor = Proveedor(**proveedor.model_dump())

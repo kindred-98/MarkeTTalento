@@ -7,202 +7,222 @@ from src.dominio.repositorios.repositorios import (
     VentaRepositorio as IVentaRepositorio,
     TicketRepositorio as ITicketRepositorio,
 )
-from src.core.database.database import SessionLocal, engine
+from src.core.database.database import SessionLocal
 from datetime import datetime, timedelta
 
 
 class SQLAlchemyProductoRepositorio(IProductoRepositorio):
-    """Implementación SQLAlchemy para productos."""
-
-    def __init__(self):
-        self.db = SessionLocal()
-
-    def _commit(self):
-        try:
-            self.db.commit()
-        except:
-            self.db.rollback()
-            raise
-        finally:
-            self.db.close()
+    """Implementación SQLAlchemy para productos.
+    Cada método gestiona su propia sesión para evitar problemas de cierre prematuro."""
 
     def obtener_todos(self) -> List[Producto]:
+        db = SessionLocal()
         try:
-            return self.db.query(Producto).filter(Producto.activo == True).all()
+            return db.query(Producto).filter(Producto.activo == True).all()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_por_id(self, producto_id: int) -> Optional[Producto]:
+        db = SessionLocal()
         try:
-            return self.db.query(Producto).filter(
-                Producto.id == producto_id, 
+            return db.query(Producto).filter(
+                Producto.id == producto_id,
                 Producto.activo == True
             ).first()
         finally:
-            self.db.close()
+            db.close()
 
     def obtenir_per_sku(self, sku: str) -> Optional[Producto]:
+        db = SessionLocal()
         try:
-            return self.db.query(Producto).filter(
-                Producto.sku == sku, 
+            return db.query(Producto).filter(
+                Producto.sku == sku,
                 Producto.activo == True
             ).first()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_por_categoria(self, categoria_id: int) -> List[Producto]:
+        db = SessionLocal()
         try:
-            return self.db.query(Producto).filter(
-                Producto.categoria_id == categoria_id, 
+            return db.query(Producto).filter(
+                Producto.categoria_id == categoria_id,
                 Producto.activo == True
             ).all()
         finally:
-            self.db.close()
+            db.close()
 
     def crear(self, producto: Producto) -> Producto:
-        self.db.add(producto)
-        self._commit()
-        return producto
+        db = SessionLocal()
+        try:
+            db.add(producto)
+            db.commit()
+            db.refresh(producto)
+            return producto
+        except:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     def actualizar(self, producto: Producto) -> Producto:
-        self._commit()
-        self.db.expire(producto)
-        return producto
+        db = SessionLocal()
+        try:
+            # Merge para asegurar que el objeto está asociado a esta sesión
+            producto = db.merge(producto)
+            db.commit()
+            db.refresh(producto)
+            return producto
+        except:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     def eliminar(self, producto_id: int) -> bool:
-        producto = self.obtener_por_id(producto_id)
-        if producto:
-            producto.activo = False
-            self._commit()
-            return True
-        return False
+        db = SessionLocal()
+        try:
+            producto = db.query(Producto).filter(
+                Producto.id == producto_id,
+                Producto.activo == True
+            ).first()
+            if producto:
+                producto.activo = False
+                db.commit()
+                return True
+            return False
+        except:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
 
 class SQLAlchemyInventarioRepositorio(IInventarioRepositorio):
     """Implementación SQLAlchemy para inventario."""
 
-    def __init__(self):
-        self.db = SessionLocal()
-
-    def _commit(self):
-        try:
-            self.db.commit()
-        except:
-            self.db.rollback()
-            raise
-        finally:
-            self.db.close()
-
     def obtener_por_producto(self, producto_id: int) -> Optional[Inventario]:
+        db = SessionLocal()
         try:
-            return self.db.query(Inventario).filter(
+            return db.query(Inventario).filter(
                 Inventario.producto_id == producto_id
             ).first()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_todos(self) -> List[Inventario]:
+        db = SessionLocal()
         try:
-            return self.db.query(Inventario).all()
+            return db.query(Inventario).all()
         finally:
-            self.db.close()
+            db.close()
 
     def actualizar_stock(self, producto_id: int, cantidad: int, ubicacion: Optional[str] = None) -> Inventario:
-        inventario = self.obtener_por_producto(producto_id)
-        if inventario:
-            inventario.cantidad = cantidad
-            if ubicacion:
-                inventario.ubicacion = ubicacion
-            inventario.fecha_ultima_actualizacion = datetime.utcnow()
-        else:
-            inventario = Inventario(
-                producto_id=producto_id,
-                cantidad=cantidad,
-                ubicacion=ubicacion,
-                fecha_ultima_actualizacion=datetime.utcnow()
-            )
-            self.db.add(inventario)
-        self._commit()
-        return inventario
+        db = SessionLocal()
+        try:
+            inventario = db.query(Inventario).filter(
+                Inventario.producto_id == producto_id
+            ).first()
+            if inventario:
+                inventario.cantidad = cantidad
+                if ubicacion:
+                    inventario.ubicacion = ubicacion
+                inventario.fecha_ultima_actualizacion = datetime.utcnow()
+            else:
+                inventario = Inventario(
+                    producto_id=producto_id,
+                    cantidad=cantidad,
+                    ubicacion=ubicacion,
+                    fecha_ultima_actualizacion=datetime.utcnow()
+                )
+                db.add(inventario)
+            db.commit()
+            db.refresh(inventario)
+            return inventario
+        except:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     def obtener_bajo_stock(self, limite: int = 10) -> List[Inventario]:
+        db = SessionLocal()
         try:
             resultados = []
-            inventarios = self.db.query(Inventario).all()
+            inventarios = db.query(Inventario).all()
             for inv in inventarios:
-                producto = self.db.query(Producto).filter(Producto.id == inv.producto_id).first()
+                producto = db.query(Producto).filter(Producto.id == inv.producto_id).first()
                 if producto and inv.cantidad < producto.stock_minimo:
                     resultados.append(inv)
             return resultados[:limite]
         finally:
-            self.db.close()
+            db.close()
 
 
 class SQLAlchemyVentaRepositorio(IVentaRepositorio):
     """Implementación SQLAlchemy para ventas."""
 
-    def __init__(self):
-        self.db = SessionLocal()
-
-    def _commit(self):
+    def crear(self, venta: Venta) -> Venta:
+        db = SessionLocal()
         try:
-            self.db.commit()
+            db.add(venta)
+
+            inventario = db.query(Inventario).filter(
+                Inventario.producto_id == venta.producto_id
+            ).first()
+            if inventario:
+                if venta.tipo_operacion == "venta":
+                    inventario.cantidad -= venta.cantidad
+                else:
+                    inventario.cantidad += venta.cantidad
+                inventario.fecha_ultima_actualizacion = datetime.utcnow()
+
+            db.commit()
+            db.refresh(venta)
+            return venta
         except:
-            self.db.rollback()
+            db.rollback()
             raise
         finally:
-            self.db.close()
-
-    def crear(self, venta: Venta) -> Venta:
-        self.db.add(venta)
-        
-        inventario = self.db.query(Inventario).filter(Inventario.producto_id == venta.producto_id).first()
-        if inventario:
-            if venta.tipo_operacion == "venta":
-                inventario.cantidad -= venta.cantidad
-            else:
-                inventario.cantidad += venta.cantidad
-            inventario.fecha_ultima_actualizacion = datetime.utcnow()
-        
-        self._commit()
-        return venta
+            db.close()
 
     def obtener_por_producto(self, producto_id: int, limite: int = 30) -> List[Venta]:
+        db = SessionLocal()
         try:
-            return self.db.query(Venta).filter(
+            return db.query(Venta).filter(
                 Venta.producto_id == producto_id
             ).order_by(Venta.fecha.desc()).limit(limite).all()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_ventas_fecha(self, fecha_inicio, fecha_fin) -> List[Venta]:
+        db = SessionLocal()
         try:
-            return self.db.query(Venta).filter(
+            return db.query(Venta).filter(
                 Venta.fecha >= fecha_inicio,
                 Venta.fecha <= fecha_fin
             ).all()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_todas(self, limite: int = 100) -> List[Venta]:
+        db = SessionLocal()
         try:
-            return self.db.query(Venta).order_by(
+            return db.query(Venta).order_by(
                 Venta.fecha.desc()
             ).limit(limite).all()
         finally:
-            self.db.close()
+            db.close()
 
 
 class SQLAlchemyTicketRepositorio(ITicketRepositorio):
     """Implementación SQLAlchemy para tickets."""
 
-    def __init__(self):
-        self.db = SessionLocal()
-
     def obtener_por_producto(self, producto_id: int, dias: int = 90) -> List[TicketLinea]:
+        db = SessionLocal()
         try:
             fecha_limite = datetime.utcnow() - timedelta(days=dias)
-            return self.db.query(TicketLinea).options(
+            return db.query(TicketLinea).options(
                 joinedload(TicketLinea.ticket),
                 joinedload(TicketLinea.producto)
             ).join(Ticket).filter(
@@ -211,11 +231,12 @@ class SQLAlchemyTicketRepositorio(ITicketRepositorio):
                 Ticket.fecha >= fecha_limite
             ).order_by(Ticket.fecha.desc()).all()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_por_fecha(self, fecha_inicio, fecha_fin) -> List[Ticket]:
+        db = SessionLocal()
         try:
-            return self.db.query(Ticket).options(
+            return db.query(Ticket).options(
                 joinedload(Ticket.lineas).joinedload(TicketLinea.producto).joinedload(Producto.categoria)
             ).filter(
                 Ticket.estado == "completado",
@@ -223,22 +244,24 @@ class SQLAlchemyTicketRepositorio(ITicketRepositorio):
                 Ticket.fecha <= fecha_fin
             ).order_by(Ticket.fecha.desc()).all()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_todos_completados(self, limite: int = 500) -> List[Ticket]:
+        db = SessionLocal()
         try:
-            return self.db.query(Ticket).options(
+            return db.query(Ticket).options(
                 joinedload(Ticket.lineas).joinedload(TicketLinea.producto).joinedload(Producto.categoria)
             ).filter(
                 Ticket.estado == "completado"
             ).order_by(Ticket.fecha.desc()).limit(limite).all()
         finally:
-            self.db.close()
+            db.close()
 
     def obtener_lineas_por_categoria(self, categoria_id: int, dias: int = 90) -> List[TicketLinea]:
+        db = SessionLocal()
         try:
             fecha_limite = datetime.utcnow() - timedelta(days=dias)
-            return self.db.query(TicketLinea).options(
+            return db.query(TicketLinea).options(
                 joinedload(TicketLinea.ticket),
                 joinedload(TicketLinea.producto)
             ).join(Ticket).join(Producto).filter(
@@ -247,4 +270,4 @@ class SQLAlchemyTicketRepositorio(ITicketRepositorio):
                 Ticket.fecha >= fecha_limite
             ).order_by(Ticket.fecha.desc()).all()
         finally:
-            self.db.close()
+            db.close()

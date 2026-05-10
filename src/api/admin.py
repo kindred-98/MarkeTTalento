@@ -2,7 +2,7 @@
 Router de Administración de Bases de Datos
 Endpoints para gestionar múltiples bases de datos
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, List
 from src.core.database.multi_database import (
     list_databases,
@@ -11,12 +11,14 @@ from src.core.database.multi_database import (
     migrate_data,
     init_all_databases
 )
+from src.core.security.auth import get_current_active_admin
+from src.dominio.entidades.entidades import Usuario
 
 router = APIRouter()
 
 
 @router.get("/bases-de-datos", response_model=Dict)
-async def obtener_bases_de_datos():
+async def obtener_bases_de_datos(current_user: Usuario = Depends(get_current_active_admin)):
     """Lista todas las bases de datos disponibles."""
     return {
         "bases_de_datos": list_databases(),
@@ -25,7 +27,7 @@ async def obtener_bases_de_datos():
 
 
 @router.post("/bases-de-datos/cambiar/{db_name}")
-async def cambiar_base_de_datos(db_name: str):
+async def cambiar_base_de_datos(db_name: str, current_user: Usuario = Depends(get_current_active_admin)):
     """Cambia la base de datos activa."""
     try:
         set_active_database(db_name)
@@ -38,7 +40,7 @@ async def cambiar_base_de_datos(db_name: str):
 
 
 @router.post("/bases-de-datos/inicializar-todas")
-async def inicializar_todas():
+async def inicializar_todas(current_user: Usuario = Depends(get_current_active_admin)):
     """Inicializa todas las bases de datos (crea tablas)."""
     try:
         init_all_databases()
@@ -46,15 +48,16 @@ async def inicializar_todas():
             "mensaje": "Todas las bases de datos han sido inicializadas",
             "bases": list(list_databases().keys())
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error interno al inicializar bases de datos")
 
 
 @router.post("/bases-de-datos/migrar")
 async def migrar_entre_bases(
     source_db: str,
     target_db: str,
-    tabla: str = None
+    tabla: str = None,
+    current_user: Usuario = Depends(get_current_active_admin)
 ):
     """
     Migra datos entre bases de datos.
@@ -70,5 +73,5 @@ async def migrar_entre_bases(
             "mensaje": "Migración iniciada",
             "resultado": resultado
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error interno durante la migración")

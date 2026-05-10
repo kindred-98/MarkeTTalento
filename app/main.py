@@ -1,21 +1,20 @@
 """
 MarkeTTalento - Dashboard Principal
-Aplicación Streamlit modularizada
+Aplicacion Streamlit modularizada con autenticacion JWT
 """
 import streamlit as st
 import os
 
-# Configuración de página DEBE ser lo primero
+# Configuracion de pagina DEBE ser lo primero
 st.set_page_config(page_title="MarkeTTalento", page_icon="📦", layout="wide")
 
-# Importaciones de la aplicación
+# Importaciones de la aplicacion
 from app.utils.api import verificar_api, esperar_api
 from app.utils.state import init_session_state
-from app.components.header import render_header
 from app.components.sidebar import render_sidebar
 
-# Importar páginas
-from app.views import dashboard, productos, inventario, ventas, predicciones, vision_ai, barcode
+# Importar paginas
+from app.views import dashboard, productos, inventario, ventas, predicciones, vision_ai, barcode, login
 
 
 @st.cache_resource
@@ -47,32 +46,33 @@ def load_css():
 
 
 def main():
-    """Función principal de la aplicación."""
+    """Funcion principal de la aplicacion."""
     # Cargar CSS
     load_css()
     
     # Inicializar estado
     init_session_state()
     
-    # Verificar conexión con API
+    # Verificar conexion con API
     if not st.session_state.get('api_conectada', False):
         with st.spinner("Conectando con la API..."):
             if esperar_api(intentos=5):
                 st.session_state['api_conectada'] = True
             else:
-                st.error("❌ No se pudo conectar con la API. Asegúrate de que está corriendo en http://127.0.0.1:8002")
-                st.info("💡 Ejecuta: `python run.py` para iniciar todo el sistema")
+                st.error("No se pudo conectar con la API. Asegurate de que esta corriendo.")
+                st.info("Ejecuta: `python run.py` para iniciar todo el sistema")
                 return
     
-    # Header comentado - ahora el título está en cada página
-    # render_header()
+    # Verificar autenticacion
+    if not st.session_state.get("auth_token"):
+        # Mostrar pantalla de login
+        login.render()
+        return
     
-    # st.markdown("---")
-    
-    # Renderizar sidebar y obtener menú seleccionado
+    # Usuario autenticado: mostrar app completa
     menu = render_sidebar()
     
-    # Router de páginas
+    # Router de paginas
     if menu == "🏠 Dashboard":
         dashboard.render()
     elif menu == "📦 Productos":

@@ -6,17 +6,26 @@ from app.utils.state import get_menu, set_menu
 
 
 def render_sidebar():
-    """Renderiza el menú lateral completo."""
+    """Renderiza el menu lateral completo."""
     with st.sidebar:
         st.markdown("<h2 style='text-align: center; font-family: \"Cascadia Code\", \"Orbitron\", monospace;'>⚡ Menú</h2>", unsafe_allow_html=True)
         
         menu = get_menu()
         
+        # Info del usuario logueado
+        user = st.session_state.get("auth_user", {})
+        if user:
+            st.markdown(f"""
+            <div style="padding: 10px; background: rgba(255,255,255,0.03); border-radius: 10px; margin-bottom: 10px; text-align: center;">
+                <div style="font-size: 1.2rem;">👤</div>
+                <div style="font-weight: 600; color: #f1f5f9; font-size: 0.9rem;">{user.get('nombre_completo', user.get('username', 'Usuario'))}</div>
+                <div style="color: #64748b; font-size: 0.75rem; text-transform: uppercase;">{user.get('rol', 'cajero')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         st.markdown("---")
         
-        # Botones de navegación
-        cols = st.columns(1)
-        
+        # Botones de navegacion
         menu_items = [
             ("🏠 Dashboard", "card-dashboard"),
             ("📦 Productos", "card-productos"),
@@ -31,6 +40,15 @@ def render_sidebar():
             if st.button(label, key=f"btn_{label.replace(' ', '_').replace('🔍', 'barcode')}"):
                 set_menu(label)
                 st.rerun()
+        
+        st.markdown("---")
+        
+        # Logout
+        if st.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
+            for key in ["auth_token", "auth_user", "api_conectada"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
         
         st.markdown("---")
         

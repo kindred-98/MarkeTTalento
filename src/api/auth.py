@@ -12,13 +12,46 @@ from src.core.security.auth import (
     verify_password, get_password_hash, create_access_token, get_current_user, get_current_active_admin
 )
 from src.dominio.entidades.entidades import Usuario
+import time
 
 router = APIRouter()
 
+# Rate limiting específico para login (memoria, se pierde al reiniciar)
+_login_attempts: dict = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_WINDOW = 300  # 5 minutos
+
+
+def _check_login_rate_limit(ip: str):
+    now = time.time()
+    attempts = _login_attempts.get(ip, [])
+    attempts = [t for t in attempts if now - t < LOGIN_WINDOW]
+    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Demasiados intentos de login. Espera {LOGIN_WINDOW // 60} minutos."
+        )
+    _login_attempts[ip] = attempts + [now]
+
+
+def _validate_password(password: str):
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La contraseña debe tener al menos 6 caracteres"
+        )
+
 
 @router.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
     """Autentica un usuario y devuelve un token JWT."""
+    # Rate limiting por IP (usar username como proxy si no hay IP real)
+    client_id = form_data.username
+    _check_login_rate_limit(client_id)
+
     user = db.query(Usuario).filter(Usuario.username == form_data.username, Usuario.activo == True).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contraseña incorrectos")
@@ -52,6 +85,8 @@ async def register(
     """Registra un nuevo usuario. Requiere rol admin."""
     if db.query(Usuario).filter(Usuario.username == username).first():
         raise HTTPException(status_code=400, detail="El usuario ya existe")
+
+    _validate_password(password)
 
     user = Usuario(
         username=username,

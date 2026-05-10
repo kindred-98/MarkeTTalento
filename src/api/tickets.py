@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 
 from src.core.database.database import get_db
+from src.core.security.auth import get_current_user
 from src.dominio.entidades.entidades import Ticket, TicketLinea, Producto, Inventario
 from src.aplicacion.schemas.schemas import TicketCreate, TicketResponse
 
@@ -39,7 +40,7 @@ def _calcular_total_lineas(lineas_data: list) -> float:
 # ============================================================================
 
 @router.post("", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
-async def crear_ticket(ticket_data: TicketCreate, db: Session = Depends(get_db)):
+async def crear_ticket(ticket_data: TicketCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Crea un ticket completo con transacción atómica.
     Bloquea filas de inventario para evitar race conditions.
@@ -144,11 +145,11 @@ async def crear_ticket(ticket_data: TicketCreate, db: Session = Depends(get_db))
     except HTTPException:
         db.rollback()
         raise
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al crear ticket: {str(e)}"
+            detail="Error interno al crear el ticket. Contacte al administrador."
         )
 
 
@@ -170,15 +171,21 @@ async def listar_tickets(
         try:
             fd = datetime.fromisoformat(fecha_desde.replace("Z", "+00:00"))
             query = query.filter(Ticket.fecha >= fd)
-        except Exception:
-            pass
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Formato de fecha_desde invalido: {fecha_desde}. Use ISO 8601"
+            )
 
     if fecha_hasta:
         try:
             fh = datetime.fromisoformat(fecha_hasta.replace("Z", "+00:00"))
             query = query.filter(Ticket.fecha <= fh)
-        except Exception:
-            pass
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Formato de fecha_hasta invalido: {fecha_hasta}. Use ISO 8601"
+            )
 
     if cajero:
         query = query.filter(Ticket.cajero == cajero)
@@ -205,7 +212,7 @@ async def obtener_ticket(ticket_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{ticket_id}", status_code=status.HTTP_200_OK)
-async def anular_ticket(ticket_id: int, db: Session = Depends(get_db)):
+async def anular_ticket(ticket_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Anula un ticket y reintegra el stock al inventario.
     Solo permite anular tickets del día actual.

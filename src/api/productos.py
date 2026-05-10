@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.core.database.database import get_db
+from src.core.security.auth import get_current_user
 from src.dominio.entidades.entidades import Producto, Inventario
 from src.aplicacion.schemas.schemas import ProductoCreate, ProductoResponse, ProductoUpdate
 
@@ -15,7 +16,8 @@ router = APIRouter()
 @router.post("", response_model=ProductoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_producto(
     producto: ProductoCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Crea un nuevo producto con inventario inicial."""
     # Extraer campos de inventario
@@ -105,7 +107,8 @@ async def obtener_producto_por_barcode(codigo: str, db: Session = Depends(get_db
 async def actualizar_producto(
     producto_id: int,
     producto_data: ProductoUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Actualiza un producto."""
     db_producto = db.query(Producto).filter(Producto.id == producto_id).first()
@@ -126,7 +129,7 @@ async def actualizar_producto(
 
 
 @router.delete("/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def eliminar_producto(producto_id: int, db: Session = Depends(get_db)):
+async def eliminar_producto(producto_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Elimina un producto y su inventario."""
     db_producto = db.query(Producto).filter(Producto.id == producto_id).first()
     

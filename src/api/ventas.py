@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.core.database.database import get_db
+from src.core.security.auth import get_current_user
 from src.dominio.entidades.entidades import Producto, Inventario, Venta
 from src.aplicacion.schemas.schemas import VentaCreate, VentaResponse
 
@@ -14,7 +15,7 @@ router = APIRouter()
 
 
 @router.post("", response_model=VentaResponse, status_code=status.HTTP_201_CREATED)
-async def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
+async def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Registra una venta y actualiza el inventario."""
     producto = db.query(Producto).filter(Producto.id == venta.producto_id).first()
     

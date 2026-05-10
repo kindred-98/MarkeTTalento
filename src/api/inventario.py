@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.core.database.database import get_db
+from src.core.security.auth import get_current_user
 from src.dominio.entidades.entidades import Producto, Inventario
 from src.dominio.repositorios.repositorios import ProductoRepositorio, InventarioRepositorio, VentaRepositorio
 from src.implementaciones.repositorios_impl import (
@@ -16,6 +17,7 @@ from src.implementaciones.repositorios_impl import (
 )
 from src.aplicacion.schemas.schemas import InventarioCreate, InventarioResponse
 from src.aplicacion.servicios.inventario_servicio import InventarioServicio
+from src.aplicacion.utils.estado_stock import clasificar_resumen_inventario
 
 router = APIRouter()
 
@@ -42,23 +44,23 @@ async def resumen_inventario(db: Session = Depends(get_db)):
     try:
         productos = db.query(Producto).filter(Producto.activo == True).all()
         inventarios = db.query(Inventario).all()
-        
+
         total_productos = len(productos)
         total_unidades = sum(i.cantidad for i in inventarios)
         productos_criticos = 0
         productos_bajos = 0
         valor_total = 0.0
-        
+
         for inv in inventarios:
             prod = next((p for p in productos if p.id == inv.producto_id), None)
             if prod:
-                if inv.cantidad < prod.stock_minimo:
-                    if inv.cantidad <= prod.stock_minimo * 0.3:
-                        productos_criticos += 1
-                    else:
-                        productos_bajos += 1
+                estado = clasificar_resumen_inventario(inv.cantidad, prod.stock_minimo, prod.stock_maximo)
+                if estado == "critico":
+                    productos_criticos += 1
+                elif estado == "bajo":
+                    productos_bajos += 1
                 valor_total += inv.cantidad * prod.precio_venta
-        
+
         return {
             "total_productos": total_productos,
             "total_unidades": total_unidades,
@@ -68,8 +70,8 @@ async def resumen_inventario(db: Session = Depends(get_db)):
             "valor_total": round(valor_total, 2),
             "recomendaciones": []
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error interno al obtener resumen de inventario")
 
 
 @router.get("/bajo-stock", response_model=List[InventarioResponse])
@@ -125,7 +127,8 @@ async def obtener_inventario_producto(producto_id: int, db: Session = Depends(ge
 async def actualizar_inventario(
     producto_id: int,
     inventario_data: InventarioCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Actualiza el inventario de un producto."""
     producto = db.query(Producto).filter(Producto.id == producto_id).first()
