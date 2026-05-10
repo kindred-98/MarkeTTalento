@@ -124,7 +124,7 @@ def crear_productos_e_inventario(db):
             descripcion=f"Producto {nombre}",
             precio_venta=precio,
             unidad="ud",
-            barcode=barcode,
+            codigo_barras=barcode,
             sku=sku,
             categoria_id=cat_id,
             proveedor_id=prov_id,
@@ -137,8 +137,6 @@ def crear_productos_e_inventario(db):
         inv = Inventario(
             producto_id=p.id,
             cantidad=randint(10, 50),
-            stock_minimo=5,
-            stock_maximo=100,
             ubicacion="Almacen Principal",
         )
         db.add(inv)
