@@ -20,7 +20,7 @@ services:
         value: "https://markettalento-dashboard.onrender.com,http://localhost:8501,http://127.0.0.1:8501"
       - key: LOG_LEVEL
         value: INFO
-    healthCheckPath: /api/v1/health
+    healthCheckPath: /api/v1/salud
     startCommand: >
       sh -c "python scripts/init_db.py && uvicorn main:app --host 0.0.0.0 --port 8002"
 
