@@ -13,13 +13,13 @@ Esta documentación forma parte del proceso de refactorización del código here
 │                         EndPoint_Api.py / InventarioAlfa.py            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                  │
-│  │     BASE     │  │    VISIÓN    │  │   LÓGICA    │                  │
-│  │   DE DATOS   │  │  ARTIFICIAL  │  │   DE NEGOCIO│                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                   │
+│  │     BASE     │  │    VISIÓN    │  │   LÓGICA    │                    │
+│  │   DE DATOS   │  │  ARTIFICIAL  │  │   DE NEGOCIO│                    │
 │  │              │  │              │  │              │                  │
-│  │ • product_   │  │ • detect_   │  │ • calculate │                  │
-│  │   database   │  │   products()│  │   _inventory│                  │
-│  │ • get_prod_  │  │ • escenarios│  │   _metrics()│                  │
+│  │ • product_   │  │ • detect_   │  │ • calculate │                     │
+│  │   database   │  │   products()│  │   _inventory│                    │
+│  │ • get_prod_  │  │ • escenarios│  │   _metrics()│                    │
 │  │   info()     │  │   simulados │  │ • predict_  │                  │
 │  │ • get_all_   │  │              │  │   stock_    │                  │
 │  │   products() │  │              │  │   outage()  │                  │
