@@ -32,7 +32,7 @@ services:
     dockerContext: .
     envVars:
       - key: API_URL
-        value: http://markettalento-api:8002
+        value: https://markettalento-api.onrender.com
     startCommand: >
       PYTHONPATH=/app streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
 
