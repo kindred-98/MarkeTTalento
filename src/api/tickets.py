@@ -530,3 +530,33 @@ async def evolucion_ticket_promedio(
         })
 
     return resultado
+
+
+@router.get("/historial/{producto_id}")
+async def historial_producto(
+    producto_id: int,
+    limite: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db)
+):
+    """Obtiene los últimos tickets donde apareció un producto."""
+    lineas = db.query(TicketLinea).join(Ticket).filter(
+        TicketLinea.producto_id == producto_id,
+        Ticket.estado == "completado"
+    ).order_by(Ticket.fecha.desc()).limit(limite).all()
+
+    resultado = []
+    for linea in lineas:
+        ticket = linea.ticket
+        resultado.append({
+            "ticket_id": ticket.id,
+            "numero_ticket": ticket.numero_ticket,
+            "fecha": ticket.fecha.isoformat() if hasattr(ticket.fecha, 'isoformat') else str(ticket.fecha),
+            "cajero": ticket.cajero,
+            "cantidad": linea.cantidad,
+            "precio_unitario": linea.precio_unitario,
+            "subtotal_linea": linea.subtotal,
+            "total_ticket": ticket.total,
+            "metodo_pago": ticket.metodo_pago,
+        })
+
+    return resultado

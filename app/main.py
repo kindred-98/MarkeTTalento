@@ -85,7 +85,7 @@ def main():
         predicciones.render()
     elif menu == "📸 Visión AI":
         vision_ai.render()
-    elif menu == "🔍 Barcode":
+    elif menu == "🔍 Inspector":
         barcode.render()
     else:
         dashboard.render()

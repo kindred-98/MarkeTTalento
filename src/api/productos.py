@@ -85,6 +85,22 @@ async def obtener_producto_por_sku(sku: str, db: Session = Depends(get_db)):
     return producto
 
 
+@router.get("/barcode/{codigo}", response_model=ProductoResponse)
+async def obtener_producto_por_barcode(codigo: str, db: Session = Depends(get_db)):
+    """Obtiene un producto por código de barras."""
+    producto = db.query(Producto).filter(
+        Producto.codigo_barras == codigo,
+        Producto.activo == True
+    ).first()
+    
+    if not producto:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Producto con código de barras {codigo} no encontrado"
+        )
+    return producto
+
+
 @router.put("/{producto_id}", response_model=ProductoResponse)
 async def actualizar_producto(
     producto_id: int,

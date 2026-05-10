@@ -84,6 +84,30 @@ async def agregar_referencia(
         db.close()
 
 
+@router.delete("/referencias/{imagen_id}")
+async def eliminar_referencia(imagen_id: int):
+    """Elimina una imagen de referencia por ID."""
+    db = SessionLocal()
+    try:
+        ref = db.query(ProductoImagenReferencia).filter(
+            ProductoImagenReferencia.id == imagen_id
+        ).first()
+        if not ref:
+            raise HTTPException(status_code=404, detail="Imagen de referencia no encontrada")
+
+        # Eliminar archivo físico si existe
+        ruta = Path(ref.ruta_imagen)
+        if ruta.exists():
+            ruta.unlink()
+
+        db.delete(ref)
+        db.commit()
+
+        return {"mensaje": "Imagen de referencia eliminada", "imagen_id": imagen_id}
+    finally:
+        db.close()
+
+
 @router.post("/entrenar")
 async def entrenar_modelo_visual():
     """Regenera los embeddings de referencia. Llámalo tras agregar/quitar fotos."""

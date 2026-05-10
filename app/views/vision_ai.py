@@ -98,15 +98,35 @@ def _render_galeria():
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Mostrar primera imagen si existe
+                # Mostrar todas las imagenes con boton eliminar
                 if item["imagenes"]:
-                    try:
-                        st.image(item["imagenes"][0]["ruta"], use_container_width=True)
-                    except Exception:
-                        st.caption("(imagen no disponible)")
+                    st.markdown("<div style='font-size:0.75rem; color:#64748b; margin-bottom:4px;'>Imagenes de referencia:</div>", unsafe_allow_html=True)
+                    for img in item["imagenes"]:
+                        col_img, col_del = st.columns([4, 1])
+                        with col_img:
+                            try:
+                                st.image(img["ruta"], use_container_width=True)
+                            except Exception:
+                                st.caption(f"(img id={img['id']})")
+                        with col_del:
+                            st.markdown("<br/>", unsafe_allow_html=True)
+                            if st.button("❌", key=f"del_{img['id']}", help="Eliminar esta foto"):
+                                with st.spinner("Eliminando..."):
+                                    try:
+                                        r = requests.delete(
+                                            f"{API_URL}/api/v1/vision/referencias/{img['id']}",
+                                            timeout=10
+                                        )
+                                        if r.status_code == 200:
+                                            st.success("Eliminada")
+                                            st.rerun()
+                                        else:
+                                            st.error(f"Error: {r.text}")
+                                    except Exception as e:
+                                        st.error(f"Error: {e}")
                 else:
                     st.markdown("""
-                    <div style="height:120px; background:rgba(255,255,255,0.03); border-radius:8px; display:flex; align-items:center; justify-content:center; color:#64748b; font-size:0.8rem;">
+                    <div style="height:80px; background:rgba(255,255,255,0.03); border-radius:8px; display:flex; align-items:center; justify-content:center; color:#64748b; font-size:0.8rem; margin-bottom:8px;">
                         Sin imagen
                     </div>
                     """, unsafe_allow_html=True)

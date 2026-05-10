@@ -24,7 +24,7 @@ def render_sidebar():
             ("💰 Ventas", "card-ventas"),
             ("🔮 Predicciones", "card-predicciones"),
             ("📸 Visión AI", "card-vision"),
-            ("🔍 Barcode", "card-link"),
+            ("🔍 Inspector", "card-link"),
         ]
         
         for label, card_class in menu_items:

@@ -32,59 +32,9 @@ def get_venta_repo() -> VentaRepositorio:
     return SQLAlchemyVentaRepositorio()
 
 
-@router.post("/{producto_id}", response_model=InventarioResponse)
-async def actualizar_inventario(
-    producto_id: int,
-    inventario_data: InventarioCreate,
-    db: Session = Depends(get_db)
-):
-    """Actualiza el inventario de un producto."""
-    producto = db.query(Producto).filter(Producto.id == producto_id).first()
-    
-    if not producto:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Producto {producto_id} no encontrado"
-        )
-    
-    inventario = db.query(Inventario).filter(Inventario.producto_id == producto_id).first()
-    
-    if inventario:
-        inventario.cantidad = inventario_data.cantidad
-        inventario.ubicacion = inventario_data.ubicacion
-        inventario.fecha_ultima_actualizacion = datetime.now(timezone.utc)
-    else:
-        inventario = Inventario(
-            producto_id=producto_id,
-            cantidad=inventario_data.cantidad,
-            ubicacion=inventario_data.ubicacion
-        )
-        db.add(inventario)
-    
-    db.commit()
-    db.refresh(inventario)
-    return inventario
-
-
-@router.get("", response_model=List[InventarioResponse])
-async def listar_inventario(db: Session = Depends(get_db)):
-    """Lista todo el inventario."""
-    return db.query(Inventario).all()
-
-
-@router.get("/bajo-stock", response_model=List[InventarioResponse])
-async def productos_bajo_stock(limite: int = 10, db: Session = Depends(get_db)):
-    """Lista productos con stock bajo."""
-    inventarios = db.query(Inventario).all()
-    resultados = []
-    
-    for inv in inventarios:
-        producto = db.query(Producto).filter(Producto.id == inv.producto_id).first()
-        if producto and inv.cantidad < producto.stock_minimo:
-            resultados.append(inv)
-    
-    return resultados[:limite]
-
+# ============================================================================
+# RUTAS ESTATICAS PRIMERO (para que FastAPI no interprete "resumen" como ID)
+# ============================================================================
 
 @router.get("/resumen")
 async def resumen_inventario(db: Session = Depends(get_db)):
@@ -122,6 +72,20 @@ async def resumen_inventario(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/bajo-stock", response_model=List[InventarioResponse])
+async def productos_bajo_stock(limite: int = 10, db: Session = Depends(get_db)):
+    """Lista productos con stock bajo."""
+    inventarios = db.query(Inventario).all()
+    resultados = []
+    
+    for inv in inventarios:
+        producto = db.query(Producto).filter(Producto.id == inv.producto_id).first()
+        if producto and inv.cantidad < producto.stock_minimo:
+            resultados.append(inv)
+    
+    return resultados[:limite]
+
+
 @router.get("/recomendaciones")
 async def recomendaciones(
     producto_repo: ProductoRepositorio = Depends(get_producto_repo),
@@ -131,3 +95,61 @@ async def recomendaciones(
     """Genera recomendaciones de reposición."""
     servicio = InventarioServicio(inventario_repo, venta_repo)
     return servicio.generar_recomendaciones()
+
+
+@router.get("", response_model=List[InventarioResponse])
+async def listar_inventario(db: Session = Depends(get_db)):
+    """Lista todo el inventario."""
+    return db.query(Inventario).all()
+
+
+# ============================================================================
+# RUTAS DINAMICAS AL FINAL
+# ============================================================================
+
+@router.get("/{producto_id}")
+async def obtener_inventario_producto(producto_id: int, db: Session = Depends(get_db)):
+    """Obtiene el inventario de un producto específico."""
+    inventario = db.query(Inventario).filter(Inventario.producto_id == producto_id).first()
+    if not inventario:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventario no encontrado")
+    return {
+        "producto_id": inventario.producto_id,
+        "cantidad": inventario.cantidad,
+        "ubicacion": inventario.ubicacion,
+        "fecha_ultima_actualizacion": str(inventario.fecha_ultima_actualizacion) if inventario.fecha_ultima_actualizacion else None,
+    }
+
+
+@router.post("/{producto_id}", response_model=InventarioResponse)
+async def actualizar_inventario(
+    producto_id: int,
+    inventario_data: InventarioCreate,
+    db: Session = Depends(get_db)
+):
+    """Actualiza el inventario de un producto."""
+    producto = db.query(Producto).filter(Producto.id == producto_id).first()
+    
+    if not producto:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Producto {producto_id} no encontrado"
+        )
+    
+    inventario = db.query(Inventario).filter(Inventario.producto_id == producto_id).first()
+    
+    if inventario:
+        inventario.cantidad = inventario_data.cantidad
+        inventario.ubicacion = inventario_data.ubicacion
+        inventario.fecha_ultima_actualizacion = datetime.now(timezone.utc)
+    else:
+        inventario = Inventario(
+            producto_id=producto_id,
+            cantidad=inventario_data.cantidad,
+            ubicacion=inventario_data.ubicacion
+        )
+        db.add(inventario)
+    
+    db.commit()
+    db.refresh(inventario)
+    return inventario

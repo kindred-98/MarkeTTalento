@@ -104,6 +104,14 @@ def render():
     # Obtener datos con cache
     inventarios, productos, resumen = _get_dashboard_data()
     
+    # Proteccion: asegurar que resumen sea un dict (a veces api_get devuelve [] al fallar)
+    if not isinstance(resumen, dict):
+        resumen = {}
+    if not isinstance(inventarios, list):
+        inventarios = []
+    if not isinstance(productos, list):
+        productos = []
+    
     # Generar hash de datos actuales
     datos_hash = _generar_hash_datos(inventarios, productos)
     
