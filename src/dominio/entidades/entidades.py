@@ -57,6 +57,7 @@ class Producto(Base):
     ventas = relationship("Venta", back_populates="producto")
     inventario = relationship("Inventario", back_populates="producto", uselist=False)
     ticket_lineas = relationship("TicketLinea", back_populates="producto")
+    imagenes_referencia = relationship("ProductoImagenReferencia", back_populates="producto", cascade="all, delete-orphan")
 
 
 class Inventario(Base):
@@ -113,3 +114,16 @@ class TicketLinea(Base):
 
     ticket = relationship("Ticket", back_populates="lineas")
     producto = relationship("Producto", back_populates="ticket_lineas")
+
+
+class ProductoImagenReferencia(Base):
+    """Imágenes de referencia para reconocimiento visual de productos."""
+    __tablename__ = "producto_imagenes_referencia"
+
+    id = Column(Integer, primary_key=True, index=True)
+    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    ruta_imagen = Column(String(500), nullable=False)
+    embedding = Column(String(2000), nullable=True)  # JSON array de floats serializado
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+
+    producto = relationship("Producto", back_populates="imagenes_referencia")
