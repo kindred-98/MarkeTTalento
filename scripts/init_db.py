@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import datetime, timezone, timedelta
 from random import choice, randint
+from sqlalchemy import func
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -158,6 +159,8 @@ def crear_tickets_demo(db, productos):
     hoy = datetime.now(timezone.utc)
     tickets_creados = 0
 
+    ultimo_id = db.query(func.max(Ticket.id)).scalar() or 0
+
     for dias_atras in range(180, 0, -1):
         fecha = hoy - timedelta(days=dias_atras)
         # Mas tickets en fines de semana
@@ -171,16 +174,18 @@ def crear_tickets_demo(db, productos):
             for _ in range(num_lineas):
                 prod = choice(productos)
                 cantidad = randint(1, 3)
-                precio = prod.precio
+                precio = prod.precio_venta
                 linea = TicketLinea(
                     producto_id=prod.id,
                     cantidad=cantidad,
                     precio_unitario=precio,
+                    subtotal=cantidad * precio,
                 )
                 lineas.append(linea)
                 total += cantidad * precio
 
             ticket = Ticket(
+                numero_ticket=str(ultimo_id + tickets_creados + 1).zfill(6),
                 fecha=fecha,
                 total=round(total, 2),
                 cajero=choice(cajeros),
