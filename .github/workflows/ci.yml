@@ -32,6 +32,9 @@ jobs:
         run: |
           mkdir -p data logs backups
 
+      - name: Inicializar base de datos para tests
+        run: python scripts/init_db.py
+
       - name: Ejecutar tests
         run: pytest tests -v --tb=short
 

@@ -7,7 +7,7 @@ import sys
 from datetime import datetime, timezone, timedelta
 from random import choice, randint
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.core.database.database import SessionLocal, engine, init_db
 from src.core.security.auth import get_password_hash
