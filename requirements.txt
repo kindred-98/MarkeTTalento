@@ -28,6 +28,7 @@ scikit-learn==1.7.2
 
 # Autenticacion JWT
 python-jose[cryptography]==3.5.0
+bcrypt==4.0.1
 passlib[bcrypt]==1.7.4
 
 # Migraciones
