@@ -34,7 +34,7 @@ services:
       - key: API_URL
         value: http://markettalento-api:8002
     startCommand: >
-      streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
+      PYTHONPATH=/app streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
 
   - type: web
     name: markettalento-web
