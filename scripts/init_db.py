@@ -96,7 +96,7 @@ def crear_productos_e_inventario(db):
 
     productos_data = [
         ("Coca-Cola", "8431234567890", "BEB001", 1.50, 1, 1),
-        ("Leche Entera", "8431234567891", "PROD001", 1.20, 2, 2),
+        ("Leche Asturiana", "8431234567891", "PROD001", 1.20, 2, 2),
         ("Pan de Barra", "8431234567892", "PAN001", 0.80, 3, 3),
         ("Manzanas", "8431234567893", "FRU001", 2.50, 4, 4),
         ("Tomates", "8431234567894", "VER001", 1.80, 5, 4),
