@@ -30,10 +30,7 @@ services:
     dockerContext: .
     envVars:
       - key: API_URL
-        fromService:
-          type: web
-          name: markettalento-api
-          property: hostport
+        value: http://markettalento-api:8002
     startCommand: >
       streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
 
