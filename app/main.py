@@ -4,6 +4,10 @@ Aplicacion Streamlit modularizada con autenticacion JWT
 """
 import streamlit as st
 import os
+import sys
+
+# Anadir /app al path para que encuentre los modulos en Docker/Render
+sys.path.insert(0, '/app')
 
 # Configuracion de pagina DEBE ser lo primero
 st.set_page_config(page_title="MarkeTTalento", page_icon="📦", layout="wide")

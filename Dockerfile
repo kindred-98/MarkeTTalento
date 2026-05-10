@@ -3,6 +3,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Configurar PYTHONPATH para que Python encuentre los modulos
+ENV PYTHONPATH=/app
+
 # Instalar dependencias del sistema (incluye libGL para OpenCV/YOLO)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
