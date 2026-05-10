@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configuracion
 RATE_LIMIT_WINDOW = 60  # segundos
-RATE_LIMIT_MAX_REQUESTS = 120  # peticiones por ventana
+RATE_LIMIT_MAX_REQUESTS = 300  # peticiones por ventana (aumentado para TPV)
 
 # Almacenamiento en memoria: {ip: [(timestamp1), (timestamp2), ...]}
 _request_log: Dict[str, list] = {}

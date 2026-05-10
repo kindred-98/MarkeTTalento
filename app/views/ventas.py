@@ -605,6 +605,11 @@ def render_panel_productos():
         st.warning("⚠️ No hay productos disponibles")
         return
 
+    if not inventarios:
+        st.error("⚠️ Error al cargar inventario. Los productos pueden aparecer como no disponibles.")
+        st.button("🔄 Reintentar", on_click=lambda: st.rerun(), key="retry_inventario")
+        inventarios = []
+
     cat_activa = st.session_state.get('tpv_categoria_activa', 'todos')
 
     # ========== BARRA DE BÚSQUEDA ==========
@@ -766,16 +771,16 @@ def _render_modal_cantidad(productos, inventarios):
 
 def render_dashboard():
     """Dashboard completo con métricas y 10 gráficas."""
-    # Cargar datos
-    resumen = api_get("/api/v1/tickets/estadisticas/resumen", use_cache=False)
-    tendencia = api_get("/api/v1/tickets/estadisticas/tendencia?dias=30", use_cache=False)
-    por_categoria = api_get("/api/v1/tickets/estadisticas/por-categoria?dias=30", use_cache=False)
-    por_hora = api_get("/api/v1/tickets/estadisticas/por-hora?dias=30", use_cache=False)
-    mapa_calor = api_get("/api/v1/tickets/estadisticas/mapa-calor?dias=30", use_cache=False)
-    comparativa = api_get("/api/v1/tickets/estadisticas/comparativa-mes", use_cache=False)
-    top_productos_u = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=unidades", use_cache=False)
-    top_productos_e = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=ingresos", use_cache=False)
-    ticket_promedio = api_get("/api/v1/tickets/estadisticas/ticket-promedio?dias=30", use_cache=False)
+    # Cargar datos con cache para evitar sobrecarga de peticiones
+    resumen = api_get("/api/v1/tickets/estadisticas/resumen", use_cache=True)
+    tendencia = api_get("/api/v1/tickets/estadisticas/tendencia?dias=30", use_cache=True)
+    por_categoria = api_get("/api/v1/tickets/estadisticas/por-categoria?dias=30", use_cache=True)
+    por_hora = api_get("/api/v1/tickets/estadisticas/por-hora?dias=30", use_cache=True)
+    mapa_calor = api_get("/api/v1/tickets/estadisticas/mapa-calor?dias=30", use_cache=True)
+    comparativa = api_get("/api/v1/tickets/estadisticas/comparativa-mes", use_cache=True)
+    top_productos_u = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=unidades", use_cache=True)
+    top_productos_e = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=ingresos", use_cache=True)
+    ticket_promedio = api_get("/api/v1/tickets/estadisticas/ticket-promedio?dias=30", use_cache=True)
 
     if not resumen or resumen.get('total_tickets', 0) == 0:
         st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")

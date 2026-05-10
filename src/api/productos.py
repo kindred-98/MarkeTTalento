@@ -130,20 +130,32 @@ async def actualizar_producto(
 
 @router.delete("/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_producto(producto_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    """Elimina un producto y su inventario."""
+    """Elimina un producto, sus líneas de ticket, inventario y ventas asociadas."""
     db_producto = db.query(Producto).filter(Producto.id == producto_id).first()
-    
+
     if not db_producto:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Producto {producto_id} no encontrado"
         )
-    
+
+    # Eliminar líneas de ticket asociadas (primero por FK)
+    from src.dominio.entidades.entidades import TicketLinea
+    lineas_ticket = db.query(TicketLinea).filter(TicketLinea.producto_id == producto_id).all()
+    for linea in lineas_ticket:
+        db.delete(linea)
+
+    # Eliminar ventas asociadas
+    from src.dominio.entidades.entidades import Venta
+    ventas = db.query(Venta).filter(Venta.producto_id == producto_id).all()
+    for venta in ventas:
+        db.delete(venta)
+
     # Eliminar inventario asociado
     inventario = db.query(Inventario).filter(Inventario.producto_id == producto_id).first()
     if inventario:
         db.delete(inventario)
-    
+
     # Eliminar producto
     db.delete(db_producto)
     db.commit()

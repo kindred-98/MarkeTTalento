@@ -63,15 +63,15 @@ class ProductoBase(BaseModel):
 
 
 class ProductoCreate(ProductoBase):
-    sku: str = Field(..., min_length=3, max_length=50, pattern=r"^[A-Za-z0-9\-]+$", description="Formato: letras, números y guiones")
-    codigo_barras: Optional[str] = Field(None, max_length=50, pattern=r"^\d{8,14}$", description="Código de barras numérico de 8 a 14 dígitos")
+    sku: str = Field(..., min_length=3, max_length=50, pattern=r"^[A-Za-z0-9\-/\s]+$", description="Formato: letras, números, guiones, barras y espacios")
+    codigo_barras: Optional[str] = Field(None, max_length=50, pattern=r"^[A-Za-z0-9\-]*$", description="Código de barras alfanumérico")
     cantidad_inicial: Optional[int] = Field(default=0, ge=0, description="Cantidad inicial en inventario")
     ubicacion: Optional[str] = Field(default="Almacén A", max_length=100, description="Ubicación inicial del producto")
 
 
 class ProductoUpdate(BaseModel):
-    sku: Optional[str] = Field(None, max_length=50, pattern=r"^[A-Z0-9\-]+$")
-    codigo_barras: Optional[str] = Field(None, max_length=50, pattern=r"^\d{8,13}$")
+    sku: Optional[str] = Field(None, max_length=50, pattern=r"^[A-Za-z0-9\-/\s]+$")
+    codigo_barras: Optional[str] = Field(None, max_length=50, pattern=r"^[A-Za-z0-9\-]*$")
     nombre: Optional[str] = Field(None, max_length=200)
     descripcion: Optional[str] = Field(None, max_length=1000)
     precio_venta: Optional[float] = Field(None, gt=0, le=100000)
