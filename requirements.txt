@@ -25,6 +25,13 @@ opencv-python==4.11.0.86
 # Machine Learning
 scikit-learn==1.7.2
 
+# Autenticacion JWT
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+
+# Migraciones
+alembic==1.15.2
+
 # Utilidades
 python-dateutil==2.9.0.post0
 tqdm==4.67.3

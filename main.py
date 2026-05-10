@@ -16,6 +16,7 @@ from src.core.config.environments import get_current_config
 from src.core.database.multi_database import init_all_databases
 from src.core.logging import setup_logging, get_logger
 from src.core.errors import setup_error_handlers
+from src.core.middleware.rate_limit import RateLimitMiddleware
 from src.api.router import api_router
 
 # Configurar logging al inicio
@@ -54,15 +55,18 @@ app = FastAPI(
 ### Características
 - **Gestión de Productos**: CRUD completo de productos, categorías y proveedores
 - **Control de Inventario**: Seguimiento de stock en tiempo real con alertas
-- **Ventas**: Registro y seguimiento de ventas
-- **Predicciones ML**: Predicción de demanda basada en historial
-- **Visión Artificial**: Detección de productos con YOLOv8 + actualización automática de inventario
+- **Ventas**: TPV profesional con tickets y cobro
+- **Predicciones ML**: Predicción de demanda con scikit-learn
+- **Visión Artificial**: Control de stock visual con YOLOv8 + ResNet50
+- **Inspector de Producto**: Escaneo de código de barras con inteligencia de negocio
 
 ### Autenticación
-Por ahora en modo desarrollo (sin autenticación).
+- Usar `/api/v1/auth/login` con OAuth2PasswordRequestForm
+- Devuelve JWT Bearer token
+- Incluir token en header: `Authorization: Bearer <token>`
 
 ### Notas
-- Base de datos: SQLite (desarrollo)
+- Base de datos: SQLite
 - Puerto: 8002
 - Dashboard: http://localhost:8501
     """,
@@ -75,14 +79,22 @@ Por ahora en modo desarrollo (sin autenticación).
 # Configurar manejo de errores global
 setup_error_handlers(app)
 
-# Middleware CORS
+# Middleware CORS (configurable via entorno)
+cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+if cors_origins == ["*"]:
+    # En produccion, especificar origenes explicitamente
+    cors_origins = ["http://localhost:8501", "http://127.0.0.1:8501"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
+# Rate limiting
+app.add_middleware(RateLimitMiddleware)
 
 
 @app.get("/")

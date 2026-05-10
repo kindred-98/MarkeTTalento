@@ -4,11 +4,12 @@ Agrupa todos los routers de endpoints
 """
 from fastapi import APIRouter
 
-from src.api import sistema, categorias, proveedores, productos, inventario, ventas, predicciones, vision, admin, tickets
+from src.api import sistema, categorias, proveedores, productos, inventario, ventas, predicciones, vision, admin, tickets, auth
 
 api_router = APIRouter()
 
 # Incluir todos los routers
+api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación"])
 api_router.include_router(sistema.router, tags=["Sistema"])
 api_router.include_router(categorias.router, prefix="/categorias", tags=["Categorías"])
 api_router.include_router(proveedores.router, prefix="/proveedores", tags=["Proveedores"])

@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    container_name: markettalento_api
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=sqlite:///data/markettalento.db
+      - API_HOST=0.0.0.0
+      - API_PORT=8002
+      - SECRET_KEY=${SECRET_KEY:-markettalento-production-secret-key}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./docs/img_productos:/app/docs/img_productos
+      - ./logs:/app/logs
+    command: >
+      sh -c "python scripts/crear_admin.py && uvicorn main:app --host 0.0.0.0 --port 8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8002/api/v1/salud')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  streamlit:
+    build: .
+    container_name: markettalento_streamlit
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8002
+    depends_on:
+      api:
+        condition: service_healthy
+    command: >
+      streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
+    volumes:
+      - ./data:/app/data
+      - ./docs/img_productos:/app/docs/img_productos

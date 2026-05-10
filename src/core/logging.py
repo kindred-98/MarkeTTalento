@@ -5,6 +5,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 # Crear directorio de logs si no existe
 LOGS_DIR = Path("logs")
@@ -13,6 +14,10 @@ LOGS_DIR.mkdir(exist_ok=True)
 # Formato de los logs
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+# Configuracion de rotacion
+MAX_LOG_SIZE_MB = 10  # Tamaño maximo antes de rotar
+MAX_BACKUP_FILES = 5  # Numero de archivos de backup a mantener
 
 
 def setup_logging(
@@ -47,14 +52,15 @@ def setup_logging(
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
     
-    # Handler para archivo
+    # Handler para archivo (con rotacion)
     if log_to_file:
         if log_filename is None:
-            timestamp = datetime.now().strftime("%Y%m%d")
-            log_filename = f"markettalento_{timestamp}.log"
+            log_filename = "markettalento.log"
         
-        file_handler = logging.FileHandler(
+        file_handler = RotatingFileHandler(
             LOGS_DIR / log_filename,
+            maxBytes=MAX_LOG_SIZE_MB * 1024 * 1024,
+            backupCount=MAX_BACKUP_FILES,
             encoding='utf-8'
         )
         file_handler.setLevel(level)

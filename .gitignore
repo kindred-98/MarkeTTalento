@@ -76,7 +76,13 @@ runs/
 # SQLite databases - NUNCA subir a GitHub
 *.sqlite
 *.sqlite3
+*.db
 *.db-journal
+
+# Datos generados
+data/*.db
+data/*.pkl
+data/*.db-journal
 
 # Logs
 logs/

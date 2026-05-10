@@ -127,3 +127,18 @@ class ProductoImagenReferencia(Base):
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
 
     producto = relationship("Producto", back_populates="imagenes_referencia")
+
+
+class Usuario(Base):
+    """Usuarios del sistema con autenticación JWT."""
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(200), unique=True, nullable=True)
+    hashed_password = Column(String(200), nullable=False)
+    nombre_completo = Column(String(200), nullable=True)
+    rol = Column(String(20), default="cajero")  # admin, cajero, almacen
+    activo = Column(Boolean, default=True)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    ultimo_login = Column(DateTime, nullable=True)

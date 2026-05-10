@@ -1,9 +1,10 @@
 """
 Configuración global de la aplicación MarkeTTalento
 """
+import os
 
-# URL de la API
-API_URL = "http://127.0.0.1:8002"
+# URL de la API (configurable via entorno para produccion)
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8002")
 
 # Configuración de paginación
 PRODUCTOS_POR_PAGINA = 10
