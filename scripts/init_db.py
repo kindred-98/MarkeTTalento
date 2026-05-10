@@ -122,7 +122,8 @@ def crear_productos_e_inventario(db):
         p = Producto(
             nombre=nombre,
             descripcion=f"Producto {nombre}",
-            precio=precio,
+            precio_venta=precio,
+            unidad="ud",
             barcode=barcode,
             sku=sku,
             categoria_id=cat_id,
