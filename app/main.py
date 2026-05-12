@@ -1,82 +1,66 @@
 """
 MarkeTTalento - Dashboard Principal
-Aplicacion Streamlit modularizada con autenticacion JWT
+Acceso directo a SQLite, sin API externa
 """
 import streamlit as st
 import os
 import sys
 
-# Anadir /app al path para que encuentre los modulos en Docker/Render
-sys.path.insert(0, '/app')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Configuracion de pagina DEBE ser lo primero
 st.set_page_config(page_title="MarkeTTalento", page_icon="📦", layout="wide")
 
-# Importaciones de la aplicacion
-from app.utils.api import verificar_api, esperar_api
 from app.utils.state import init_session_state
 from app.components.sidebar import render_sidebar
-
-# Importar paginas
-from app.views import dashboard, productos, inventario, ventas, predicciones, vision_ai, barcode, login
+from app.views import dashboard, productos, inventario, ventas, predicciones, barcode, login, api_docs
+from app.db import DatabaseAccess
 
 
 @st.cache_resource
 def get_css_content():
-    """Cachea el contenido CSS para evitar lecturas repetidas de archivos."""
-    css_files = [
-        'app/styles/global.css',
-        'app/styles/components.css',
-        'app/styles/sidebar.css',
-        'app/styles/dashboard.css',
-        'app/styles/productos.css',
-        'app/styles/inventario.css',
-        'app/styles/ventas.css'
-    ]
-    
+    css_files = ['app/styles/global.css', 'app/styles/components.css', 'app/styles/sidebar.css',
+                 'app/styles/dashboard.css', 'app/styles/productos.css', 'app/styles/inventario.css', 'app/styles/ventas.css']
     css_content = ""
     for css_file in css_files:
         if os.path.exists(css_file):
             with open(css_file, 'r', encoding='utf-8') as f:
                 css_content += f.read() + "\n"
-    
     return css_content
 
 
 def load_css():
-    """Carga todos los archivos CSS (usando cache)."""
     css_content = get_css_content()
     st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
 
 
+def verificar_db():
+    try:
+        db_path = "data/markettalento.db"
+        if not os.path.exists(db_path):
+            return False
+        db = DatabaseAccess()
+        cats = db.get_categorias()
+        return len(cats) >= 0
+    except Exception:
+        return False
+
+
 def main():
-    """Funcion principal de la aplicacion."""
-    # Cargar CSS
     load_css()
-    
-    # Inicializar estado
     init_session_state()
     
-    # Verificar conexion con API
-    if not st.session_state.get('api_conectada', False):
-        with st.spinner("Conectando con la API..."):
-            if esperar_api(intentos=5):
-                st.session_state['api_conectada'] = True
-            else:
-                st.error("No se pudo conectar con la API. Asegurate de que esta corriendo.")
-                st.info("Ejecuta: `python run.py` para iniciar todo el sistema")
-                return
+    if not verificar_db():
+        st.error("⚠️ Base de datos no encontrada. Ejecuta: python scripts/init_db.py")
+        st.info("Consulta la documentación para configurar la base de datos.")
+        return
     
-    # Verificar autenticacion
+    from app.auth_local import autenticar_usuario
     if not st.session_state.get("auth_token"):
-        # Mostrar pantalla de login
         login.render()
         return
     
-    # Usuario autenticado: mostrar app completa
     menu = render_sidebar()
     
-    # Router de paginas
     if menu == "🏠 Dashboard":
         dashboard.render()
     elif menu == "📦 Productos":
@@ -87,12 +71,10 @@ def main():
         ventas.render()
     elif menu == "🔮 Predicciones":
         predicciones.render()
-    elif menu == "📸 Visión AI":
-        vision_ai.render()
     elif menu == "🔍 Inspector":
         barcode.render()
-    else:
-        dashboard.render()
+    elif menu == "📚 API Docs":
+        api_docs.render()
 
 
 if __name__ == "__main__":

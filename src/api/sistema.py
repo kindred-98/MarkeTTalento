@@ -2,7 +2,6 @@
 Router de Sistema - Endpoints de utilidad y monitoreo
 """
 from datetime import datetime, timezone
-from pathlib import Path
 from fastapi import APIRouter
 from sqlalchemy import text
 
@@ -20,7 +19,7 @@ async def estado_sistema():
     return {
         "estado": "operativo",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "servicios": ["FastAPI", "SQLite", "YOLOv8"],
+        "servicios": ["FastAPI", "SQLite"],
         "mensaje": "Sistema funcionando correctamente"
     }
 
@@ -33,7 +32,7 @@ async def salud():
     return {
         "estado": "saludable",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "servicios": ["FastAPI", "SQLite", "YOLOv8"]
+        "servicios": ["FastAPI", "SQLite"]
     }
 
 
@@ -45,8 +44,6 @@ async def health_check_avanzado():
     checks = {
         "api": {"status": "ok", "response_time_ms": 0},
         "database": {"status": "unknown", "response_time_ms": 0},
-        "embeddings": {"status": "unknown"},
-        "yolo_model": {"status": "unknown"},
     }
 
     # Check database
@@ -59,14 +56,6 @@ async def health_check_avanzado():
         checks["database"] = {"status": "ok", "response_time_ms": round((time.time() - t0) * 1000, 2)}
     except Exception as e:
         checks["database"] = {"status": "error", "error": str(e)}
-
-    # Check embeddings file
-    emb_path = Path(__file__).parent.parent.parent / "data" / "embeddings_productos.pkl"
-    checks["embeddings"] = {"status": "ok" if emb_path.exists() else "missing"}
-
-    # Check YOLO model
-    yolo_path = Path(__file__).parent.parent.parent / "yolov8n.pt"
-    checks["yolo_model"] = {"status": "ok" if yolo_path.exists() else "missing"}
 
     overall = "healthy" if all(c["status"] == "ok" for c in checks.values()) else "degraded"
 

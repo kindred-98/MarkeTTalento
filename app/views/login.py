@@ -1,14 +1,12 @@
 """
-Pagina de Login para Streamlit
-Autenticacion JWT contra la API
+Página de Login para Streamlit
+Autenticación directa contra SQLite
 """
 import streamlit as st
-import requests
-from app.config import API_URL
+from app.auth_local import autenticar_usuario
 
 
 def render():
-    """Renderiza la pantalla de login."""
     st.markdown("""
     <style>
     .login-container {
@@ -38,7 +36,7 @@ def render():
     </style>
     <div class="login-container">
         <div class="login-title">MarkeTTalento</div>
-        <div class="login-subtitle">Inventario Inteligente con ML</div>
+        <div class="login-subtitle">Inventario Inteligente</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -54,28 +52,19 @@ def render():
 
             with st.spinner("Autenticando..."):
                 try:
-                    r = requests.post(
-                        f"{API_URL}/api/v1/auth/login",
-                        data={"username": username, "password": password},
-                        timeout=10
-                    )
-                    if r.status_code == 200:
-                        data = r.json()
-                        st.session_state["auth_token"] = data["access_token"]
-                        st.session_state["auth_user"] = data["usuario"]
-                        st.success(f"Bienvenido, {data['usuario']['nombre_completo'] or username}")
+                    user = autenticar_usuario(username, password)
+                    if user:
+                        st.session_state["auth_token"] = f"local_{user['id']}"
+                        st.session_state["auth_user"] = user
+                        st.success(f"Bienvenido, {user.get('nombre_completo', username)}")
                         st.rerun()
-                    elif r.status_code == 401:
-                        st.error("Usuario o contraseña incorrectos")
                     else:
-                        st.error(f"Error del servidor: {r.status_code}")
-                except requests.ConnectionError:
-                    st.error("❌ No se pudo conectar con la API. Asegúrate de que está corriendo.")
+                        st.error("Usuario o contraseña incorrectos")
                 except Exception as e:
                     st.error(f"Error: {e}")
 
         st.markdown("""
         <div style="text-align:center; margin-top:1rem; color:#64748b; font-size:0.8rem;">
-            <p>Usuario por defecto: <strong>admin</strong> / <strong>admin123</strong></p>
+            <p>Usuario: <strong>admin</strong> / <strong>admin123</strong></p>
         </div>
         """, unsafe_allow_html=True)

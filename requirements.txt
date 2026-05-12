@@ -19,10 +19,6 @@ streamlit==1.56.0
 plotly==6.7.0
 pandas==2.2.3
 
-# Visión Artificial
-ultralytics==8.0.43
-opencv-python==4.11.0.86
-
 # Machine Learning
 scikit-learn==1.7.2
 
@@ -49,4 +45,6 @@ openpyxl==3.1.5
 fpdf2==2.8.3           # Exportar a PDF
 plotly==6.7.0          # Ya existe, gráficos interactivos
 kaleido==0.2.1         # Exportar gráficos plotly a imágenes
+pillow==11.1.0         # Para manejo de imágenes
+Pillow==11.1.0         # Alias para Streamlit
 

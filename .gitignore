@@ -1,110 +1,15 @@
-# ===============================
-# Python
-# ===============================
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
 venv/
-env/
-ENV/
-.venv
-
-# IDE
+.env
+*.log
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
-.qodo/
-
-# ===============================
-# Environment / Config / Secrets
-# ===============================
-.env
-.env.local
-.env.*.local
-*.log
-secrets.toml
-credentials.json
-*.key
-*.pem
-
-# ===============================
-# Testing
-# ===============================
-.coverage
-htmlcov/
 .pytest_cache/
-.tox/
-
-# ===============================
-# Modelos YOLOv8 / ML
-# ===============================
-*.pt
-*.weights
-models/
-runs/
-
-# ===============================
-# Streamlit
-# ===============================
-.streamlit/
-
-# ===============================
-# BASES DE DATOS Y DATOS
-# ===============================
-# SQLite databases - NUNCA subir a GitHub
-*.sqlite
-*.sqlite3
-*.db
-*.db-journal
-
-# Datos generados
+.qodo/
 data/*.db
 data/*.pkl
-data/*.db-journal
-
-# Logs
 logs/
-*.log
-
-# Archivos temporales
-temp_*
-*.tmp
-*.temp
-
-# ===============================
-# Sistema Operativo
-# ===============================
+.DS_Store
 Thumbs.db
-desktop.ini
-$RECYCLE.BIN/
-
-# ===============================
-# Backup files
-# ===============================
 *.bak
-*.backup
-*~
-*.old
-backups/

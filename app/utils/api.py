@@ -1,150 +1,157 @@
 """
-Utilidades para comunicación con la API
-Incluye token JWT de autenticación en cada petición.
+Capa de acceso directo a SQLite para Streamlit
+Reemplaza las llamadas HTTP por acceso directo a BD
 """
 import streamlit as st
-import requests
+import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional
-from functools import wraps
-from app.config import API_URL
+from app.db import DatabaseAccess
+from src.dominio.entidades.entidades import (
+    Categoria, Proveedor, Producto, Inventario, Ticket, TicketLinea
+)
+
+db = DatabaseAccess()
 
 
-def _get_auth_headers() -> dict:
-    """Obtiene el header Authorization si hay token en session_state."""
-    token = st.session_state.get("auth_token")
-    if token:
-        return {"Authorization": f"Bearer {token}"}
-    return {}
+def _producto_to_dict(prod, inv=None):
+    cat = prod.categoria
+    prov = prod.proveedor
+    stock = None
+    if inv:
+        stock = inv.cantidad
+    elif prod.inventario:
+        stock = prod.inventario.cantidad
+    return {
+        "id": prod.id, "sku": prod.sku, "codigo_barras": prod.codigo_barras,
+        "nombre": prod.nombre, "descripcion": prod.descripcion,
+        "precio_venta": prod.precio_venta, "precio_coste": prod.precio_coste,
+        "unidad": prod.unidad, "stock_minimo": prod.stock_minimo,
+        "stock_maximo": prod.stock_maximo, "tiempo_reposicion": prod.tiempo_reposicion,
+        "imagen_url": prod.imagen_url, "activo": prod.activo,
+        "fecha_creacion": prod.fecha_creacion.isoformat() if prod.fecha_creacion else None,
+        "categoria": {"id": cat.id, "nombre": cat.nombre} if cat else None,
+        "categoria_id": prod.categoria_id,
+        "proveedor": {"id": prov.id, "nombre": prov.nombre} if prov else None,
+        "proveedor_id": prod.proveedor_id
+    }
 
 
-# Cache para peticiones GET (10 segundos de TTL)
-@st.cache_data(ttl=10, show_spinner=False)
-def _cached_api_get(endpoint: str, timeout: int = 5) -> tuple:
-    """Versión cacheada de petición GET - retorna tupla (status, data)."""
+def _inventario_to_dict(inv):
+    prod = inv.producto
+    cat = prod.categoria if prod else None
+    if prod:
+        return {
+            "id": inv.id, "producto_id": prod.id,
+            "producto": {
+                "id": prod.id, "sku": prod.sku, "nombre": prod.nombre,
+                "descripcion": prod.descripcion, "precio_venta": prod.precio_venta,
+                "precio_coste": prod.precio_coste, "unidad": prod.unidad,
+                "stock_minimo": prod.stock_minimo, "stock_maximo": prod.stock_maximo,
+                "tiempo_reposicion": prod.tiempo_reposicion, "codigo_barras": prod.codigo_barras,
+                "imagen_url": prod.imagen_url,
+                "categoria": {"id": cat.id, "nombre": cat.nombre} if cat else None,
+                "categoria_id": prod.categoria_id, "proveedor": None, "proveedor_id": prod.proveedor_id
+            },
+            "stock": inv.cantidad, "max_s": prod.stock_maximo or 100,
+            "estado": "Agotado" if inv.cantidad == 0 else "Crítico" if inv.cantidad < prod.stock_minimo else "Saludable",
+            "ubicacion": inv.ubicacion or "Almacén A"
+        }
+    return {"id": inv.id, "producto_id": inv.producto_id, "stock": inv.cantidad}
+
+
+def api_get(endpoint: str, use_cache: bool = True, authenticated: bool = True) -> List[Dict[str, Any]]:
+    session = db.session
     try:
-        # Nota: no podemos acceder a session_state desde cache, 
-        # asi que el cache no usa auth. Para datos publicos está OK.
-        r = requests.get(f"{API_URL}{endpoint}", timeout=timeout)
-        if r.status_code == 200:
-            return ("success", r.json())
-        return ("error", [])
-    except Exception as e:
-        return ("exception", [])
+        if "/categorias" in endpoint:
+            cats = session.query(Categoria).filter_by(activo=True).all()
+            return [{"id": c.id, "nombre": c.nombre, "descripcion": c.descripcion} for c in cats]
+        elif "/proveedores" in endpoint:
+            provs = session.query(Proveedor).filter_by(activo=True).all()
+            return [{"id": p.id, "nombre": p.nombre, "email": p.email, "telefono": p.telefono} for p in provs]
+        elif "/productos" in endpoint:
+            prods = session.query(Producto).filter_by(activo=True).all()
+            invs = {i.producto_id: i for i in session.query(Inventario).all()}
+            return [_producto_to_dict(p, invs.get(p.id)) for p in prods]
+        elif "/inventario" in endpoint:
+            if "/resumen" in endpoint:
+                return db.obtener_resumen_inventario()
+            return [_inventario_to_dict(i) for i in session.query(Inventario).all()]
+        elif "/tickets" in endpoint:
+            if "/estadisticas/resumen" in endpoint:
+                return db.obtener_estadisticas_resumen()
+            tickets = session.query(Ticket).order_by(Ticket.fecha.desc()).limit(200).all()
+            result = []
+            for t in tickets:
+                lineas = []
+                for l in t.lineas:
+                    prod = session.query(Producto).get(l.producto_id)
+                    lineas.append({
+                        "id": l.id, "producto_id": l.producto_id, "cantidad": l.cantidad,
+                        "precio_unitario": l.precio_unitario, "subtotal": l.subtotal,
+                        "producto": {"nombre": prod.nombre} if prod else {"nombre": "N/A"}
+                    })
+                result.append({
+                    "id": t.id, "numero_ticket": t.numero_ticket, "cajero": t.cajero,
+                    "fecha": t.fecha.isoformat() if t.fecha else "", "total": t.total,
+                    "metodo_pago": t.metodo_pago, "entrega_efectivo": t.entrega_efectivo,
+                    "cambio": t.cambio, "estado": t.estado, "lineas": lineas
+                })
+            return result
+        elif "/prediccion" in endpoint:
+            return {"alertas": []}
+        elif "/salud" in endpoint:
+            return {"estado": "saludable"}
+        return []
+    finally:
+        pass
 
 
-def api_get(endpoint: str, timeout: int = 5, use_cache: bool = True, authenticated: bool = True) -> List[Dict[str, Any]]:
-    """Realiza una petición GET a la API con caching opcional.
-    
-    Args:
-        endpoint: Endpoint de la API
-        timeout: Tiempo de espera en segundos
-        use_cache: Si True, usa cache (ttl=300s). Si False, fuerza petición fresca.
-        authenticated: Si True, incluye token JWT.
-    """
-    headers = _get_auth_headers() if authenticated else {}
-    
-    if use_cache and not authenticated:
-        status, data = _cached_api_get(endpoint, timeout)
-        return data
-    else:
-        # Petición sin cache (o autenticada)
-        try:
-            r = requests.get(f"{API_URL}{endpoint}", headers=headers, timeout=timeout)
-            return r.json() if r.status_code == 200 else []
-        except Exception:
-            return []
-
-
-def api_post(endpoint: str, data: Dict[str, Any], timeout: int = 5, authenticated: bool = True) -> Optional[Dict[str, Any]]:
-    """Realiza una petición POST a la API (no cacheada por ser mutación)."""
-    headers = _get_auth_headers() if authenticated else {}
+def api_post(endpoint: str, data: Dict[str, Any], authenticated: bool = True) -> Optional[Dict[str, Any]]:
     try:
-        r = requests.post(f"{API_URL}{endpoint}", json=data, headers=headers, timeout=timeout)
-        if r.status_code in [200, 201]:
-            _invalidate_cache_for_endpoint(endpoint)
-            return r.json()
-        else:
-            print(f"API Error: {r.status_code} - {r.text}")
-            return None
-    except Exception as e:
-        print(f"API Exception: {e}")
+        if "/productos" in endpoint and "auth" not in endpoint:
+            prod = db.crear_producto(data)
+            return {"id": prod.id, "mensaje": "Producto creado"}
+        elif "/proveedores" in endpoint:
+            prov = db.crear_proveedor(data)
+            return {"id": prov.id, "nombre": prov.nombre}
+        elif "/tickets" in endpoint:
+            return db.crear_ticket(data)
         return None
-
-
-def api_post_form(endpoint: str, data: dict, files: dict = None, timeout: int = 30, authenticated: bool = True) -> Optional[Dict[str, Any]]:
-    """Realiza una petición POST con FormData (para uploads de archivos)."""
-    headers = _get_auth_headers() if authenticated else {}
-    # No incluir Content-Type para multipart, requests lo pone solo
-    if headers and "Authorization" in headers:
-        headers = {"Authorization": headers["Authorization"]}
-    else:
-        headers = {}
-    try:
-        r = requests.post(f"{API_URL}{endpoint}", data=data, files=files, headers=headers, timeout=timeout)
-        if r.status_code in [200, 201]:
-            return r.json()
-        else:
-            print(f"API Error: {r.status_code} - {r.text}")
-            return None
     except Exception as e:
-        print(f"API Exception: {e}")
-        return None
+        return {"error": str(e)}
 
 
-def api_put(endpoint: str, data: Dict[str, Any], timeout: int = 5, authenticated: bool = True) -> Optional[Dict[str, Any]]:
-    """Realiza una petición PUT a la API (no cacheada por ser mutación)."""
-    headers = _get_auth_headers() if authenticated else {}
+def api_put(endpoint: str, data: Dict[str, Any], authenticated: bool = True) -> Optional[Dict[str, Any]]:
     try:
-        r = requests.put(f"{API_URL}{endpoint}", json=data, headers=headers, timeout=timeout)
-        if r.status_code in [200, 201]:
-            _invalidate_cache_for_endpoint(endpoint)
-            return r.json()
-        else:
-            error_msg = f"API Error: {r.status_code} - {r.text}"
-            print(error_msg)
-            return {"error": error_msg}
+        if "/productos/" in endpoint:
+            pid = int(endpoint.split("/")[-1])
+            result = db.actualizar_producto(pid, data)
+            if result:
+                return {"id": result.id, "mensaje": "Producto actualizado"}
+            return {"error": "Producto no encontrado"}
+        return {"error": "Endpoint no soportado"}
     except Exception as e:
-        error_msg = f"API Exception: {e}"
-        print(error_msg)
-        return {"error": error_msg}
+        return {"error": str(e)}
 
 
-def api_delete(endpoint: str, timeout: int = 5, authenticated: bool = True) -> bool:
-    """Realiza una petición DELETE a la API (no cacheada por ser mutación)."""
-    headers = _get_auth_headers() if authenticated else {}
+def api_delete(endpoint: str, authenticated: bool = True) -> bool:
     try:
-        r = requests.delete(f"{API_URL}{endpoint}", headers=headers, timeout=timeout)
-        if r.status_code in [200, 204]:
-            _invalidate_cache_for_endpoint(endpoint)
-            return True
+        if "/productos/" in endpoint:
+            pid = int(endpoint.split("/")[-1])
+            return db.eliminar_producto(pid)
         return False
     except Exception:
         return False
 
 
-def _invalidate_cache_for_endpoint(endpoint: str):
-    """Invalida cache para endpoints relacionados tras modificación."""
-    _cached_api_get.clear()
+def api_post_form(endpoint: str, data: dict, files: dict = None, authenticated: bool = True) -> Optional[Dict[str, Any]]:
+    return api_post(endpoint, data, authenticated)
 
 
-def verificar_api(use_cache: bool = False) -> bool:
-    """Verifica si la API está disponible."""
-    try:
-        r = requests.get(f"{API_URL}/api/v1/salud", timeout=3)
-        return r.status_code == 200
-    except Exception:
-        return False
+def verificar_api() -> bool:
+    return True
 
 
 def esperar_api(intentos: int = 15) -> bool:
-    """Espera a que la API esté disponible."""
-    import time
-    for _ in range(intentos):
-        try:
-            r = requests.get(f"{API_URL}/api/v1/salud", timeout=2)
-            if r.status_code == 200:
-                return True
-        except Exception:
-            pass
-        time.sleep(1)
-    return False
+    return True
