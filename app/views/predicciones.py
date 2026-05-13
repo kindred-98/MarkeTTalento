@@ -5,7 +5,13 @@ Página de Predicciones ML e Inteligencia de Negocio
 import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from app.utils.api import api_get
+from app.db import DatabaseAccess
+
+
+def _obj_to_dict(obj):
+    if hasattr(obj, '__dict__'):
+        return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
+    return obj
 
 
 def render():
@@ -56,8 +62,14 @@ def _render_demanda():
     with col1:
         modo = st.radio("Analizar por:", ["Producto", "Categoría"], horizontal=True)
 
-    productos = api_get("/api/v1/productos") or []
-    categorias = api_get("/api/v1/categorias") or []
+    db = DatabaseAccess()
+    try:
+        productos = db.get_productos()
+        categorias = db.get_categorias()
+        productos = [_obj_to_dict(p) for p in productos]
+        categorias = [_obj_to_dict(c) for c in categorias]
+    finally:
+        db.close()
 
     if modo == "Producto":
         opciones = {p["nombre"]: p["id"] for p in productos}
@@ -71,15 +83,10 @@ def _render_demanda():
         endpoint = f"/api/v1/prediccion/categoria/{cid}"
 
     if st.button("🔮 Generar Pronóstico", type="primary"):
-        with st.spinner("Entrenando modelo..."):
-            data = api_get(endpoint, use_cache=False)
-
-        if not data:
-            st.error("No hay datos suficientes para generar la predicción.")
-            return
-
-        _mostrar_grafico_demanda(data)
-        _mostrar_metricas_demanda(data)
+        st.info("🔮 Las predicciones ML requieren iniciar la API: uvicorn main:app --port 8002")
+        st.markdown("**Demo - Productos disponibles:**")
+        for p in productos[:5]:
+            st.markdown(f"- {p.get('nombre', 'N/A')} — €{p.get('precio_venta', 0):.2f}")
 
 
 def _mostrar_grafico_demanda(data):
@@ -129,7 +136,7 @@ def _mostrar_grafico_demanda(data):
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         margin=dict(l=40, r=40, t=60, b=40)
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _mostrar_metricas_demanda(data):
@@ -172,138 +179,134 @@ def _render_inteligencia():
 
 
 def _render_abc():
-    with st.spinner("Calculando análisis ABC..."):
-        abc = api_get("/api/v1/prediccion/abc", use_cache=False)
-
-    if not abc:
-        st.info("No hay datos suficientes para el análisis ABC.")
+    st.info("📊 Análisis ABC requiere iniciar la API con: uvicorn main:app --port 8002")
+    st.markdown("O inicia con `python start_api.py` para ver predicciones ML.")
+    
+    db = DatabaseAccess()
+    try:
+        productos = db.get_productos()
+        productos = [_obj_to_dict(p) for p in productos]
+        tickets = db.get_tickets(limite=500)
+        tickets = [_obj_to_dict(t) for t in tickets]
+    finally:
+        db.close()
+    
+    if not productos:
+        st.warning("No hay productos registrados.")
         return
-
-    # Gráfico Pareto
-    nombres = [p["nombre"] for p in abc[:15]]
-    ingresos = [p["ingresos_totales"] for p in abc[:15]]
-    clases = [p["clasificacion"] for p in abc[:15]]
-    colores = {"A": "#10b981", "B": "#f59e0b", "C": "#6b7280"}
-    bar_colors = [colores.get(c, "#94a3b8") for c in clases]
-
+    
+    st.markdown("### Top 10 Productos por Nombre")
+    nombres = [p["nombre"] for p in productos[:15]]
+    precios = [p.get("precio_venta", 0) for p in productos[:15]]
+    
     fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=nombres, y=ingresos,
-        marker_color=bar_colors,
-        text=clases, textposition='outside'
-    ))
-    fig.update_layout(
-        title="Ingresos por Producto (Top 15) — Clasificación ABC",
-        paper_bgcolor="#0f172a", plot_bgcolor="#0f172a",
-        font=dict(color="#e2e8f0"),
-        xaxis=dict(tickangle=-45, gridcolor="rgba(255,255,255,0.05)"),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-        height=400,
-        showlegend=False,
-        margin=dict(l=40, r=40, t=60, b=100)
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Resumen
-    total = len(abc)
-    a_count = len([p for p in abc if p["clasificacion"] == "A"])
-    b_count = len([p for p in abc if p["clasificacion"] == "B"])
-    c_count = len([p for p in abc if p["clasificacion"] == "C"])
-
-    cols = st.columns(4)
-    cols[0].metric("Total Productos", total)
-    cols[1].metric("Clase A", a_count, delta=f"~{a_count/total*100:.0f}%")
-    cols[2].metric("Clase B", b_count, delta=f"~{b_count/total*100:.0f}%")
-    cols[3].metric("Clase C", c_count, delta=f"~{c_count/total*100:.0f}%")
-
-    # Tabla
-    st.markdown("**Detalle por producto**")
-    for p in abc:
-        badge = f'<span class="badge-abc-{p["clasificacion"].lower()}">{p["clasificacion"]}</span>'
-        st.markdown(f"""
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
-            <div>{badge} <strong>{p["nombre"]}</strong> <span style="color:#64748b; font-size:0.8rem;">({p["categoria"]})</span></div>
-            <div style="text-align:right; font-size:0.85rem;">
-                <div>€{p["ingresos_totales"]:,.2f}</div>
-                <div style="color:#64748b;">{p["unidades_vendidas"]} uds</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    fig.add_trace(go.Bar(x=nombres, y=precios, marker_color="#10b981"))
+    fig.update_layout(title="Productos (demostración)", paper_bgcolor="#0f172a", plot_bgcolor="#0f172a", font=dict(color="#e2e8f0"), height=400)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_precios():
-    with st.spinner("Analizando elasticidad de precios..."):
-        precios = api_get("/api/v1/prediccion/precios", use_cache=False)
+    st.info("💰 Precio óptimo requiere iniciar la API con: uvicorn main:app --port 8002")
+    st.markdown("Las predicciones ML avanzadas necesitan el backend FastAPI.")
 
-    if not precios:
-        st.info("No hay sugerencias de precio disponibles.")
+    db = DatabaseAccess()
+    try:
+        productos = db.get_productos()
+        productos = [_obj_to_dict(p) for p in productos]
+    finally:
+        db.close()
+
+    if not productos:
+        st.warning("No hay productos.")
         return
 
-    st.markdown(f"**{len(precios)} sugerencias encontradas**")
-
-    for s in precios:
-        color_sug = {"SUBIR": "#10b981", "BAJAR": "#ef4444", "MANTENER": "#94a3b8"}[s["sugerencia"]]
-        icon = {"SUBIR": "⬆️", "BAJAR": "⬇️", "MANTENER": "➡️"}[s["sugerencia"]]
+    st.markdown(f"**{len(productos)} productos disponibles**")
+    for p in productos[:10]:
+        precio = p.get("precio_venta", 0)
+        coste = p.get("precio_coste", 0) or 0
+        margen = ((precio - coste) / precio * 100) if precio > 0 else 0
+        color = "#10b981" if margen > 20 else "#f59e0b" if margen > 10 else "#ef4444"
         st.markdown(f"""
-        <div style="padding:12px; margin-bottom:8px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:4px solid {color_sug};">
+        <div style="padding:12px; margin-bottom:8px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:4px solid {color};">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>{icon} {s["nombre"]}</strong>
-                <span style="color:{color_sug}; font-weight:700;">{s["sugerencia"]}</span>
+                <strong>{p.get("nombre", "N/A")}</strong>
+                <span style="color:{color}; font-weight:700;">Margen: {margen:.1f}%</span>
             </div>
             <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; color:#94a3b8;">
-                <span>Precio actual: <strong>€{s["precio_actual"]:.2f}</strong></span>
-                <span>Ajuste: <strong style="color:{color_sug};">{s["ajuste_pct"]:+.1f}%</strong></span>
-                <span>Impacto estimado: <strong>€{s["impacto_estimado"]:,.2f}</strong>/mes</span>
-            </div>
-            <div style="margin-top:4px; font-size:0.75rem; color:#64748b;">
-                Demanda diaria: {s["demanda_diaria"]:.2f} uds · Rotación: {s["rotacion"]}
+                <span>Precio: <strong>€{precio:.2f}</strong></span>
+                <span>Coste: <strong>€{coste:.2f}</strong></span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
 
 def _render_estacionalidad():
-    with st.spinner("Analizando estacionalidad..."):
-        est = api_get("/api/v1/prediccion/estacionalidad", use_cache=False)
+    st.info("📅 Estacionalidad requiere iniciar la API con: uvicorn main:app --port 8002")
+    
+    db = DatabaseAccess()
+    try:
+        tickets = db.get_tickets(limite=100)
+        tickets = [_obj_to_dict(t) for t in tickets]
+    finally:
+        db.close()
 
-    if not est:
-        st.info("No hay datos de estacionalidad disponibles.")
+    if not tickets:
+        st.warning("No hay tickets para analizar estacionalidad.")
         return
-
-    st.markdown(f"**Comparativa: {est.get('mes_actual', '')} vs {est.get('mes_anterior', '')}**")
-
-    variacion = est.get("variacion_pct", {})
-    actual = est.get("metricas_actual", {})
-    anterior = est.get("metricas_anterior", {})
-
-    cols = st.columns(3)
-    for i, (label, key) in enumerate([("Ingresos", "ingresos"), ("Tickets", "tickets"), ("Unidades", "unidades")]):
-        var = variacion.get(key, 0)
-        delta_color = "normal" if var >= 0 else "inverse"
-        cols[i].metric(
-            label,
-            f"{actual.get(key, 0):,.0f}",
-            delta=f"{var:+.1f}% vs mes ant.",
-            delta_color=delta_color
-        )
-
-    tendencia = est.get("tendencia", "ESTABLE")
-    color_tend = {"ALZA": "#10b981", "BAJA": "#ef4444", "ESTABLE": "#f59e0b"}.get(tendencia, "#94a3b8")
-    st.markdown(f"""
-    <div style="margin-top:1rem; padding:12px; background:{color_tend}15; border-radius:8px; text-align:center;">
-        <span style="font-size:1.2rem; font-weight:700; color:{color_tend};">Tendencia general: {tendencia}</span>
-    </div>
-    """, unsafe_allow_html=True)
+    
+    st.markdown("### Distribución de Tickets por Mes")
+    meses = {}
+    for t in tickets:
+        fecha = t.get("fecha", "")
+        if fecha:
+            mes = fecha[:7] if len(str(fecha)) > 7 else "N/A"
+            meses[mes] = meses.get(mes, 0) + 1
+    
+    if meses:
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=list(meses.keys()), y=list(meses.values()), marker_color="#0ea5e9"))
+        fig.update_layout(title="Tickets por Mes", paper_bgcolor="#0f172a", plot_bgcolor="#0f172a", font=dict(color="#e2e8f0"), height=300)
+        st.plotly_chart(fig, width="stretch")
+    else:
+        st.info("Sin datos de fecha en tickets.")
 
 
 def _render_alertas():
     st.markdown("#### Alertas de Reposición")
 
-    with st.spinner("Escaneando inventario..."):
-        alertas = api_get("/api/v1/prediccion/alertas", use_cache=False)
+    db = DatabaseAccess()
+    try:
+        productos = db.get_productos()
+        inventarios = db.get_inventario()
+        productos = [_obj_to_dict(p) for p in productos]
+        inventarios = [_obj_to_dict(i) for i in inventarios]
+    finally:
+        db.close()
 
+    inv_by_prod = {i["producto_id"]: i for i in inventarios}
+    alertas = []
+    for p in productos:
+        inv = inv_by_prod.get(p["id"])
+        if inv:
+            stock = inv.get("cantidad", 0)
+            stock_max = p.get("stock_maximo", 100) or 100
+            if stock <= stock_max * 0.2:
+                alertas.append({
+                    "nombre": p.get("nombre", "N/A"),
+                    "stock": stock,
+                    "stock_max": stock_max
+                })
+    
     if not alertas:
         st.success("✅ No hay alertas de reposición. Todo el stock está en niveles adecuados.")
+    else:
+        for a in alertas:
+            color = "#ef4444" if a["stock"] == 0 else "#f59e0b"
+            st.markdown(f"""
+            <div style="padding:12px; margin-bottom:8px; background:rgba(239,68,68,0.1); border-radius:10px; border-left:4px solid {color};">
+                <strong>⚠️ {a['nombre']}</strong> — Stock: {a['stock']} / {a['stock_max']}
+            </div>
+            """, unsafe_allow_html=True)
         return
 
     # Resumen

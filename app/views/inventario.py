@@ -4,7 +4,7 @@ Refactorizado: Funciones pequeñas y reutilizables
 """
 import streamlit as st
 import pandas as pd
-from app.utils.api import api_get, api_post, api_put
+from app.db import DatabaseAccess
 from app.utils.helpers import to_excel
 from app.utils.validators import validar_sku, validar_email_proveedor
 from app.logic.inventario import (
@@ -13,13 +13,28 @@ from app.logic.inventario import (
 )
 
 
+def _obj_to_dict(obj):
+    if hasattr(obj, '__dict__'):
+        return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
+    return obj
+
+
 @st.cache_data(ttl=5, show_spinner=False)
 def _get_inventario_data():
     """Obtiene datos de inventario, productos y proveedores."""
-    inventarios = api_get("/api/v1/inventario", use_cache=False)
-    productos = api_get("/api/v1/productos", use_cache=False)
-    proveedores = api_get("/api/v1/proveedores", use_cache=False)
-    return inventarios, productos, proveedores
+    db = DatabaseAccess()
+    try:
+        inventarios = db.get_inventario()
+        productos = db.get_productos()
+        proveedores = db.get_proveedores()
+        
+        inventarios = [_obj_to_dict(i) for i in inventarios]
+        productos = [_obj_to_dict(p) for p in productos]
+        proveedores = [_obj_to_dict(p) for p in proveedores]
+        
+        return inventarios, productos, proveedores
+    finally:
+        db.close()
 
 
 def _aplicar_filtros(datos_inv, busqueda, filtro_estado):
@@ -143,7 +158,7 @@ def _exportar_excel(datos_inv):
         data=excel_data, 
         file_name="inventario.xlsx", 
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-        use_container_width=True, 
+        width="stretch", 
         key="btn_exp_excel"
     )
 
@@ -194,7 +209,7 @@ def _exportar_json(datos_inv):
         data=json_data, 
         file_name="inventario.json", 
         mime="application/json", 
-        use_container_width=True, 
+        width="stretch", 
         key="btn_exp_json"
     )
 
@@ -262,7 +277,7 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     st.markdown(card_html, unsafe_allow_html=True)
     
     # Botón editar
-    if st.button("✏️ Editar", key=f"btn_edit_{pid}", use_container_width=True, 
+    if st.button("✏️ Editar", key=f"btn_edit_{pid}", width="stretch", 
                 type="primary" if is_editing else "secondary"):
         st.session_state['editando_producto_id'] = pid
         st.rerun()
@@ -287,13 +302,13 @@ def _render_paginacion(total_paginas, pagina_actual, inicio, fin, total_items):
         st.markdown("---")
         col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
         with col_pag1:
-            if st.button("⬅️ Anterior", disabled=pagina_actual <= 1, use_container_width=True):
+            if st.button("⬅️ Anterior", disabled=pagina_actual <= 1, width="stretch"):
                 st.session_state['pagina_inv'] = pagina_actual - 1
                 st.rerun()
         with col_pag2:
             st.markdown(f"<p style='text-align: center; color: #94a3b8; margin: 0;'>Página {pagina_actual} de {total_paginas} | Mostrando {inicio+1}-{fin} de {total_items}</p>", unsafe_allow_html=True)
         with col_pag3:
-            if st.button("Siguiente ➡️", disabled=pagina_actual >= total_paginas, use_container_width=True):
+            if st.button("Siguiente ➡️", disabled=pagina_actual >= total_paginas, width="stretch"):
                 st.session_state['pagina_inv'] = pagina_actual + 1
                 st.rerun()
 
@@ -342,7 +357,7 @@ def _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_i
     
     col_btn_guardar, col_btn_cancel = st.columns([1, 4])
     with col_btn_guardar:
-        btn_guardar = st.button("💾 Guardar cambios", type="primary", use_container_width=True, 
+        btn_guardar = st.button("💾 Guardar cambios", type="primary", width="stretch", 
                             disabled=len(errores_edit) > 0 or (cambios_realizados and not confirmar_cambios), 
                             key="btn_save_edit_inv")
         if errores_edit:
@@ -350,7 +365,7 @@ def _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_i
         elif cambios_realizados and not confirmar_cambios:
             st.caption("⚠️ Confirma los cambios para guardar")
     with col_btn_cancel:
-        if st.button("❌ Cancelar", use_container_width=True, key="btn_cancel_edit_inv"):
+        if st.button("❌ Cancelar", width="stretch", key="btn_cancel_edit_inv"):
             del st.session_state['editando_producto_id']
             if 'confirmar_cambios_inv' in st.session_state:
                 del st.session_state['confirmar_cambios_inv']
@@ -382,37 +397,34 @@ def _render_formulario_nuevo_proveedor(editable_id, proveedores):
     else:
         btn_crear_disabled = False
     
-    if st.button("💾 Crear y usar", key="btn_new_prov_inv", use_container_width=True, type="secondary", disabled=btn_crear_disabled):
+    if st.button("💾 Crear y usar", key="btn_new_prov_inv", width="stretch", type="secondary", disabled=btn_crear_disabled):
         if nuevo_prov_nombre and nuevo_prov_email:
             with st.spinner("⏳ Creando proveedor..."):
                 try:
-                    prov_data = {"nombre": nuevo_prov_nombre, "email": nuevo_prov_email, "telefono": nuevo_prov_telefono or None}
-                    result = api_post("/api/v1/proveedores", prov_data)
-                    
-                    if result and isinstance(result, dict) and "id" in result:
-                        nuevo_prov_id = result.get("id")
-                        data_prov = {"proveedor_id": nuevo_prov_id}
-                        resultado_asignacion = api_put(f"/api/v1/productos/{editable_id}", data_prov)
+                    db = DatabaseAccess()
+                    try:
+                        prov_data = {"nombre": nuevo_prov_nombre, "email": nuevo_prov_email, "telefono": nuevo_prov_telefono or None}
+                        result = db.crear_proveedor(prov_data)
                         
-                        if resultado_asignacion and "error" not in str(resultado_asignacion).lower():
-                            _get_inventario_data.clear()
-                            st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado y asignado")
-                            del st.session_state['editando_producto_id']
-                            st.rerun()
+                        if result and hasattr(result, 'id'):
+                            nuevo_prov_id = result.id
+                            datos_actualizar = {"proveedor_id": nuevo_prov_id}
+                            resultado_asignacion = db.actualizar_producto(editable_id, datos_actualizar)
+                            
+                            if resultado_asignacion:
+                                _get_inventario_data.clear()
+                                st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado y asignado")
+                                del st.session_state['editando_producto_id']
+                                st.rerun()
+                            else:
+                                st.error("❌ Error al asignar proveedor al producto")
+                                st.warning("⚠️ El proveedor se creó pero no se pudo asignar.")
                         else:
-                            error_msg = "Error al asignar proveedor al producto"
-                            if isinstance(resultado_asignacion, dict) and "error" in resultado_asignacion:
-                                error_msg = resultado_asignacion["error"]
-                            st.error(f"❌ {error_msg}")
-                            st.warning("⚠️ El proveedor se creó pero no se pudo asignar.")
-                    else:
-                        error_msg = "Error desconocido al crear proveedor"
-                        if isinstance(result, dict) and "error" in result:
-                            error_msg = result["error"]
-                        st.error(f"❌ {error_msg}")
+                            st.error("❌ Error al crear proveedor")
+                    finally:
+                        db.close()
                 except Exception as e:
-                    st.error(f"❌ Error inesperado: {str(e)}")
-                    st.info("💡 Verifica tu conexión o contacta soporte")
+                    st.error(f"❌ Error: {str(e)}")
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -426,10 +438,11 @@ def _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_opti
     }
     
     with st.spinner("💾 Guardando cambios..."):
+        db = DatabaseAccess()
         try:
-            resultado = api_put(f"/api/v1/productos/{editable_id}", datos_actualizar)
+            resultado = db.actualizar_producto(editable_id, datos_actualizar)
             
-            if resultado and "error" not in str(resultado).lower():
+            if resultado:
                 _get_inventario_data.clear()
                 st.success("✅ Cambios guardados correctamente")
                 del st.session_state['editando_producto_id']
@@ -437,11 +450,9 @@ def _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_opti
                     del st.session_state['confirmar_cambios_inv']
                 st.rerun()
             else:
-                error_msg = resultado.get("error", "Error desconocido del servidor") if isinstance(resultado, dict) else "Error al actualizar"
-                st.error(f"❌ {error_msg}")
-        except Exception as e:
-            st.error(f"❌ Error inesperado: {str(e)}")
-            st.info("💡 Por favor, intenta de nuevo o contacta soporte si el problema persiste")
+                st.error("❌ Error al actualizar")
+        finally:
+            db.close()
 
 
 def render():
@@ -513,7 +524,7 @@ def render():
         st.markdown("---")
         col_volver, _ = st.columns([1, 5])
         with col_volver:
-            if st.button("⬆️ Volver al formulario", use_container_width=True, type="secondary"):
+            if st.button("⬆️ Volver al formulario", width="stretch", type="secondary"):
                 st.markdown("""
                 <script>
                     window.scrollTo({ top: 0, behavior: 'smooth' });

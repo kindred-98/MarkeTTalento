@@ -59,7 +59,7 @@ def render():
     with col2:
         tipo_busqueda = st.selectbox("Buscar por:", ["Codigo de barras", "SKU", "Nombre"], label_visibility="collapsed")
 
-    if st.button("🔍 Buscar", type="primary", use_container_width=True):
+    if st.button("🔍 Buscar", type="primary", width="stretch"):
         with st.spinner("Buscando producto..."):
             producto = _buscar_producto(busqueda, tipo_busqueda)
 

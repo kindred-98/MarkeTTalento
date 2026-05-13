@@ -48,7 +48,7 @@ def render_sidebar():
         
         st.markdown("---")
         
-        if st.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
+        if st.button("🚪 Cerrar Sesión", width="stretch", type="secondary"):
             for key in ["auth_token", "auth_user", "api_conectada"]:
                 if key in st.session_state:
                     del st.session_state[key]

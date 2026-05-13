@@ -6,19 +6,41 @@ import plotly.graph_objects as go
 import hashlib
 import json
 import random
-from app.utils.api import api_get
+from app.db import DatabaseAccess
 from app.utils.helpers import calcular_porcentaje
 from app.utils.state import get_filtro_dashboard, update_dashboard_metrics, get_dashboard_metrics
 from app.logic.inventario import calcular_estado_stock
 
 
+def _obj_to_dict(obj):
+    if hasattr(obj, '__dict__'):
+        result = {}
+        for k, v in obj.__dict__.items():
+            if k.startswith('_'):
+                continue
+            if hasattr(v, 'isoformat'):  # datetime objects
+                result[k] = v.isoformat()
+            else:
+                result[k] = v
+        return result
+    return obj
+
+
 @st.cache_data(ttl=1, show_spinner=False)
 def _get_dashboard_data():
     """Cachea datos del dashboard por 1 segundo."""
-    inventarios = api_get("/api/v1/inventario", use_cache=False)
-    productos = api_get("/api/v1/productos", use_cache=False)
-    resumen = api_get("/api/v1/inventario/resumen", use_cache=False)
-    return inventarios, productos, resumen
+    db = DatabaseAccess()
+    try:
+        inventarios = db.get_inventario()
+        productos = db.get_productos()
+        
+        inventarios = [_obj_to_dict(i) for i in inventarios]
+        productos = [_obj_to_dict(p) for p in productos]
+        
+        resumen = db.obtener_resumen_inventario()
+        return inventarios, productos, resumen
+    finally:
+        db.close()
 
 
 @st.cache_data(ttl=2, show_spinner=False)
@@ -347,7 +369,7 @@ def render():
                 if st.button(
                     f"{btn_emoji} {label}", 
                     key=f"btn_filtro_{filtro_nombre}",
-                    use_container_width=True,
+                    width="stretch",
                     type="secondary"
                 ):
                     st.session_state['filtros_lista'][filtro_nombre] = not is_active
@@ -445,7 +467,7 @@ def render():
                 col_pag1, col_pag2, col_pag3 = st.columns([1, 3, 1])
                 
                 with col_pag1:
-                    if st.button("◀", disabled=(pagina_actual == 1), key="btn_pagina_anterior", use_container_width=True):
+                    if st.button("◀", disabled=(pagina_actual == 1), key="btn_pagina_anterior", width="stretch"):
                         st.session_state['pagina_stock'] = pagina_actual - 1
                         st.rerun()
                 
@@ -453,7 +475,7 @@ def render():
                     st.markdown(f"<p style='text-align: center; color: #94a3b8; font-size: 0.85rem; margin: 0;'>Página {pagina_actual} de {total_paginas} &nbsp;&nbsp;|&nbsp;&nbsp; {inicio+1}-{fin} de {total_productos} productos</p>", unsafe_allow_html=True)
                 
                 with col_pag3:
-                    if st.button("▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente", use_container_width=True):
+                    if st.button("▶", disabled=(pagina_actual == total_paginas), key="btn_pagina_siguiente", width="stretch"):
                         st.session_state['pagina_stock'] = pagina_actual + 1
                         st.rerun()
             else:
@@ -514,7 +536,7 @@ def render():
             )
             
             # Configurar eventos de clic
-            selected_points = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="grafico_inventario")
+            selected_points = st.plotly_chart(fig, width="stretch", on_select="rerun", key="grafico_inventario")
             
             # Procesar selección
             if selected_points and hasattr(selected_points, 'selection') and selected_points.selection:

@@ -10,6 +10,7 @@ import json
 from datetime import datetime
 from io import BytesIO
 from app.utils.api import api_get, api_post, api_put, api_delete
+from app.db import DatabaseAccess
 from app.utils.helpers import to_excel, calcular_porcentaje, truncate_text
 from app.utils.state import set_editar_producto, clear_editar_producto
 from app.logic.producto import get_categoria_emoji, get_descripcion_default, preparar_producto_data
@@ -84,11 +85,26 @@ def _export_to_excel(productos, inventarios, categorias, proveedores):
 @st.cache_data(ttl=5, show_spinner=False)
 def _get_productos_data():
     """Cachea datos de productos, inventarios, categorías y proveedores."""
-    productos = api_get("/api/v1/productos", use_cache=False)
-    inventarios = api_get("/api/v1/inventario", use_cache=False)
-    categorias = api_get("/api/v1/categorias", use_cache=False)
-    proveedores = api_get("/api/v1/proveedores", use_cache=False)
-    return productos, inventarios, categorias, proveedores
+    db = DatabaseAccess()
+    try:
+        productos = db.get_productos()
+        inventarios = db.get_inventario()
+        categorias = db.get_categorias()
+        proveedores = db.get_proveedores()
+        
+        def to_dict(obj):
+            if hasattr(obj, '__dict__'):
+                return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
+            return obj
+        
+        productos = [to_dict(p) for p in productos]
+        inventarios = [to_dict(i) for i in inventarios]
+        categorias = [to_dict(c) for c in categorias]
+        proveedores = [to_dict(p) for p in proveedores]
+        
+        return productos, inventarios, categorias, proveedores
+    finally:
+        db.close()
 
 
 def _get_estado_producto(prod_id, inventarios, productos):
@@ -124,22 +140,27 @@ def render():
     # Manejar eliminación de producto
     if 'producto_eliminar' in st.session_state and st.session_state['producto_eliminar']:
         pid_eliminar = st.session_state['producto_eliminar']
-        prod_eliminar = next((p for p in api_get("/api/v1/productos", use_cache=False) if p.get("id") == pid_eliminar), None)
+        productos, inventarios, categorias, proveedores = _get_productos_data()
+        prod_eliminar = next((p for p in productos if p.get("id") == pid_eliminar), None)
         nombre_eliminar = prod_eliminar.get("nombre", "este producto") if prod_eliminar else "este producto"
         
         st.warning(f"⚠️ ¿Eliminar **{nombre_eliminar}**? Esta acción no se puede deshacer.")
         col_si, col_no = st.columns(2)
         with col_si:
-            if st.button("✅ Sí, eliminar", type="primary", use_container_width=True):
-                if api_delete(f"/api/v1/productos/{pid_eliminar}"):
-                    _get_productos_data.clear()
-                    show_success_modal("¡Producto eliminado!", f"{nombre_eliminar} ha sido eliminado", duracion=2)
-                    del st.session_state['producto_eliminar']
-                    st.rerun()
-                else:
-                    st.error("❌ Error al eliminar el producto")
+            if st.button("✅ Sí, eliminar", type="primary", width="stretch"):
+                db = DatabaseAccess()
+                try:
+                    if db.eliminar_producto(pid_eliminar):
+                        _get_productos_data.clear()
+                        show_success_modal("¡Producto eliminado!", f"{nombre_eliminar} ha sido eliminado", duracion=2)
+                        del st.session_state['producto_eliminar']
+                        st.rerun()
+                    else:
+                        st.error("❌ Error al eliminar el producto")
+                finally:
+                    db.close()
         with col_no:
-            if st.button("❌ Cancelar", use_container_width=True):
+            if st.button("❌ Cancelar", width="stretch"):
                 del st.session_state['producto_eliminar']
                 st.rerun()
         return
@@ -158,7 +179,7 @@ def render():
     with col_nav1:
         btn_catalogo = st.button(
             "📋 Catálogo", 
-            use_container_width=True, 
+            width="stretch", 
             type="primary" if tab_actual == 0 else "secondary",
             key="btn_catalogo_main"
         )
@@ -169,7 +190,7 @@ def render():
     with col_nav2:
         btn_nuevo = st.button(
             "➕ Nuevo", 
-            use_container_width=True,
+            width="stretch",
             type="primary" if tab_actual == 1 else "secondary",
             key="btn_nuevo_main"
         )
@@ -180,7 +201,7 @@ def render():
     with col_nav3:
         btn_edicion = st.button(
             "✏️ Edición", 
-            use_container_width=True,
+            width="stretch",
             type="primary" if tab_actual == 2 else "secondary",
             key="btn_edicion_main"
         )
@@ -202,7 +223,7 @@ def render():
             data=_export_to_json(productos_exp, inventarios_exp, categorias_exp, proveedores_exp),
             file_name="productos.json",
             mime="application/octet-stream",
-            use_container_width=True,
+            width="stretch",
             type="secondary"
         )
     with col_exp2:
@@ -211,7 +232,7 @@ def render():
             data=_export_to_excel(productos_exp, inventarios_exp, categorias_exp, proveedores_exp),
             file_name="productos.xlsx",
             mime="application/octet-stream",
-            use_container_width=True,
+            width="stretch",
             type="secondary"
         )
     
@@ -255,7 +276,7 @@ def _ver_producto_modal(pid):
     with col_img:
         img_url = prod.get("imagen_url")
         if img_url and os.path.exists(img_url):
-            st.image(img_url, width=300, use_container_width=True)
+            st.image(img_url, width=300)
         else:
             st.markdown(f"<div style='width:100%;height:250px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:5rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
 
@@ -497,7 +518,7 @@ def render_catalogo():
                         try:
                             col_left, col_img, col_right = st.columns([1, 2, 1])
                             with col_img:
-                                st.image(img_url, width=200, use_container_width=False)
+                                st.image(img_url, width=200)
                         except Exception as e:
                             st.markdown(f"<div style='width:100%;height:130px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
                     else:
@@ -533,15 +554,15 @@ def render_catalogo():
 
                     col_vermas, col_edit, col_del = st.columns(3)
                     with col_vermas:
-                        if st.button("👁️", key=f"vermas_{pid}", use_container_width=True, type="secondary"):
+                        if st.button("👁️", key=f"vermas_{pid}", width="stretch", type="secondary"):
                             _ver_producto_modal(pid)
                     with col_edit:
-                        if st.button("✏️", key=f"edit_card_{pid}", use_container_width=True, type="secondary"):
+                        if st.button("✏️", key=f"edit_card_{pid}", width="stretch", type="secondary"):
                             set_editar_producto(pid)
                             st.session_state['producto_tab_activo'] = 2
                             st.rerun()
                     with col_del:
-                        if st.button("🗑️", key=f"del_card_{pid}", use_container_width=True, type="secondary"):
+                        if st.button("🗑️", key=f"del_card_{pid}", width="stretch", type="secondary"):
                             st.session_state['producto_eliminar'] = pid
                             st.rerun()
 
@@ -571,13 +592,11 @@ def render_nuevo():
     
     st.markdown("<h4 style='color: #00f0ff;'>➕ Nuevo Producto</h4>", unsafe_allow_html=True)
     
-    # Cargar datos
-    categorias = api_get("/api/v1/categorias", use_cache=True)
-    proveedores = api_get("/api/v1/proveedores", use_cache=True)
-    productos_existentes = api_get("/api/v1/productos", use_cache=True)
-    nombres_existentes = [p.get("nombre", "").lower() for p in productos_existentes]
-    skus_existentes = [p.get("sku", "").lower() for p in productos_existentes]
-    barras_existentes = [p.get("codigo_barras", "").lower() for p in productos_existentes if p.get("codigo_barras")]
+    # Cargar datos desde cache
+    productos, inventarios, categorias, proveedores = _get_productos_data()
+    nombres_existentes = [p.get("nombre", "").lower() for p in productos]
+    skus_existentes = [p.get("sku", "").lower() for p in productos]
+    barras_existentes = [p.get("codigo_barras", "").lower() for p in productos if p.get("codigo_barras")]
     
     # Fila 1: SKU, Nombre, Precio venta, Precio coste
     c1, c2, c3, c4 = st.columns(4)
@@ -619,7 +638,7 @@ def render_nuevo():
             nuevo_prov_email = st.text_input("Email *", key=f"new_prov_email_{form_version}", label_visibility="collapsed", placeholder="email@ejemplo.com")
             nuevo_prov_telefono = st.text_input("Teléfono", key=f"new_prov_telefono_{form_version}", label_visibility="collapsed", placeholder="600 000 000")
             
-            if st.button("💾 Guardar proveedor", key=f"btnGuardarProv_{form_version}", use_container_width=True, type="secondary"):
+            if st.button("💾 Guardar proveedor", key=f"btnGuardarProv_{form_version}", width="stretch", type="secondary"):
                 if nuevo_prov_nombre and nuevo_prov_email:
                     prov_data = {
                         "nombre": nuevo_prov_nombre,
@@ -627,13 +646,17 @@ def render_nuevo():
                         "telefono": nuevo_prov_telefono or None,
                         "contacto": None
                     }
-                    result = api_post("/api/v1/proveedores", prov_data)
-                    if result:
-                        st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado")
-                        st.session_state['form_version'] = form_version + 1
-                        st.rerun()
-                    else:
-                        st.error("❌ Error al crear proveedor")
+                    db = DatabaseAccess()
+                    try:
+                        result = db.crear_proveedor(prov_data)
+                        if result:
+                            st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado")
+                            st.session_state['form_version'] = form_version + 1
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al crear proveedor")
+                    finally:
+                        db.close()
                 else:
                     st.warning("⚠️ Nombre y email son obligatorios")
             st.markdown("</div>", unsafe_allow_html=True)
@@ -697,7 +720,7 @@ def render_nuevo():
     # Botón
     col_btn, col_info = st.columns([3, 1])
     with col_btn:
-        if st.button("💾 Crear producto", type="primary", use_container_width=True, disabled=not campos_ok, key=f"btn_crear_{form_version}"):
+        if st.button("💾 Crear producto", type="primary", width="stretch", disabled=not campos_ok, key=f"btn_crear_{form_version}"):
             # Re-validar al momento del click (por si el usuario borró algo)
             errores_click = []
             if not sku or len(sku) < 4 or len(sku) > 20 or sku.lower() in skus_existentes:
@@ -739,14 +762,18 @@ def render_nuevo():
                 stock_minimo=stock_min
             )
             
-            result = api_post("/api/v1/productos", data)
-            if result:
-                _get_productos_data.clear()
-                show_success_modal("¡Producto creado!", f"{nombre} registrado en catálogo", duracion=3)
-                st.session_state['form_version'] = form_version + 1
-                st.rerun()
-            else:
-                st.error("❌ Error al crear el producto")
+            db = DatabaseAccess()
+            try:
+                result = db.crear_producto(data)
+                if result:
+                    _get_productos_data.clear()
+                    show_success_modal("¡Producto creado!", f"{nombre} registrado en catálogo", duracion=3)
+                    st.session_state['form_version'] = form_version + 1
+                    st.rerun()
+                else:
+                    st.error("❌ Error al crear el producto")
+            finally:
+                db.close()
     
     with col_info:
         if errores:
@@ -873,7 +900,7 @@ def render_edicion():
     # Botones
     col_btn1, col_btn2, col_info = st.columns([2, 1, 1])
     with col_btn1:
-        if st.button("💾 Guardar cambios", type="primary", use_container_width=True, disabled=not campos_ok, key="btnGuardarEdit"):
+        if st.button("💾 Guardar cambios", type="primary", width="stretch", disabled=not campos_ok, key="btnGuardarEdit"):
             # Re-validar al click
             errores_click = []
             if not edit_nombre or len(edit_nombre) > 50:
@@ -923,19 +950,28 @@ def render_edicion():
                 "imagen_url": nueva_imagen_url
             }
             
-            result = api_put(f"/api/v1/productos/{prod_id}", data_edit)
-            if result and result.get('id'):
-                nuevo_stock = edit_stock_actual + edit_ingreso
-                api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": nuevo_stock, "ubicacion": "Almacén A"})
-                _get_productos_data.clear()
-                st.session_state['producto_actualizado'] = True
-                clear_editar_producto()
-                st.rerun()
-            else:
-                st.error("❌ Error al actualizar")
+            db = DatabaseAccess()
+            try:
+                result = db.actualizar_producto(prod_id, data_edit)
+                if result:
+                    session = db.session
+                    from src.dominio.entidades.entidades import Inventario
+                    inv = session.query(Inventario).filter_by(producto_id=prod_id).first()
+                    if inv:
+                        nuevo_stock = edit_stock_actual + edit_ingreso
+                        inv.cantidad = nuevo_stock
+                        session.commit()
+                    _get_productos_data.clear()
+                    st.session_state['producto_actualizado'] = True
+                    clear_editar_producto()
+                    st.rerun()
+                else:
+                    st.error("❌ Error al actualizar")
+            finally:
+                db.close()
     
     with col_btn2:
-        if st.button("❌ Cancelar", use_container_width=True, key="btnCancelarEdit"):
+        if st.button("❌ Cancelar", width="stretch", key="btnCancelarEdit"):
             clear_editar_producto()
             st.rerun()
     

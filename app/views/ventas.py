@@ -12,7 +12,7 @@ import base64
 import io
 import time
 
-from app.utils.api import api_get, api_post, api_delete
+from app.db import DatabaseAccess
 
 try:
     from PIL import Image
@@ -20,6 +20,29 @@ try:
 except ImportError:
     PIL_AVAILABLE = False
 from app.utils.helpers import to_excel, format_currency
+
+
+def _obj_to_dict(obj):
+    if hasattr(obj, '__dict__'):
+        return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
+    return obj
+
+
+def _get_ventas_data():
+    """Obtiene datos para ventas usando db directamente."""
+    db = DatabaseAccess()
+    try:
+        productos = db.get_productos()
+        inventarios = db.get_inventario()
+        tickets = db.get_tickets(limite=500)
+        
+        productos = [_obj_to_dict(p) for p in productos]
+        inventarios = [_obj_to_dict(i) for i in inventarios]
+        tickets = [_obj_to_dict(t) for t in tickets]
+        
+        return productos, inventarios, tickets
+    finally:
+        db.close()
 from app.utils.state import (
     init_tpv_state, get_tpv_carrito, set_tpv_carrito, limpiar_carrito,
     agregar_linea_carrito, actualizar_cantidad_linea, calcular_total_carrito, get_cajeros
@@ -205,7 +228,7 @@ def render_panel_ticket():
         col_dto1, col_dto2, col_dto3 = st.columns(3)
         for col, pct in zip([col_dto1, col_dto2, col_dto3], [5, 10, 20]):
             with col:
-                if st.button(f"DTO {pct}%", key=f"dto_{pct}", use_container_width=True):
+                if st.button(f"DTO {pct}%", key=f"dto_{pct}", width="stretch"):
                     st.session_state['tpv_descuento'] = pct if st.session_state.get('tpv_descuento') != pct else 0
                     st.rerun()
 
@@ -224,7 +247,7 @@ def render_panel_ticket():
         }
         </style>
         """, unsafe_allow_html=True)
-        if st.button("💶 Efectivo", use_container_width=True, type="primary", disabled=not carrito, key="btn_efectivo_grad"):
+        if st.button("💶 Efectivo", width="stretch", type="primary", disabled=not carrito, key="btn_efectivo_grad"):
             st.session_state['tpv_metodo_pago'] = 'efectivo'
             st.session_state['tpv_mostrar_cobro'] = True
             st.rerun()
@@ -240,7 +263,7 @@ def render_panel_ticket():
         }
         </style>
         """, unsafe_allow_html=True)
-        if st.button("💳 Tarjeta", use_container_width=True, type="primary", disabled=not carrito, key="btn_tarjeta_grad"):
+        if st.button("💳 Tarjeta", width="stretch", type="primary", disabled=not carrito, key="btn_tarjeta_grad"):
             st.session_state['tpv_metodo_pago'] = 'tarjeta'
             st.session_state['tpv_mostrar_cobro'] = True
             st.rerun()
@@ -255,7 +278,7 @@ def render_panel_ticket():
         }
         </style>
         """, unsafe_allow_html=True)
-        if st.button("🧹 Limpiar", use_container_width=True, type="secondary", key="btn_limpiar_grad"):
+        if st.button("🧹 Limpiar", width="stretch", type="secondary", key="btn_limpiar_grad"):
             st.session_state['tpv_descuento'] = 0
             limpiar_carrito()
             st.rerun()
@@ -272,7 +295,7 @@ def _procesar_barcode(texto: str):
     texto = texto.strip().lower()
     if not texto:
         return
-    productos = api_get("/api/v1/productos", use_cache=False)
+    productos, inventarios, tickets = _get_ventas_data()
     for prod in productos:
         sku = (prod.get('sku') or '').lower()
         cod = (prod.get('codigo_barras') or '').lower()
@@ -287,7 +310,7 @@ def _procesar_barcode(texto: str):
 
 def _render_alerta_stock_bajo(carrito: list):
     """Muestra alerta si algún producto del carrito queda con stock < 5."""
-    inventarios = api_get("/api/v1/inventario", use_cache=False)
+    productos, inventarios, tickets = _get_ventas_data()
     inv_dict = {i['producto_id']: i['cantidad'] for i in inventarios}
     alertas = []
     for linea in carrito:
@@ -319,7 +342,7 @@ def render_teclado_numerico():
         cols = st.columns(3)
         for i, tecla in enumerate(fila):
             with cols[i]:
-                if st.button(tecla, key=f"tecla_{tecla}", use_container_width=True):
+                if st.button(tecla, key=f"tecla_{tecla}", width="stretch"):
                     if tecla == 'CLR':
                         st.session_state['tpv_teclado_buffer'] = ''
                     else:
@@ -330,7 +353,7 @@ def render_teclado_numerico():
     if buffer:
         try:
             cantidad = int(float(buffer))
-            if st.button("✅ Aplicar Cantidad", use_container_width=True, type="primary"):
+            if st.button("✅ Aplicar Cantidad", width="stretch", type="primary"):
                 actualizar_cantidad_linea(linea_sel, cantidad)
                 st.rerun()
         except ValueError:
@@ -346,7 +369,7 @@ def render_teclado_numerico():
         key=f"cantidad_rapida_{linea_sel}",
         label_visibility="collapsed"
     )
-    if st.button("✅ Aplicar", use_container_width=True, key=f"btn_aplicar_rapido_{linea_sel}"):
+    if st.button("✅ Aplicar", width="stretch", key=f"btn_aplicar_rapido_{linea_sel}"):
         actualizar_cantidad_linea(linea_sel, int(cantidad_rapida))
         st.rerun()
 
@@ -420,7 +443,7 @@ def render_cobro_modal():
             bc1, bc2, bc3, bc4 = st.columns(4)
             for col, val in zip([bc1, bc2, bc3, bc4], [5, 10, 20, 50]):
                 with col:
-                    if st.button(f"€{val}", key=f"billete_{val}", use_container_width=True):
+                    if st.button(f"€{val}", key=f"billete_{val}", width="stretch"):
                         st.session_state['tpv_billete_pulsado'] = float(val)
                         st.rerun()
 
@@ -443,42 +466,50 @@ def render_cobro_modal():
         # Botones de acción
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("❌ Cancelar", use_container_width=True, key="modal_btn_cancel_v2"):
+            if st.button("❌ Cancelar", width="stretch", key="modal_btn_cancel_v2"):
                 st.session_state['tpv_mostrar_cobro'] = False
                 st.rerun()
         with c2:
             disabled = not confirmar
             btn_type = "primary" if confirmar else "secondary"
-            if st.button("✅ Finalizar Venta", use_container_width=True, type=btn_type, disabled=disabled, key="modal_btn_ok_v2"):
+            if st.button("✅ Finalizar Venta", width="stretch", type=btn_type, disabled=disabled, key="modal_btn_ok_v2"):
                 # Reproducir sonido
                 components.html("""
                 <script>document.getElementById('sonido-cobro').play();</script>
                 """, height=0)
                 with st.spinner("Registrando venta..."):
-                    lineas_api = []
-                    for linea in get_tpv_carrito():
-                        lineas_api.append({
-                            "producto_id": linea['producto_id'],
-                            "cantidad": linea['cantidad'],
-                            "precio_unitario": linea['precio_unitario']
-                        })
-                    payload = {
-                        "cajero": st.session_state['tpv_cajero'],
-                        "metodo_pago": metodo,
-                        "entrega_efectivo": entrega if metodo == 'efectivo' else None,
-                        "cambio": cambio if metodo == 'efectivo' else None,
-                        "lineas": lineas_api
-                    }
-                    result = api_post("/api/v1/tickets", payload)
-                    if result:
-                        st.session_state['tpv_mostrar_cobro'] = False
-                        st.session_state['tpv_mostrar_ticket'] = True
-                        st.session_state['tpv_ticket_reciente'] = result
-                        st.session_state['tpv_ticket_time'] = time.time()
-                        limpiar_carrito()
-                        st.rerun()
-                    else:
-                        st.error("❌ Error al registrar el ticket")
+                    db = DatabaseAccess()
+                    try:
+                        lineas_data = []
+                        for linea in get_tpv_carrito():
+                            lineas_data.append({
+                                "producto_id": linea['producto_id'],
+                                "cantidad": linea['cantidad'],
+                                "precio_unitario": linea['precio_unitario'],
+                                "subtotal": linea['cantidad'] * linea['precio_unitario']
+                            })
+                        data = {
+                            "cajero": st.session_state['tpv_cajero'],
+                            "metodo_pago": metodo,
+                            "entrega_efectivo": entrega if metodo == 'efectivo' else None,
+                            "cambio": cambio if metodo == 'efectivo' else None,
+                            "total": calcular_total_carrito(),
+                            "lineas": lineas_data
+                        }
+                        result = db.crear_ticket(data)
+                        if result:
+                            result_dict = _obj_to_dict(result)
+                            result_dict['lineas'] = [_obj_to_dict(l) for l in result.lineas]
+                            st.session_state['tpv_mostrar_cobro'] = False
+                            st.session_state['tpv_mostrar_ticket'] = True
+                            st.session_state['tpv_ticket_reciente'] = result_dict
+                            st.session_state['tpv_ticket_time'] = time.time()
+                            limpiar_carrito()
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al registrar el ticket")
+                    finally:
+                        db.close()
 
 
 def render_ticket_post_cobro():
@@ -549,13 +580,13 @@ def render_ticket_post_cobro():
             data=ticket_txt,
             file_name=f"ticket_{ticket['numero_ticket']}.txt",
             mime="text/plain",
-            use_container_width=True
+            width="stretch"
         )
     with col_d2:
-        if st.button("🖨️ Imprimir", use_container_width=True):
+        if st.button("🖨️ Imprimir", width="stretch"):
             components.html("<script>window.print();</script>", height=0)
     with col_d3:
-        if st.button("🔄 Nueva Venta", use_container_width=True, type="primary"):
+        if st.button("🔄 Nueva Venta", width="stretch", type="primary"):
             st.session_state['tpv_mostrar_ticket'] = False
             st.session_state['tpv_ticket_reciente'] = None
             st.rerun()
@@ -597,9 +628,13 @@ def generar_ticket_txt(ticket: dict) -> str:
 
 def render_panel_productos():
     """Panel derecho: Categorías y productos con búsqueda, colores, badges y favoritos."""
-    productos = api_get("/api/v1/productos", use_cache=False)
-    categorias = api_get("/api/v1/categorias", use_cache=False)
-    inventarios = api_get("/api/v1/inventario", use_cache=False)
+    productos, inventarios, tickets = _get_ventas_data()
+    db = DatabaseAccess()
+    try:
+        categorias = db.get_categorias()
+        categorias = [_obj_to_dict(c) for c in categorias]
+    finally:
+        db.close()
 
     if not productos:
         st.warning("⚠️ No hay productos disponibles")
@@ -645,7 +680,7 @@ def render_panel_productos():
             }}
             </style>
             """, unsafe_allow_html=True)
-            if st.button(cat["nombre"], key=f"cat_{cat['id']}", use_container_width=True):
+            if st.button(cat["nombre"], key=f"cat_{cat['id']}", width="stretch"):
                 st.session_state['tpv_categoria_activa'] = cat["id"]
                 st.rerun()
 
@@ -721,11 +756,11 @@ def render_panel_productos():
             if not sin_stock:
                 c1, c2 = st.columns(2)
                 with c1:
-                    if st.button("➕", key=f"add_prod_{prod.get('id')}", use_container_width=True):
+                    if st.button("➕", key=f"add_prod_{prod.get('id')}", width="stretch"):
                         agregar_linea_carrito(prod)
                         st.rerun()
                 with c2:
-                    if st.button("#️⃣", key=f"cant_prod_{prod.get('id')}", use_container_width=True, help="Cantidad"):
+                    if st.button("#️⃣", key=f"cant_prod_{prod.get('id')}", width="stretch", help="Cantidad"):
                         st.session_state['tpv_modal_cantidad_prod_id'] = prod.get('id')
                         st.rerun()
 
@@ -753,11 +788,11 @@ def _render_modal_cantidad(productos, inventarios):
     cantidad = st.number_input("Cantidad", min_value=1, max_value=stock, value=1, key="modal_cantidad_val")
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("❌ Cancelar", use_container_width=True, key="modal_cant_cancel"):
+        if st.button("❌ Cancelar", width="stretch", key="modal_cant_cancel"):
             st.session_state['tpv_modal_cantidad_prod_id'] = None
             st.rerun()
     with c2:
-        if st.button("✅ Agregar", use_container_width=True, type="primary", key="modal_cant_ok"):
+        if st.button("✅ Agregar", width="stretch", type="primary", key="modal_cant_ok"):
             for _ in range(int(cantidad)):
                 agregar_linea_carrito(prod)
             st.session_state['tpv_modal_cantidad_prod_id'] = None
@@ -771,16 +806,25 @@ def _render_modal_cantidad(productos, inventarios):
 
 def render_dashboard():
     """Dashboard completo con métricas y 10 gráficas."""
-    # Cargar datos con cache para evitar sobrecarga de peticiones
-    resumen = api_get("/api/v1/tickets/estadisticas/resumen", use_cache=True)
-    tendencia = api_get("/api/v1/tickets/estadisticas/tendencia?dias=30", use_cache=True)
-    por_categoria = api_get("/api/v1/tickets/estadisticas/por-categoria?dias=30", use_cache=True)
-    por_hora = api_get("/api/v1/tickets/estadisticas/por-hora?dias=30", use_cache=True)
-    mapa_calor = api_get("/api/v1/tickets/estadisticas/mapa-calor?dias=30", use_cache=True)
-    comparativa = api_get("/api/v1/tickets/estadisticas/comparativa-mes", use_cache=True)
-    top_productos_u = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=unidades", use_cache=True)
-    top_productos_e = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=ingresos", use_cache=True)
-    ticket_promedio = api_get("/api/v1/tickets/estadisticas/ticket-promedio?dias=30", use_cache=True)
+    db = DatabaseAccess()
+    try:
+        resumen = db.obtener_estadisticas_resumen()
+        tickets = db.get_tickets(limite=500)
+        tickets_dict = [_obj_to_dict(t) for t in tickets]
+    finally:
+        db.close()
+    
+    if not tickets_dict or resumen.get('total_tickets', 0) == 0:
+        st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")
+        return
+    
+    tendencia = _calcular_tendencia(tickets_dict)
+    por_categoria = _calcular_por_categoria(tickets_dict)
+    por_hora = _calcular_por_hora(tickets_dict)
+    mapa_calor = _calcular_mapa_calor(tickets_dict)
+    comparativa = _calcular_comparativa_mes(db)
+    top_productos_u, top_productos_e = _calcular_top_productos(tickets_dict)
+    ticket_promedio = _calcular_ticket_promedio(tickets_dict)
 
     if not resumen or resumen.get('total_tickets', 0) == 0:
         st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")
@@ -873,7 +917,7 @@ def grafica_tendencia(datos):
         fill='tozeroy', fillcolor='rgba(0,240,255,0.1)'
     ))
     fig.update_layout(title_text="Ingresos por día", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_top_productos_unidades(datos):
@@ -887,7 +931,7 @@ def grafica_top_productos_unidades(datos):
         marker_color='#10b981', text=df['unidades'], textposition='auto'
     )])
     fig.update_layout(title_text="Más vendidos por cantidad", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_ventas_por_hora(datos):
@@ -901,7 +945,7 @@ def grafica_ventas_por_hora(datos):
         marker_color='#f59e0b'
     )])
     fig.update_layout(title_text="Distribución horaria", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_distribucion_ingresos(resumen):
@@ -931,7 +975,7 @@ def grafica_distribucion_ingresos(resumen):
     )])
     fig.update_layout(title_text="Por rango de ticket", title_font_size=12, showlegend=True,
                       legend=dict(orientation="h", yanchor="bottom", y=-0.2))
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_ventas_por_categoria(datos):
@@ -947,7 +991,7 @@ def grafica_ventas_por_categoria(datos):
     )])
     fig.update_layout(title_text="Ingresos por categoría", title_font_size=12,
                       legend=dict(orientation="h", yanchor="bottom", y=-0.2))
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_ticket_promedio(datos):
@@ -964,7 +1008,7 @@ def grafica_ticket_promedio(datos):
         fill='tozeroy', fillcolor='rgba(139,92,246,0.1)'
     ))
     fig.update_layout(title_text="Evolución del ticket promedio", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_top_productos_ingresos(datos):
@@ -978,7 +1022,7 @@ def grafica_top_productos_ingresos(datos):
         marker_color='#00f0ff', text=[f"€{x:.2f}" for x in df['ingresos']], textposition='auto'
     )])
     fig.update_layout(title_text="Más rentables", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_mapa_calor(datos):
@@ -1002,7 +1046,7 @@ def grafica_mapa_calor(datos):
         colorscale='YlOrRd'
     ))
     fig.update_layout(title_text="Tickets por día y hora", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_metodos_pago(resumen):
@@ -1016,7 +1060,7 @@ def grafica_metodos_pago(resumen):
         marker_color=['#10b981', '#3b82f6', '#f59e0b']
     )])
     fig.update_layout(title_text="Preferencia de pago", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_comparativa_mes(datos):
@@ -1034,7 +1078,7 @@ def grafica_comparativa_mes(datos):
     fig.add_trace(go.Bar(name=datos.get('nombre_mes_actual', 'Actual'), x=categorias, y=valores_actual, marker_color='#00f0ff'))
     fig.add_trace(go.Bar(name=datos.get('nombre_mes_anterior', 'Anterior'), x=categorias, y=valores_anterior, marker_color='#64748b'))
     fig.update_layout(barmode='group', title_text="Comparativa mensual", title_font_size=12)
-    st.plotly_chart(_plotly_config(fig), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_objetivos(resumen, meta):
@@ -1056,7 +1100,7 @@ def grafica_objetivos(resumen, meta):
     ))
     fig.add_hline(y=meta, line_dash="dash", line_color="#f59e0b", annotation_text="🎯 Meta")
     fig.update_layout(title_text=f"Progreso: {pct:.0f}%", title_font_size=12, showlegend=False)
-    st.plotly_chart(_plotly_config(fig, height=220), use_container_width=True)
+    st.plotly_chart(_plotly_config(fig, height=220), width="stretch")
     if restante > 0:
         st.markdown(f"<p style='text-align:center; color:#94a3b8; font-size:0.8rem;'>Faltan €{restante:.2f} para la meta</p>", unsafe_allow_html=True)
     else:
@@ -1082,7 +1126,7 @@ def render_historial():
     fecha_hasta = None
     for col, (label, dias_atras, dias_fin) in zip(cols_fecha, opciones_fecha):
         with col:
-            if st.button(label, use_container_width=True, key=f"hist_fecha_{label.replace(' ', '_')}"):
+            if st.button(label, width="stretch", key=f"hist_fecha_{label.replace(' ', '_')}"):
                 hoy = datetime.now().date()
                 if dias_atras == 365:
                     st.session_state['hist_fecha_desde'] = None
@@ -1113,7 +1157,7 @@ def render_historial():
 
     with col4:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔄 Actualizar", use_container_width=True):
+        if st.button("🔄 Actualizar", width="stretch"):
             st.rerun()
 
     # Construir query params
@@ -1154,7 +1198,7 @@ def render_historial():
             excel_data = to_excel(pd.DataFrame(df_export))
             st.download_button("📥 Exportar Excel", data=excel_data,
                                file_name=f"historial_tickets_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                               use_container_width=True)
+                               width="stretch")
 
     # Paginación
     pagina = st.session_state.get('tpv_pagina_historial', 1)
@@ -1190,7 +1234,7 @@ def render_historial():
             if t['estado'] == 'completado':
                 col_a, _ = st.columns([1, 3])
                 with col_a:
-                    if st.button("❌ Anular Ticket", key=f"anular_{t['id']}", use_container_width=True):
+                    if st.button("❌ Anular Ticket", key=f"anular_{t['id']}", width="stretch"):
                         with st.spinner("Anulando..."):
                             result = api_delete(f"/api/v1/tickets/{t['id']}")
                             if result:

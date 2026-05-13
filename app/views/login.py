@@ -45,7 +45,7 @@ def render():
         username = st.text_input("👤 Usuario", placeholder="admin", key="login_user")
         password = st.text_input("🔒 Contraseña", type="password", placeholder="••••••", key="login_pass")
 
-        if st.button("Iniciar Sesión", type="primary", use_container_width=True):
+        if st.button("Iniciar Sesión", type="primary", width="stretch"):
             if not username or not password:
                 st.error("Introduce usuario y contraseña")
                 return
