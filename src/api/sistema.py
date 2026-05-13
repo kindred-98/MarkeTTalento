@@ -66,9 +66,25 @@ async def health_check_avanzado():
     }
 
 
+from src.core.logging import get_errores_recientes
+
+
 # Métricas simples tipo Prometheus
 _request_count = 0
 _request_errors = 0
+
+
+@router.get("/errores")
+async def ver_errores(limite: int = 20):
+    """
+    Ver últimos errores registrados en el sistema.
+    Útil para depuración durante pruebas.
+    """
+    errores = get_errores_recientes(limite)
+    return {
+        "total": len(errores),
+        "errores": errores
+    }
 
 
 @router.get("/metrics")

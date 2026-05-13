@@ -7,6 +7,8 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
+from src.core.logging import log_error
+
 logger = logging.getLogger("markettalento.api.errors")
 
 
@@ -48,6 +50,7 @@ def setup_error_handlers(app):
     async def api_exception_handler(request: Request, exc: APIException):
         """Maneja excepciones personalizadas de la API."""
         logger.warning(f"APIException: {exc.message} - Path: {request.url.path}")
+        log_error("api", exc.message, exc)
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -62,6 +65,7 @@ def setup_error_handlers(app):
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         """Maneja errores de validación de Pydantic."""
         logger.warning(f"ValidationError: {exc.errors()} - Path: {request.url.path}")
+        log_error("api", f"ValidationError en {request.url.path}", exc)
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
@@ -76,6 +80,7 @@ def setup_error_handlers(app):
     async def database_exception_handler(request: Request, exc: SQLAlchemyError):
         """Maneja errores de base de datos."""
         logger.error(f"DatabaseError: {str(exc)} - Path: {request.url.path}", exc_info=True)
+        log_error("database", f"Error BD en {request.url.path}", exc)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -90,6 +95,7 @@ def setup_error_handlers(app):
     async def general_exception_handler(request: Request, exc: Exception):
         """Maneja cualquier otra excepción no capturada."""
         logger.error(f"UnhandledException: {str(exc)} - Path: {request.url.path}", exc_info=True)
+        log_error("api", f"Error no manejado en {request.url.path}", exc)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={

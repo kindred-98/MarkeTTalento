@@ -3,17 +3,19 @@ Sistema de Logging Profesional para MarkeTTalento
 """
 import logging
 import sys
+import traceback
 from datetime import datetime
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
-# Crear directorio de logs si no existe
 LOGS_DIR = Path("logs")
 LOGS_DIR.mkdir(exist_ok=True)
 
-# Formato de los logs
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+_error_log = []  # Almacena últimos errores en memoria para consulta rápida
+MAX_ERRORS = 50
 
 # Configuracion de rotacion
 MAX_LOG_SIZE_MB = 10  # Tamaño maximo antes de rotar
@@ -80,3 +82,31 @@ api_logger = get_logger("markettalento.api")
 db_logger = get_logger("markettalento.database")
 ml_logger = get_logger("markettalento.ml")
 vision_logger = get_logger("markettalento.vision")
+
+
+def log_error(modulo: str, mensaje: str, exc: Exception = None):
+    """Registra un error y lo guarda en memoria para consulta rápida."""
+    timestamp = datetime.now().strftime(DATE_FORMAT)
+    error_entry = {
+        "timestamp": timestamp,
+        "modulo": modulo,
+        "mensaje": mensaje,
+    }
+    if exc:
+        error_entry["tipo"] = type(exc).__name__
+        error_entry["detalle"] = str(exc)
+        error_entry["traceback"] = traceback.format_exc()
+        logger = get_logger(f"markettalento.{modulo}")
+        logger.error(f"{mensaje}: {exc}\n{traceback.format_exc()}")
+    else:
+        logger = get_logger(f"markettalento.{modulo}")
+        logger.error(mensaje)
+    
+    _error_log.insert(0, error_entry)
+    if len(_error_log) > MAX_ERRORS:
+        _error_log.pop()
+
+
+def get_errores_recientes(limite: int = 20):
+    """Retorna los últimos errores registrados."""
+    return _error_log[:limite]
