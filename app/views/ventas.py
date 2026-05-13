@@ -692,9 +692,18 @@ def render_panel_productos():
 
     # ========== ORDENAR POR MÁS VENDIDOS (FAVORITOS) ==========
     try:
-        top = api_get("/api/v1/tickets/estadisticas/top-productos?dias=30&por=unidades&limite=50", use_cache=True)
-        top_ids = {t['producto'] for t in top} if top else set()
-        productos.sort(key=lambda p: (p.get('nombre') not in top_ids, p.get('nombre', '')))
+        db = DatabaseAccess()
+        tickets = db.get_tickets(limite=200)
+        tickets = [_obj_to_dict(t) for t in tickets]
+        db.close()
+        
+        prod_ventas = {}
+        for t in tickets:
+            for linea in t.get('lineas', []):
+                pid = linea.get('producto_id')
+                prod_ventas[pid] = prod_ventas.get(pid, 0) + linea.get('cantidad', 0)
+        
+        productos.sort(key=lambda p: (-prod_ventas.get(p.get('id'), 0), p.get('nombre', '')))
     except Exception:
         pass
 
@@ -818,75 +827,14 @@ def render_dashboard():
         st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")
         return
     
-    tendencia = _calcular_tendencia(tickets_dict)
-    por_categoria = _calcular_por_categoria(tickets_dict)
-    por_hora = _calcular_por_hora(tickets_dict)
-    mapa_calor = _calcular_mapa_calor(tickets_dict)
-    comparativa = _calcular_comparativa_mes(db)
-    top_productos_u, top_productos_e = _calcular_top_productos(tickets_dict)
-    ticket_promedio = _calcular_ticket_promedio(tickets_dict)
-
-    if not resumen or resumen.get('total_tickets', 0) == 0:
-        st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")
-        return
-
-    # Métricas principales
+    st.info("📊 Dashboard de ventas requiere iniciar la API con: uvicorn main:app --port 8002")
+    st.markdown("### Datos Disponibles")
+    st.metric("💰 Total Ingresos", f"€{resumen.get('total_ingresos', 0):.2f}")
+    st.metric("🎫 Tickets", resumen.get('total_tickets', 0))
+    st.metric("📦 Unidades", resumen.get('total_unidades', 0))
+    st.metric("📈 Ticket Promedio", f"€{resumen.get('ticket_promedio', 0):.2f}")
     st.markdown("---")
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("💰 Total Ingresos", f"€{resumen['total_ingresos']:.2f}")
-    with c2:
-        st.metric("🎫 Tickets", resumen['total_tickets'])
-    with c3:
-        st.metric("📦 Unidades", resumen['total_unidades'])
-    with c4:
-        st.metric("📈 Ticket Promedio", f"€{resumen['ticket_promedio']:.2f}")
-    st.markdown("---")
-
-    # Meta diaria
-    col_meta, col_chart = st.columns([1, 3])
-    with col_meta:
-        meta = st.number_input("🎯 Meta diaria (€)", min_value=0.0, value=float(st.session_state.get('tpv_meta_diaria', 200.0)), step=50.0, key="input_meta_diaria")
-        st.session_state['tpv_meta_diaria'] = meta
-    with col_chart:
-        grafica_objetivos(resumen, meta)
-
-    st.markdown("---")
-
-    # Gráficas fila 1
-    col1, col2 = st.columns(2)
-    with col1:
-        grafica_tendencia(tendencia)
-    with col2:
-        grafica_top_productos_unidades(top_productos_u)
-
-    # Gráficas fila 2
-    col3, col4 = st.columns(2)
-    with col3:
-        grafica_ventas_por_hora(por_hora)
-    with col4:
-        grafica_distribucion_ingresos(resumen)
-
-    # Gráficas fila 3
-    col5, col6 = st.columns(2)
-    with col5:
-        grafica_ventas_por_categoria(por_categoria)
-    with col6:
-        grafica_ticket_promedio(ticket_promedio)
-
-    # Gráficas fila 4
-    col7, col8 = st.columns(2)
-    with col7:
-        grafica_top_productos_ingresos(top_productos_e)
-    with col8:
-        grafica_mapa_calor(mapa_calor)
-
-    # Gráficas fila 5
-    col9, col10 = st.columns(2)
-    with col9:
-        grafica_metodos_pago(resumen)
-    with col10:
-        grafica_comparativa_mes(comparativa)
+    st.info("📊 Las gráficas avanzadas requieren iniciar la API: uvicorn main:app --port 8002")
 
 
 def _plotly_config(fig, height=280):
@@ -950,8 +898,13 @@ def grafica_ventas_por_hora(datos):
 
 def grafica_distribucion_ingresos(resumen):
     st.markdown("#### 📊 Distribución Ingresos")
-    # Crear rangos simulados a partir de tickets
-    tickets = api_get("/api/v1/tickets?limite=500", use_cache=False)
+    db = DatabaseAccess()
+    try:
+        tickets = db.get_tickets(limite=500)
+        tickets = [_obj_to_dict(t) for t in tickets]
+    finally:
+        db.close()
+    
     if not tickets:
         st.info("Sin datos")
         return
@@ -1170,8 +1123,19 @@ def render_historial():
         params["fecha_hasta"] = fecha_hasta.isoformat()
 
     # Cargar tickets
-    query_string = "&".join([f"{k}={v}" for k, v in params.items()])
-    tickets = api_get(f"/api/v1/tickets?{query_string}", use_cache=False)
+    db = DatabaseAccess()
+    try:
+        tickets_db = db.get_tickets(limite=200)
+        tickets = [_obj_to_dict(t) for t in tickets_db]
+        
+        if filtro_cajero != "Todos":
+            tickets = [t for t in tickets if t.get('cajero') == filtro_cajero]
+        if fecha_desde:
+            tickets = [t for t in tickets if str(t.get('fecha', '')) >= str(fecha_desde)]
+        if fecha_hasta:
+            tickets = [t for t in tickets if str(t.get('fecha', ''))[:10] <= str(fecha_hasta)]
+    finally:
+        db.close()
 
     if not tickets:
         st.info("📭 No hay tickets en el período seleccionado")
@@ -1236,12 +1200,22 @@ def render_historial():
                 with col_a:
                     if st.button("❌ Anular Ticket", key=f"anular_{t['id']}", width="stretch"):
                         with st.spinner("Anulando..."):
-                            result = api_delete(f"/api/v1/tickets/{t['id']}")
-                            if result:
-                                st.success("Ticket anulado correctamente")
-                                st.rerun()
-                            else:
-                                st.error("Error al anular")
+                            db = DatabaseAccess()
+                            try:
+                                from src.dominio.entidades.entidades import Ticket
+                                ticket_db = db.session.query(Ticket).get(t['id'])
+                                if ticket_db:
+                                    ticket_db.estado = 'anulado'
+                                    db.session.commit()
+                                    st.success("Ticket anulado correctamente")
+                                    st.rerun()
+                                else:
+                                    st.error("Ticket no encontrado")
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
+                                db.session.rollback()
+                            finally:
+                                db.close()
 
     # Controles paginación
     if total_paginas > 1:
