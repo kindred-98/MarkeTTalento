@@ -84,27 +84,12 @@ def _export_to_excel(productos, inventarios, categorias, proveedores):
 
 @st.cache_data(ttl=5, show_spinner=False)
 def _get_productos_data():
-    """Cachea datos de productos, inventarios, categorías y proveedores."""
-    db = DatabaseAccess()
-    try:
-        productos = db.get_productos()
-        inventarios = db.get_inventario()
-        categorias = db.get_categorias()
-        proveedores = db.get_proveedores()
-        
-        def to_dict(obj):
-            if hasattr(obj, '__dict__'):
-                return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
-            return obj
-        
-        productos = [to_dict(p) for p in productos]
-        inventarios = [to_dict(i) for i in inventarios]
-        categorias = [to_dict(c) for c in categorias]
-        proveedores = [to_dict(p) for p in proveedores]
-        
-        return productos, inventarios, categorias, proveedores
-    finally:
-        db.close()
+    """Obtiene datos de productos, inventarios, categorías y proveedores desde la API."""
+    productos = api_get("/api/v1/productos", use_cache=False)
+    inventarios = api_get("/api/v1/inventario", use_cache=False)
+    categorias = api_get("/api/v1/categorias", use_cache=False)
+    proveedores = api_get("/api/v1/proveedores", use_cache=False)
+    return productos, inventarios, categorias, proveedores
 
 
 def _get_estado_producto(prod_id, inventarios, productos):
@@ -252,7 +237,7 @@ def render():
             render_edicion()
 
 
-@st.dialog("Detalle del Producto", width="medium")
+@st.dialog("Detalle del Producto", width="small")
 def _ver_producto_modal(pid):
     productos, inventarios, categorias, proveedores = _get_productos_data()
     prod = next((p for p in productos if p.get("id") == pid), None)
@@ -276,29 +261,31 @@ def _ver_producto_modal(pid):
     with col_img:
         img_url = prod.get("imagen_url")
         if img_url and os.path.exists(img_url):
-            st.image(img_url, width=300)
+            st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+            st.image(img_url, width=100)
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div style='width:100%;height:250px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:5rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='width:100%;height:100px;background:linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.15));display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:2.5rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
 
     with col_info:
-        st.markdown(f"<h2 style='color:#f8fafc;margin:0 0 4px 0;'>{prod.get('nombre', '')}</h2>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#94a3b8;font-size:13px;margin:0 0 6px 0;text-transform:uppercase;'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#cbd5e1;font-size:15px;margin:0 0 0px 0;'>{desc}</p>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color:#f8fafc;margin:0 0 2px 0;font-size:1rem;'>{prod.get('nombre', '')}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#94a3b8;font-size:11px;margin:0 0 4px 0;text-transform:uppercase;'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#cbd5e1;font-size:12px;margin:0 0 4px 0;'>{desc[:60]}{'...' if len(desc) > 60 else ''}</p>", unsafe_allow_html=True)
 
         col_precio, col_estado = st.columns([2, 1])
         with col_precio:
-            st.markdown(f"<div style='font-size:2rem;font-weight:700;color:#3b82f6;'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:14px;color:#94a3b8;font-weight:400;'>€/ud</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:1.2rem;font-weight:700;color:#3b82f6;'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:10px;color:#94a3b8;font-weight:400;'>€/ud</span></div>", unsafe_allow_html=True)
         with col_estado:
-            st.markdown(f"<div style='text-align:right;padding-top:0px;'><span style='display:inline-block;padding:5px 14px;border-radius:14px;font-size:15px;font-weight:600;color:white;background:{color_estado};'>{estado}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:right;padding-top:0px;'><span style='display:inline-block;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;color:white;background:{color_estado};'>{estado}</span></div>", unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:10px;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                <span style="color:#e2e8f0;font-size:13px;font-weight:600;">📦 {stock} {prod.get('unidad', 'uds')}</span>
-                <span style="color:{color_barra};font-size:15px;font-weight:600;">{pct:.0f}%</span>
+        <div style="background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:#e2e8f0;font-size:11px;font-weight:600;">📦 {stock} {prod.get('unidad', 'uds')}</span>
+                <span style="color:{color_barra};font-size:11px;font-weight:600;">{pct:.0f}%</span>
             </div>
-            <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
-                <div style="width:{pct}%;height:100%;background:{color_barra};border-radius:4px;"></div>
+            <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+                <div style="width:{pct}%;height:100%;background:{color_barra};border-radius:3px;"></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -310,27 +297,27 @@ def _ver_producto_modal(pid):
     .modal-metric {
         background: rgba(30, 41, 59, 0.6);
         border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 10px;
-        padding: 12px;
+        border-radius: 6px;
+        padding: 8px;
         transition: all 0.3s ease;
         cursor: pointer;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
     .modal-metric:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-        border-color: rgba(59, 130, 246, 0.5);
-        background: rgba(30, 41, 59, 0.8);
+        transform: translateY(-2px);
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.3);
+        background: rgba(30, 41, 59, 0.7);
     }
     .modal-metric-label {
-        font-size: 10px;
+        font-size: 8px;
         color: #64748b;
         text-transform: uppercase;
-        margin: 0 0 4px 0;
+        margin: 0 0 2px 0;
     }
     .modal-metric-value {
-        font-size: 18px;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 600;
         color: #f8fafc;
         margin: 0;
     }
@@ -354,6 +341,19 @@ def _ver_producto_modal(pid):
         st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Días reposición</p><p class='modal-metric-value'>{prod.get('tiempo_reposicion', 3)} días</p></div>", unsafe_allow_html=True)
     with col7:
         st.markdown(f"<div class='modal-metric'><p class='modal-metric-label'>Código barras</p><p class='modal-metric-value'>{prod.get('codigo_barras') or 'N/A'}</p></div>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("**Acciones**")
+    a1, a2 = st.columns(2)
+    with a1:
+        if st.button("Modificar", key=f"modal_edit_{pid}", width="stretch", type="primary"):
+            set_editar_producto(pid)
+            st.session_state["producto_tab_activo"] = 2
+            st.rerun()
+    with a2:
+        if st.button("Eliminar", key=f"modal_del_{pid}", width="stretch"):
+            st.session_state["producto_eliminar"] = pid
+            st.rerun()
 
 
 def render_catalogo():
@@ -402,84 +402,98 @@ def render_catalogo():
 
     st.markdown("""
     <style>
-    /* Estilo para cards de productos tipo dashboard */
+    /* Estilo para cards de productos */
     .product-card-dark {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(51, 65, 85, 0.5));
-        border: 1px solid rgba(255,255,255,0.1);
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(6, 182, 212, 0.25);
         border-radius: 12px;
         padding: 0;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         transition: all 0.3s ease;
         overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
     .product-card-dark:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.25);
-        border-color: rgba(59, 130, 246, 0.4);
+        box-shadow: 0 8px 25px rgba(6, 182, 212, 0.25), 0 4px 12px rgba(139, 92, 246, 0.15);
+        border-color: rgba(6, 182, 212, 0.5);
     }
     .product-card-dark:hover .product-img-container {
         transform: scale(1.05);
     }
     .product-img-container {
         width: 100%;
-        height: 130px;
+        height: 75px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(51, 65, 85, 0.6));
+        background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
         transition: transform 0.3s ease;
     }
+    .product-img-container img {
+        max-height: 65px !important;
+        max-width: 90% !important;
+        object-fit: contain;
+        border-radius: 6px;
+    }
     .product-name-dark {
-        font-size: 16px;
-        font-weight: 700;
-        color: #f8fafc;
-        margin: 0 0 4px 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: #f1f5f9;
+        margin: 0 0 2px 0;
         line-height: 1.3;
     }
     .product-category-dark {
-        font-size: 11px;
-        color: #94a3b8;
-        margin: 0 0 10px 0;
+        font-size: 9px;
+        color: #06b6d4;
+        margin: 0 0 6px 0;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        font-weight: 500;
     }
     .product-price-dark {
-        font-size: 24px;
+        font-size: 15px;
         font-weight: 700;
-        color: #3b82f6;
+        color: #06b6d4;
     }
     .product-badge-dark {
-        font-size: 12px;
-        padding: 5px 12px;
-        border-radius: 14px;
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 10px;
         color: white;
         font-weight: 600;
     }
-    /* Botones opacos con animación */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button[data-testid="baseButton-secondary"],
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button[data-testid="baseButton-secondary"] {
-        background: rgba(30, 41, 59, 0.6) !important;
-        border: 1px solid rgba(100, 116, 139, 0.3) !important;
-        color: #e2e8f0 !important;
-        font-size: 0.85rem !important;
-        padding: 6px 8px !important;
-        border-radius: 8px !important;
-        min-height: 36px !important;
-        transition: all 0.3s ease !important;
+    .product-card-img-block {
+        padding: 8px 10px 4px 10px;
+        text-align: center;
+        background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+        border-radius: 12px 12px 0 0;
     }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button[data-testid="baseButton-secondary"]:hover,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button[data-testid="baseButton-secondary"]:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
-        border-color: rgba(59, 130, 246, 0.5) !important;
-        background: rgba(51, 65, 85, 0.8) !important;
+    .product-card-img-block .stButton button {
+        margin-top: 4px;
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+    }
+    /* Responsive grid */
+    @media (max-width: 1400px) {
+        .product-card-dark { margin-bottom: 10px; }
+    }
+    @media (max-width: 992px) {
+        .product-card-dark { margin-bottom: 8px; }
+        .product-img-container { height: 70px; }
+        .product-name-dark { font-size: 11px; }
+    }
+    @media (max-width: 768px) {
+        .product-card-dark { margin-bottom: 6px; }
+        .product-img-container { height: 60px; }
+        .product-name-dark { font-size: 10px; }
+        .product-price-dark { font-size: 12px; }
     }
     </style>
     """, unsafe_allow_html=True)
 
     if productos_filtrados:
-        # Paginación
-        productos_por_pagina = 8
+        productos_por_pagina = 12
         if 'cat_pagina' not in st.session_state:
             st.session_state['cat_pagina'] = 1
         
@@ -490,11 +504,23 @@ def render_catalogo():
         fin = min(inicio + productos_por_pagina, len(productos_filtrados))
         productos_pagina = productos_filtrados[inicio:fin]
         
-        num_cols = 4
-        rows = [productos_pagina[i:i+num_cols] for i in range(0, len(productos_pagina), num_cols)]
+        cols_config = {"desktop": 6, "tablet": 4, "mobile": 2}
+        
+        rows = [productos_pagina[i:i+cols_config["desktop"]] for i in range(0, len(productos_pagina), cols_config["desktop"])]
 
+        st.markdown("""
+        <style>
+        @media (max-width: 1200px) {
+            div[data-testid="stHorizontalBlock"] > div > div > .product-card-dark { min-width: calc(25% - 10px); }
+        }
+        @media (max-width: 768px) {
+            div[data-testid="stHorizontalBlock"] > div > div > .product-card-dark { min-width: calc(50% - 8px); }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         for row in rows:
-            cols = st.columns(num_cols)
+            cols = st.columns(6)
             for idx, prod in enumerate(row):
                 pid = prod.get("id")
                 inv = next((i for i in inventarios if i.get("producto_id") == pid), None)
@@ -512,19 +538,36 @@ def render_catalogo():
                 descripcion = prod.get("descripcion", "") or f"{prod.get('unidad', 'unidad')} • {cat_nombre}"
 
                 with cols[idx]:
-                    st.markdown(f"<div class='product-card-dark'>", unsafe_allow_html=True)
+                    st.markdown("<div class='product-card-dark'>", unsafe_allow_html=True)
+                    st.markdown("<div class='product-card-img-block'>", unsafe_allow_html=True)
 
                     if tiene_img:
                         try:
-                            col_left, col_img, col_right = st.columns([1, 2, 1])
-                            with col_img:
-                                st.image(img_url, width=200)
-                        except Exception as e:
-                            st.markdown(f"<div style='width:100%;height:130px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+                            st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+                            st.image(img_url, width=80)
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        except Exception:
+                            st.markdown(
+                                f"<div style='width:100%;height:70px;background:linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.15));display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:2rem;'>{get_categoria_emoji(cat_nombre)}</div>",
+                                unsafe_allow_html=True,
+                            )
                     else:
-                        st.markdown(f"<div style='width:100%;height:130px;background:linear-gradient(135deg, rgba(30,41,59,0.8), rgba(51,65,85,0.6));display:flex;align-items:center;justify-content:center;border-radius:12px 12px 0 0;font-size:3rem;'>{get_categoria_emoji(cat_nombre)}</div>", unsafe_allow_html=True)
+                        st.markdown(
+                            f"<div style='width:100%;height:70px;background:linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.15));display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:2rem;'>{get_categoria_emoji(cat_nombre)}</div>",
+                            unsafe_allow_html=True,
+                        )
 
-                    st.markdown(f"<div style='padding:12px 14px;'>", unsafe_allow_html=True)
+                    if st.button(
+                        "Abrir ficha",
+                        key=f"open_card_{pid}",
+                        width="stretch",
+                        type="tertiary",
+                        help="Ver detalle, modificar o eliminar",
+                    ):
+                        _ver_producto_modal(pid)
+
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='padding:6px 10px;'>", unsafe_allow_html=True)
                     st.markdown(f"<p class='product-name-dark'>{prod.get('nombre', 'Producto')}</p>", unsafe_allow_html=True)
                     st.markdown(f"<p class='product-category-dark'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
 
@@ -532,8 +575,8 @@ def render_catalogo():
                     color_barra = "#ef4444" if stock_pct <= 20 else "#f59e0b" if stock_pct <= 50 else "#10b981"
 
                     st.markdown(f"""
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <span class='product-price-dark'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:12px;color:#94a3b8;font-weight:400;'>€/ud</span></span>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span class='product-price-dark'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:10px;color:#94a3b8;font-weight:400;'>€/ud</span></span>
                         <span class='product-badge-dark' style='background:{color_estado};'>{estado}</span>
                     </div>
                     """, unsafe_allow_html=True)
@@ -541,30 +584,16 @@ def render_catalogo():
                     stock_txt = f"{stock} {prod.get('unidad', 'uds')}"
 
                     st.markdown(f"""
-                    <div style="background:rgba(0,0,0,0.2);padding:10px 14px;border-radius:8px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <span style="font-size:13px;color:#e2e8f0;font-weight:600;">📦 {stock_txt}</span>
-                            <span style="font-size:12px;color:{color_barra};font-weight:600;">{stock_pct:.0f}%</span>
+                    <div style="background:rgba(0,0,0,0.2);padding:6px 8px;border-radius:6px;margin-bottom:6px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <span style="font-size:10px;color:#e2e8f0;font-weight:600;">📦 {stock_txt}</span>
+                            <span style="font-size:10px;color:{color_barra};font-weight:600;">{stock_pct:.0f}%</span>
                         </div>
-                        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
-                            <div style="width:{stock_pct}%;height:100%;background:{color_barra};border-radius:4px;"></div>
+                        <div style="width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+                            <div style="width:{stock_pct}%;height:100%;background:{color_barra};border-radius:3px;"></div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-
-                    col_vermas, col_edit, col_del = st.columns(3)
-                    with col_vermas:
-                        if st.button("👁️", key=f"vermas_{pid}", width="stretch", type="secondary"):
-                            _ver_producto_modal(pid)
-                    with col_edit:
-                        if st.button("✏️", key=f"edit_card_{pid}", width="stretch", type="secondary"):
-                            set_editar_producto(pid)
-                            st.session_state['producto_tab_activo'] = 2
-                            st.rerun()
-                    with col_del:
-                        if st.button("🗑️", key=f"del_card_{pid}", width="stretch", type="secondary"):
-                            st.session_state['producto_eliminar'] = pid
-                            st.rerun()
 
                     st.markdown("</div></div>", unsafe_allow_html=True)
 

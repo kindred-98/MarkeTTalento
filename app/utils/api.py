@@ -115,6 +115,14 @@ def api_post(endpoint: str, data: Dict[str, Any], authenticated: bool = True) ->
         elif "/proveedores" in endpoint:
             prov = db.crear_proveedor(data)
             return {"id": prov.id, "nombre": prov.nombre}
+        elif "/inventario/" in endpoint:
+            pid = int(endpoint.split("/")[-1])
+            inv = db.session.query(Inventario).filter_by(producto_id=pid).first()
+            if inv:
+                inv.cantidad = data.get("cantidad", inv.cantidad)
+                db.session.commit()
+                return {"id": inv.id, "mensaje": "Inventario actualizado"}
+            return {"error": "Inventario no encontrado"}
         elif "/tickets" in endpoint:
             return db.crear_ticket(data)
         return None
