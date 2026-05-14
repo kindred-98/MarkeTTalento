@@ -115,7 +115,16 @@ class DatabaseAccess:
 
     def crear_ticket(self, data):
         ultimo = self.session.query(Ticket).order_by(Ticket.id.desc()).first()
-        nuevo_num = (int(ultimo.numero_ticket.split("-")[1]) if ultimo and ultimo.numero_ticket else 0) + 1
+        if ultimo and ultimo.numero_ticket:
+            if "-" in ultimo.numero_ticket:
+                nuevo_num = int(ultimo.numero_ticket.split("-")[1]) + 1
+            else:
+                try:
+                    nuevo_num = int(ultimo.numero_ticket) + 1
+                except:
+                    nuevo_num = 1
+        else:
+            nuevo_num = 1
         numero_ticket = f"TKT-{nuevo_num:06d}"
         ticket = Ticket(
             numero_ticket=numero_ticket, cajero=data["cajero"], total=data["total"],

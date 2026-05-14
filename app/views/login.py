@@ -15,17 +15,16 @@ def render():
         padding: 2rem;
         background: rgba(15,23,42,0.8);
         border-radius: 16px;
-        border: 1px solid rgba(0,240,255,0.2);
+        border: 1px solid rgba(255,255,255,0.08);
         margin-top: 10vh;
     }
     .login-title {
-        background: linear-gradient(90deg, #00f0ff, #8b5cf6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 2.5rem;
-        font-weight: 800;
+        color: #f4f4f5;
+        font-size: 2rem;
+        font-weight: 700;
         text-align: center;
         margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
     }
     .login-subtitle {
         color: #64748b;

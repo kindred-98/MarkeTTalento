@@ -2,6 +2,8 @@
 Página de Predicciones ML e Inteligencia de Negocio
 3 Tabs: Demanda, Inteligencia, Alertas
 """
+from datetime import date, datetime
+
 import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -12,6 +14,18 @@ def _obj_to_dict(obj):
     if hasattr(obj, '__dict__'):
         return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
     return obj
+
+
+def _fecha_a_yyyy_mm(fecha) -> str | None:
+    """Convierte fecha de ticket (datetime, date o str ISO) a 'YYYY-MM'."""
+    if fecha is None:
+        return None
+    if isinstance(fecha, datetime):
+        return fecha.strftime("%Y-%m")
+    if isinstance(fecha, date):
+        return fecha.strftime("%Y-%m")
+    s = str(fecha).strip()
+    return s[:7] if len(s) >= 7 else None
 
 
 def render():
@@ -257,9 +271,9 @@ def _render_estacionalidad():
     st.markdown("### Distribución de Tickets por Mes")
     meses = {}
     for t in tickets:
-        fecha = t.get("fecha", "")
-        if fecha:
-            mes = fecha[:7] if len(str(fecha)) > 7 else "N/A"
+        fecha = t.get("fecha")
+        mes = _fecha_a_yyyy_mm(fecha)
+        if mes:
             meses[mes] = meses.get(mes, 0) + 1
     
     if meses:

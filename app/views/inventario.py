@@ -232,8 +232,8 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     # 🔧 Estilos mejorados para tarjeta en edición
     if is_editing:
         # Badge de edición
-        st.markdown('<div style="background: #00f0ff; color: #0f172a; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; margin-bottom: 8px; display: inline-block;">✏️ EDITANDO</div>', unsafe_allow_html=True)
-        border_color = "#00f0ff"
+        st.markdown('<div style="background: #3b82f6; color: #0f172a; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; margin-bottom: 8px; display: inline-block;">✏️ EDITANDO</div>', unsafe_allow_html=True)
+        border_color = "#3b82f6"
         bg_color = "rgba(0,240,255,0.08)"
         shadow = "0 0 30px rgba(0,240,255,0.4)"
     else:
@@ -267,7 +267,7 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">COSTE</div>'
     card_html += '<div style="font-size: 20px; color: #f59e0b; font-weight: 700;">€' + f'{precio_coste:.2f}' + '</div></div>'
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">VENTA</div>'
-    card_html += '<div style="font-size: 20px; color: #00f0ff; font-weight: 700;">€' + f'{precio_venta:.2f}' + '</div></div>'
+    card_html += '<div style="font-size: 20px; color: #3b82f6; font-weight: 700;">€' + f'{precio_venta:.2f}' + '</div></div>'
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">GANANCIA</div>'
     card_html += '<div style="font-size: 20px; color: ' + ganancia_color + '; font-weight: 700;">€' + f'{ganancia:.2f}' + '</div></div></div>'
     card_html += '<div style="display: flex; justify-content: space-between; font-size: 15px; color: #f8fafc;">'
@@ -317,8 +317,8 @@ def _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_i
     """Renderiza el formulario de edición de producto."""
     sku_actual = prod_a_editar["producto"].get("sku", "")
     
-    st.markdown(f"<div style='background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(0, 200, 255, 0.05)); border: 1px solid #00f0ff; border-radius: 12px; padding: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #00f0ff; margin: 0 0 15px 0;'>✏️ Editando: {prod_a_editar['producto'].get('nombre', '')}</h4>", unsafe_allow_html=True)
+    st.markdown(f"<div style='background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(0, 200, 255, 0.05)); border: 1px solid #3b82f6; border-radius: 12px; padding: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #3b82f6; margin: 0 0 15px 0;'>✏️ Editando: {prod_a_editar['producto'].get('nombre', '')}</h4>", unsafe_allow_html=True)
     
     col_e1, col_e2 = st.columns([1, 1])
     with col_e1:
@@ -472,7 +472,7 @@ def render():
     # Header con contador y exportar
     col_contador, col_export = st.columns([4, 1])
     with col_contador:
-        st.markdown(f"<span style='color: #00f0ff; font-weight: 600;'>{len(datos_inv)}</span> <span style='color: #94a3b8;'> productos</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='color: #3b82f6; font-weight: 600;'>{len(datos_inv)}</span> <span style='color: #94a3b8;'> productos</span>", unsafe_allow_html=True)
     with col_export:
         _render_exportar(datos_inv)
     

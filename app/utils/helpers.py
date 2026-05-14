@@ -25,7 +25,7 @@ def to_excel(df: Optional[pd.DataFrame]) -> bytes:
         pass
     
     # Estilos
-    header_fill = PatternFill(start_color="00f0ff", end_color="00f0ff", fill_type="solid")
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
     header_font = Font(bold=True, color="000000")
     thin_border = Border(
         left=Side(style='thin'),

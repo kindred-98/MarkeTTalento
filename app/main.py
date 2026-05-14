@@ -55,7 +55,10 @@ def main():
         return
     
     from app.auth_local import autenticar_usuario
-    if not st.session_state.get("auth_token"):
+    
+    dev_mode = False
+    
+    if not dev_mode and not st.session_state.get("auth_token"):
         login.render()
         return
     

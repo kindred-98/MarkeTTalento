@@ -1,6 +1,160 @@
-/* Estilos para el Sidebar */
+/* Sidebar — navegación tipo producto (SaaS / retail) */
 
-/* Menú cards */
+.sidebar-brand {
+    padding: 0.25rem 0 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    margin-bottom: 1rem;
+}
+
+.sidebar-brand-title {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.sidebar-brand-sub {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+}
+
+.sidebar-user {
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 1rem;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 10px;
+}
+
+.sidebar-user-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.sidebar-user-role {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.sidebar-section-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+}
+
+.sidebar-spacer-sm {
+    height: 0.75rem;
+}
+
+/* Radio del menú: lista vertical compacta */
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div[data-testid="stRadio"] {
+    margin-bottom: 0.25rem;
+}
+
+[data-testid="stSidebar"] .stRadio > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.3rem !important;
+    background: transparent !important;
+}
+
+[data-testid="stSidebar"] .stRadio > label {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    padding: 0.55rem 0.7rem 0.55rem 0.65rem !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    background: rgba(15, 23, 42, 0.35) !important;
+    color: var(--text-secondary) !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+    font-family: "Segoe UI", system-ui, sans-serif !important;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+    cursor: pointer !important;
+    line-height: 1.25 !important;
+}
+
+[data-testid="stSidebar"] .stRadio > label:hover {
+    background: rgba(148, 163, 184, 0.08) !important;
+    border-color: rgba(148, 163, 184, 0.22) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-testid="stSidebar"] .stRadio > label:has(input:checked) {
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+    box-shadow: inset 3px 0 0 0 var(--accent-cyan) !important;
+}
+
+[data-testid="stSidebar"] .stRadio > label > div:first-child {
+    display: none !important;
+}
+
+[data-testid="stSidebar"] .stRadio > label p {
+    margin: 0 !important;
+}
+
+/* Cerrar sesión: acción destructiva discreta */
+[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
+    background: transparent !important;
+    color: #fca5a5 !important;
+    border: 1px solid rgba(248, 113, 113, 0.35) !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    font-family: "Segoe UI", system-ui, sans-serif !important;
+    padding: 0.5rem 0.75rem !important;
+    box-shadow: none !important;
+}
+
+[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
+    background: rgba(248, 113, 113, 0.1) !important;
+    border-color: rgba(248, 113, 113, 0.55) !important;
+    color: #fecaca !important;
+    transform: none !important;
+}
+
+.sidebar-status-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    font-size: 0.78rem;
+    color: #6ee7b7;
+    font-weight: 500;
+}
+
+.sidebar-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    flex-shrink: 0;
+    animation: pulse 2s infinite;
+}
+
+.sidebar-status-text {
+    letter-spacing: 0.02em;
+}
+
+/* Tarjetas legacy (por si se reutilizan en otro sitio) */
 .menu-card {
     padding: 15px;
     border-radius: 12px;
@@ -16,47 +170,46 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.menu-icon { 
-    font-size: 2rem; 
-    margin-bottom: 5px; 
+.menu-icon {
+    font-size: 2rem;
+    margin-bottom: 5px;
 }
 
-.menu-label { 
-    font-weight: 600; 
-    font-size: 0.9rem; 
+.menu-label {
+    font-weight: 600;
+    font-size: 0.9rem;
 }
 
-.card-dashboard { 
-    background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 240, 255, 0.05)); 
-    border-color: rgba(0, 240, 255, 0.3); 
+.card-dashboard {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.04));
+    border-color: rgba(59, 130, 246, 0.28);
 }
 
-.card-productos { 
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.05)); 
-    border-color: rgba(139, 92, 246, 0.3); 
+.card-productos {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.05));
+    border-color: rgba(139, 92, 246, 0.3);
 }
 
-.card-inventario { 
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05)); 
-    border-color: rgba(16, 185, 129, 0.3); 
+.card-inventario {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+    border-color: rgba(16, 185, 129, 0.3);
 }
 
-.card-ventas { 
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05)); 
-    border-color: rgba(245, 158, 11, 0.3); 
+.card-ventas {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
+    border-color: rgba(245, 158, 11, 0.3);
 }
 
-.card-predicciones { 
-    background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.05)); 
-    border-color: rgba(236, 72, 153, 0.3); 
+.card-predicciones {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.05));
+    border-color: rgba(236, 72, 153, 0.3);
 }
 
-.card-vision { 
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05)); 
-    border-color: rgba(59, 130, 246, 0.3); 
+.card-vision {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05));
+    border-color: rgba(59, 130, 246, 0.3);
 }
 
-/* Status indicator en sidebar */
 .sidebar-status {
     padding: 15px;
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 0, 0, 0.2));
@@ -65,17 +218,7 @@
     margin-bottom: 10px;
 }
 
-.sidebar-status-dot {
-    width: 10px;
-    height: 10px;
-    background: #10b981;
-    border-radius: 50%;
-    margin-right: 8px;
-    animation: pulse 2s infinite;
-    display: inline-block;
-}
-
-.txt-cyan { color: #00f0ff; }
+.txt-cyan { color: var(--accent-cyan); }
 .txt-purple { color: #8b5cf6; }
 .txt-green { color: #10b981; }
 .txt-orange { color: #f59e0b; }

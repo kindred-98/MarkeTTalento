@@ -24,8 +24,26 @@ from app.utils.helpers import to_excel, format_currency
 
 def _obj_to_dict(obj):
     if hasattr(obj, '__dict__'):
-        return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
+        result = {}
+        for k, v in obj.__dict__.items():
+            if k.startswith('_'):
+                continue
+            if hasattr(v, 'isoformat'):  # datetime objects
+                result[k] = v.isoformat()
+            elif isinstance(v, list):
+                result[k] = [_obj_to_dict(item) if hasattr(item, '__dict__') else item for item in v]
+            else:
+                result[k] = v
+        return result
     return obj
+
+
+def _format_fecha(fecha):
+    """Formatea fecha para display."""
+    if hasattr(fecha, 'strftime'):
+        return fecha.strftime('%Y-%m-%d %H:%M')
+    fecha_str = str(fecha)
+    return fecha_str[:16].replace('T', ' ') if fecha_str else ''
 
 
 def _get_ventas_data():
@@ -43,6 +61,8 @@ def _get_ventas_data():
         return productos, inventarios, tickets
     finally:
         db.close()
+
+
 from app.utils.state import (
     init_tpv_state, get_tpv_carrito, set_tpv_carrito, limpiar_carrito,
     agregar_linea_carrito, actualizar_cantidad_linea, calcular_total_carrito, get_cajeros
@@ -173,8 +193,8 @@ def render_panel_ticket():
     else:
         for idx, linea in enumerate(carrito):
             seleccionada = st.session_state.get('tpv_linea_seleccionada') == idx
-            bg_color = "rgba(0,240,255,0.1)" if seleccionada else "transparent"
-            border_color = "#00f0ff" if seleccionada else "rgba(255,255,255,0.05)"
+            bg_color = "rgba(59, 130, 246,0.1)" if seleccionada else "transparent"
+            border_color = "#3b82f6" if seleccionada else "rgba(255,255,255,0.05)"
 
             cols = st.columns([1, 4, 2, 2, 1, 1, 1])
             with cols[0]:
@@ -219,9 +239,9 @@ def render_panel_ticket():
 
     if descuento_pct > 0:
         st.markdown(f"<p style='text-align: center; color: #f59e0b; font-size: 0.85rem;'>Descuento: {descuento_pct}% | Original: €{total:.2f}</p>", unsafe_allow_html=True)
-        st.markdown(f"<h2 style='text-align: center; color: #00f0ff; margin: 5px 0;'>Total: €{total_con_desc:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: #3b82f6; margin: 5px 0;'>Total: €{total_con_desc:.2f}</h2>", unsafe_allow_html=True)
     else:
-        st.markdown(f"<h2 style='text-align: center; color: #00f0ff; margin: 10px 0;'>Total: €{total:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: #3b82f6; margin: 10px 0;'>Total: €{total:.2f}</h2>", unsafe_allow_html=True)
 
     # Botón descuento rápido
     if carrito:
@@ -256,10 +276,10 @@ def render_panel_ticket():
         <style>
         div[data-testid="stHorizontalBlock"] div:nth-child(2) button[data-testid="baseButton-primary"],
         div[data-testid="stHorizontalBlock"] div:nth-child(2) button[data-testid="baseButton-secondary"] {
-            background: linear-gradient(135deg, #00f0ff, #00a8e8) !important;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
             color: #0f172a !important; border: none !important;
             border-radius: 10px !important; font-weight: 700 !important;
-            box-shadow: 0 4px 12px rgba(0,240,255,0.3) !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246,0.3) !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -329,7 +349,7 @@ def render_teclado_numerico():
         return
 
     buffer = st.session_state.get('tpv_teclado_buffer', '')
-    st.markdown(f"<p style='color: #00f0ff; font-size: 1.2rem; text-align: center; margin: 5px 0;'>Cantidad: {buffer if buffer else '...'}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: #3b82f6; font-size: 1.2rem; text-align: center; margin: 5px 0;'>Cantidad: {buffer if buffer else '...'}</p>", unsafe_allow_html=True)
 
     teclas = [
         ['7', '8', '9'],
@@ -413,16 +433,16 @@ def render_cobro_modal():
         .modal-caja {{
             animation: modalFadeIn 0.35s ease forwards;
             background: linear-gradient(145deg, rgba(30,41,59,0.98), rgba(15,23,42,1));
-            border: 1px solid rgba(0,240,255,0.25);
+            border: 1px solid rgba(59, 130, 246,0.25);
             border-radius: 18px;
             padding: 25px 20px;
-            box-shadow: 0 0 40px rgba(0,240,255,0.12);
+            box-shadow: 0 0 40px rgba(59, 130, 246,0.12);
             text-align: center;
             margin: 15px 0;
         }}
         .modal-icon {{ font-size: 3rem; display:inline-block; animation: iconoPop 0.5s ease 0.1s both; margin-bottom: 5px; }}
-        .modal-titulo {{ color: #00f0ff; font-size: 1.6rem; font-weight: 700; }}
-        .modal-total {{ color: #00f0ff; font-size: 1.9rem; font-weight: 800; margin: 8px 0; }}
+        .modal-titulo {{ color: #3b82f6; font-size: 1.6rem; font-weight: 700; }}
+        .modal-total {{ color: #3b82f6; font-size: 1.9rem; font-weight: 800; margin: 8px 0; }}
         .modal-sub {{ color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }}
         .modal-cambio {{ color: #10b981; font-size: 1.15rem; font-weight: 700; margin: 6px 0 12px 0; }}
         </style>
@@ -543,9 +563,9 @@ def render_ticket_post_cobro():
     </script>
     """, height=0)
 
-    st.markdown("<div style='background: rgba(30,41,59,0.8); border-radius: 12px; padding: 25px; border: 1px solid rgba(0,240,255,0.3); max-width: 400px; margin: 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='background: rgba(30,41,59,0.8); border-radius: 12px; padding: 25px; border: 1px solid rgba(59, 130, 246,0.3); max-width: 400px; margin: 0 auto;'>", unsafe_allow_html=True)
 
-    st.markdown("<h3 style='text-align: center; color: #00f0ff; margin-bottom: 5px;'>MARKE TTALENTO</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #3b82f6; margin-bottom: 5px;'>MARKE TTALENTO</h3>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #94a3b8; font-size: 0.9rem;'>Ticket N° {ticket['numero_ticket']}</p>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.8rem;'>{ticket['fecha'][:16].replace('T', ' ')}</p>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.8rem;'>Cajero: {ticket['cajero']}</p>", unsafe_allow_html=True)
@@ -561,7 +581,7 @@ def render_ticket_post_cobro():
         """, unsafe_allow_html=True)
 
     st.markdown("<hr style='border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='text-align: right; color: #00f0ff;'>TOTAL: €{ticket['total']:.2f}</h4>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='text-align: right; color: #3b82f6;'>TOTAL: €{ticket['total']:.2f}</h4>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: right; color: #94a3b8; font-size: 0.85rem;'>Método: {ticket['metodo_pago'].upper()}</p>", unsafe_allow_html=True)
 
     if ticket.get('entrega_efectivo'):
@@ -592,7 +612,7 @@ def render_ticket_post_cobro():
             st.rerun()
 
     # Contador de cierre automático
-    st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 10px;'>⏱️ Cierre automático en <span id='contador-cierre' style='color: #00f0ff; font-weight: 700;'>5</span> segundos</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 10px;'>⏱️ Cierre automático en <span id='contador-cierre' style='color: #3b82f6; font-weight: 700;'>5</span> segundos</p>", unsafe_allow_html=True)
 
     # Cierre automático real via Python (cada rerun verifica el tiempo)
     ticket_time = st.session_state.get('tpv_ticket_time')
@@ -657,7 +677,7 @@ def render_panel_productos():
         'Bebidas': '#f59e0b', 'Cervezas': '#fbbf24', 'Whiskies': '#a78bfa',
         'Cafés': '#92400e', 'Refrescos': '#ef4444', 'Hamburguesas': '#f97316',
         'Pizzas': '#f59e0b', 'Bocadillos': '#10b981', 'Menus': '#3b82f6',
-        'Todos': '#00f0ff'
+        'Todos': '#3b82f6'
     }
 
     # Fila de categorías
@@ -666,7 +686,7 @@ def render_panel_productos():
     for i, cat in enumerate(cats_filtradas[:6]):
         with cols_cats[i]:
             es_activa = cat_activa == cat["id"]
-            color_cat = COLORES_CAT.get(cat["nombre"], '#00f0ff')
+            color_cat = COLORES_CAT.get(cat["nombre"], '#3b82f6')
             bg = f"rgba({int(color_cat[1:3],16)},{int(color_cat[3:5],16)},{int(color_cat[5:7],16)},0.15)" if es_activa else "rgba(30,41,59,0.6)"
             border = f"1px solid {color_cat}" if es_activa else "1px solid rgba(255,255,255,0.1)"
             st.markdown(f"""
@@ -717,7 +737,7 @@ def render_panel_productos():
         stock = _get_stock(prod.get('id'), inventarios)
         sin_stock = stock <= 0
         imagen = _buscar_imagen_producto(prod)
-        es_favorito = prod.get('nombre') in top_ids if 'top_ids' in locals() else False
+        es_favorito = prod.get('id') in prod_ventas and prod_ventas.get(prod.get('id'), 0) > 0
 
         with cols_grid[idx % 4]:
             opacity = "0.4" if sin_stock else "1"
@@ -757,7 +777,7 @@ def render_panel_productos():
             nombre_display = prod.get('nombre') + (' ⭐' if es_favorito else '')
             card_html += f"""
                 <div style="font-size: 0.85rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{nombre_display}</div>
-                <div style="font-size: 0.9rem; color: #00f0ff; font-weight: 700;">€{prod.get('precio_venta', 0):.2f}</div>
+                <div style="font-size: 0.9rem; color: #3b82f6; font-weight: 700;">€{prod.get('precio_venta', 0):.2f}</div>
             </div>
             """
             st.markdown(card_html, unsafe_allow_html=True)
@@ -786,12 +806,12 @@ def _render_modal_cantidad(productos, inventarios):
     st.markdown("""
     <style>
     @keyframes modalFadeIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
-    .mini-modal { animation: modalFadeIn 0.25s ease forwards; background: rgba(30,41,59,0.95); border: 1px solid rgba(0,240,255,0.3); border-radius: 14px; padding: 20px; margin: 10px 0; }
+    .mini-modal { animation: modalFadeIn 0.25s ease forwards; background: rgba(30,41,59,0.95); border: 1px solid rgba(59, 130, 246,0.3); border-radius: 14px; padding: 20px; margin: 10px 0; }
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown(f"<div class='mini-modal'>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #00f0ff; text-align: center;'>📦 {prod.get('nombre')}</h4>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #3b82f6; text-align: center;'>📦 {prod.get('nombre')}</h4>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #94a3b8;'>Stock disponible: {stock}</p>", unsafe_allow_html=True)
 
     cantidad = st.number_input("Cantidad", min_value=1, max_value=stock, value=1, key="modal_cantidad_val")
@@ -834,7 +854,155 @@ def render_dashboard():
     st.metric("📦 Unidades", resumen.get('total_unidades', 0))
     st.metric("📈 Ticket Promedio", f"€{resumen.get('ticket_promedio', 0):.2f}")
     st.markdown("---")
-    st.info("📊 Las gráficas avanzadas requieren iniciar la API: uvicorn main:app --port 8002")
+    
+    # Gráficas básicas
+    try:
+        db = DatabaseAccess()
+        tickets = db.get_tickets(limite=500)
+        productos = db.get_productos()
+        categorias = db.get_categorias()
+        tickets_dict = [_obj_to_dict(t) for t in tickets]
+        productos = [_obj_to_dict(p) for p in productos]
+        categorias = [_obj_to_dict(c) for c in categorias]
+        db.close()
+        
+        if tickets_dict:
+            # Gráfica 1: Ventas por día
+            st.markdown("#### 📈 Tendencia de Ventas")
+            ventas_dia = {}
+            for t in tickets_dict:
+                fecha = str(t.get('fecha', ''))[:10]
+                ventas_dia[fecha] = ventas_dia.get(fecha, 0) + t.get('total', 0)
+            
+            if ventas_dia:
+                fechas = sorted(ventas_dia.keys())[-15:]
+                valores = [ventas_dia[f] for f in fechas]
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color='#3b82f6', width=2), fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)'))
+                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
+                st.plotly_chart(fig, width="stretch")
+            
+            # Gráfica 2: Top productos (siempre mostrar)
+            st.markdown("#### 🏆 Top Productos")
+            prod_ventas = {}
+            for t in tickets_dict:
+                for linea in t.get('lineas', []):
+                    pid = linea.get('producto_id')
+                    nombre = f"Prod {pid}"
+                    for p in productos:
+                        if p.get('id') == pid:
+                            nombre = p.get('nombre', f"Prod {pid}")
+                            break
+                    prod_ventas[nombre] = prod_ventas.get(nombre, 0) + linea.get('cantidad', 0)
+            
+            if not prod_ventas:
+                # Demo data si no hay ventas
+                for p in productos[:5]:
+                    prod_ventas[p.get('nombre', f"Prod {p.get('id')}")] = 0
+            
+            top_prods = sorted(prod_ventas.items(), key=lambda x: x[1], reverse=True)[:10]
+            nombres = [p[0] for p in top_prods]
+            cantidades = [p[1] for p in top_prods]
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=nombres, y=cantidades, marker_color='#10b981'))
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig, width="stretch")
+            
+            # Gráfica 3: Ventas por hora
+            st.markdown("#### ⏰ Ventas por Hora")
+            horas = {h: 0 for h in range(24)}
+            for t in tickets_dict:
+                fecha = str(t.get('fecha', ''))
+                if len(fecha) > 13:
+                    try:
+                        hora = int(fecha[11:13])
+                        horas[hora] += t.get('total', 0)
+                    except:
+                        pass
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=list(horas.keys()), y=list(horas.values()), marker_color='#f59e0b'))
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig, width="stretch")
+            
+            # Gráfica 4: Métodos de pago (siempre mostrar aunque vacío)
+            st.markdown("#### 💳 Métodos de Pago")
+            metodos = {}
+            for t in tickets_dict:
+                mp = t.get('metodo_pago', 'desconocido')
+                metodos[mp] = metodos.get(mp, 0) + 1
+            
+            if not metodos:
+                metodos = {"sin datos": 1}
+            fig = go.Figure()
+            fig.add_trace(go.Pie(labels=list(metodos.keys()), values=list(metodos.values()), hole=0.4))
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig, width="stretch")
+            
+            # Gráfica 5: Ingresos por categoría (siempre mostrar)
+            st.markdown("#### 🏷️ Ingresos por Categoría")
+            cat_ingresos = {}
+            cat_map = {c.get('id'): c.get('nombre', 'Sin categoría') for c in categorias}
+            for t in tickets_dict:
+                for linea in t.get('lineas', []):
+                    pid = linea.get('producto_id')
+                    cat_id = None
+                    for p in productos:
+                        if p.get('id') == pid:
+                            cat_id = p.get('categoria_id')
+                            break
+                    cat_nombre = cat_map.get(cat_id, 'Sin categoría')
+                    cat_ingresos[cat_nombre] = cat_ingresos.get(cat_nombre, 0) + linea.get('subtotal', 0)
+            
+            if not cat_ingresos:
+                cat_ingresos = {"sin datos": 0}
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=list(cat_ingresos.keys()), y=list(cat_ingresos.values()), marker_color='#8b5cf6'))
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig, width="stretch")
+            
+            # Gráfica 6: Ticket promedio por día (siempre mostrar)
+            st.markdown("#### 📊 Evolución Ticket Promedio")
+            dia_tickets = {}
+            for t in tickets_dict:
+                fecha = str(t.get('fecha', ''))[:10]
+                if fecha not in dia_tickets:
+                    dia_tickets[fecha] = {'total': 0, 'count': 0}
+                dia_tickets[fecha]['total'] += t.get('total', 0)
+                dia_tickets[fecha]['count'] += 1
+            
+            fechas = sorted(dia_tickets.keys())[-15:] if dia_tickets else []
+            prom_tickets = [round(dia_tickets[f]['total'] / dia_tickets[f]['count'], 2) if dia_tickets[f]['count'] > 0 else 0 for f in fechas]
+            if not fechas:
+                fechas = ["sin datos"]
+                prom_tickets = [0]
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=fechas, y=prom_tickets, mode='lines+markers', line=dict(color='#ef4444', width=2), fill='tozeroy', fillcolor='rgba(239,68,68,0.1)'))
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig, width="stretch")
+            
+            # Gráfica 7: Distribución tickets por rango de precio (siempre mostrar)
+            st.markdown("#### 💰 Distribución por Importe")
+            rangos = {"€0-10": 0, "€10-25": 0, "€25-50": 0, "€50-100": 0, "€100+": 0}
+            for t in tickets_dict:
+                total = t.get('total', 0)
+                if total <= 10:
+                    rangos["€0-10"] += 1
+                elif total <= 25:
+                    rangos["€10-25"] += 1
+                elif total <= 50:
+                    rangos["€25-50"] += 1
+                elif total <= 100:
+                    rangos["€50-100"] += 1
+                else:
+                    rangos["€100+"] += 1
+            
+            fig = go.Figure()
+            fig.add_trace(go.Pie(labels=list(rangos.keys()), values=list(rangos.values()), hole=0.4, marker_colors=["#b21798", "#116025", "#ffa200", "#dd1f1f", "#5c1bf3"]))
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig, width="stretch")
+    except Exception as e:
+        st.warning(f"Error cargando gráficas: {str(e)}")
 
 
 def _plotly_config(fig, height=280):
@@ -861,8 +1029,8 @@ def grafica_tendencia(datos):
         x=df['fecha'], y=df['ingresos'],
         mode='lines+markers',
         name='Ingresos',
-        line=dict(color='#00f0ff', width=3),
-        fill='tozeroy', fillcolor='rgba(0,240,255,0.1)'
+        line=dict(color='#3b82f6', width=3),
+        fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)'
     ))
     fig.update_layout(title_text="Ingresos por día", title_font_size=12)
     st.plotly_chart(_plotly_config(fig), width="stretch")
@@ -972,7 +1140,7 @@ def grafica_top_productos_ingresos(datos):
     df = pd.DataFrame(datos)
     fig = go.Figure(data=[go.Bar(
         x=df['ingresos'], y=df['producto'], orientation='h',
-        marker_color='#00f0ff', text=[f"€{x:.2f}" for x in df['ingresos']], textposition='auto'
+        marker_color='#3b82f6', text=[f"€{x:.2f}" for x in df['ingresos']], textposition='auto'
     )])
     fig.update_layout(title_text="Más rentables", title_font_size=12)
     st.plotly_chart(_plotly_config(fig), width="stretch")
@@ -1028,7 +1196,7 @@ def grafica_comparativa_mes(datos):
     valores_anterior = [anterior.get('ingresos', 0), anterior.get('tickets', 0), anterior.get('unidades', 0)]
 
     fig = go.Figure()
-    fig.add_trace(go.Bar(name=datos.get('nombre_mes_actual', 'Actual'), x=categorias, y=valores_actual, marker_color='#00f0ff'))
+    fig.add_trace(go.Bar(name=datos.get('nombre_mes_actual', 'Actual'), x=categorias, y=valores_actual, marker_color='#3b82f6'))
     fig.add_trace(go.Bar(name=datos.get('nombre_mes_anterior', 'Anterior'), x=categorias, y=valores_anterior, marker_color='#64748b'))
     fig.update_layout(barmode='group', title_text="Comparativa mensual", title_font_size=12)
     st.plotly_chart(_plotly_config(fig), width="stretch")
@@ -1046,7 +1214,7 @@ def grafica_objetivos(resumen, meta):
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=['Meta', 'Real'], y=[meta, ingresos_hoy],
-        marker_color=['#64748b', '#00f0ff'],
+        marker_color=['#64748b', '#3b82f6'],
         text=[f"€{meta:.0f}", f"€{ingresos_hoy:.2f}"],
         textposition='auto',
         textfont=dict(size=14, color='white')
@@ -1175,7 +1343,7 @@ def render_historial():
     # Mostrar tickets
     for t in tickets[inicio:fin]:
         estado_color = "#10b981" if t['estado'] == 'completado' else "#ef4444"
-        with st.expander(f"🎫 Ticket N° {t['numero_ticket']} | €{t['total']:.2f} | {t['cajero']} | {t['fecha'][:16].replace('T', ' ')}"):
+        with st.expander(f"🎫 Ticket N° {t.get('numero_ticket', 'N/A')} | €{t.get('total', 0):.2f} | {t.get('cajero', 'N/A')} | {_format_fecha(t.get('fecha', ''))}"):
             st.markdown(f"<p style='color: {estado_color}; font-weight: 600;'>Estado: {t['estado'].upper()}</p>", unsafe_allow_html=True)
             st.markdown(f"**Método de pago:** {t['metodo_pago'].upper()}")
             if t.get('entrega_efectivo'):
@@ -1184,12 +1352,13 @@ def render_historial():
             # Tabla de líneas
             lineas_data = []
             for linea in t.get('lineas', []):
-                nombre = linea.get('producto', {}).get('nombre', f"Producto {linea['producto_id']}")
+                prod_id = linea.get('producto_id', 'N/A')
+                nombre = f"Producto {prod_id}"
                 lineas_data.append({
                     "Producto": nombre,
-                    "Cantidad": linea['cantidad'],
-                    "P. Unitario": f"€{linea['precio_unitario']:.2f}",
-                    "Subtotal": f"€{linea['subtotal']:.2f}"
+                    "Cantidad": linea.get('cantidad', 0),
+                    "P. Unitario": f"€{linea.get('precio_unitario', 0):.2f}",
+                    "Subtotal": f"€{linea.get('subtotal', 0):.2f}"
                 })
             if lineas_data:
                 st.table(pd.DataFrame(lineas_data))

@@ -127,7 +127,7 @@ def render():
         transition: all 0.2s ease;
     }
     .api-card:hover {
-        border-color: rgba(0, 240, 255, 0.3);
+        border-color: rgba(59, 130, 246, 0.35);
         background: rgba(30, 41, 59, 0.7);
     }
     .api-method {
@@ -140,7 +140,7 @@ def render():
         text-transform: uppercase;
     }
     .method-GET { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .method-POST { background: rgba(0, 240, 255, 0.15); color: #00f0ff; border: 1px solid rgba(0, 240, 255, 0.3); }
+    .method-POST { background: rgba(59, 130, 246, 0.12); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
     .method-PUT { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
     .method-DELETE { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
     .api-path {

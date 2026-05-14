@@ -287,7 +287,7 @@ def _ver_producto_modal(pid):
 
         col_precio, col_estado = st.columns([2, 1])
         with col_precio:
-            st.markdown(f"<div style='font-size:2rem;font-weight:700;color:#00f0ff;'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:14px;color:#94a3b8;font-weight:400;'>€/ud</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:2rem;font-weight:700;color:#3b82f6;'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:14px;color:#94a3b8;font-weight:400;'>€/ud</span></div>", unsafe_allow_html=True)
         with col_estado:
             st.markdown(f"<div style='text-align:right;padding-top:0px;'><span style='display:inline-block;padding:5px 14px;border-radius:14px;font-size:15px;font-weight:600;color:white;background:{color_estado};'>{estado}</span></div>", unsafe_allow_html=True)
 
@@ -318,8 +318,8 @@ def _ver_producto_modal(pid):
     }
     .modal-metric:hover {
         transform: translateY(-3px);
-        box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
-        border-color: rgba(0, 240, 255, 0.5);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        border-color: rgba(59, 130, 246, 0.5);
         background: rgba(30, 41, 59, 0.8);
     }
     .modal-metric-label {
@@ -366,7 +366,7 @@ def render_catalogo():
 
     loading.empty()
 
-    st.markdown("<h3 style='color: #00f0ff;'>🏪 Catálogo de Productos</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #3b82f6;'>🏪 Catálogo de Productos</h3>", unsafe_allow_html=True)
 
     col_busq1, col_busq2, col_busq3 = st.columns([2, 1, 1])
 
@@ -397,7 +397,7 @@ def render_catalogo():
         productos_filtrados = [p for p in productos_filtrados
                               if _get_estado_producto(p.get("id"), inventarios, productos_filtrados) == estado_filtro]
 
-    st.markdown(f"<span style='color: #00f0ff; font-weight: 600;'>{len(productos_filtrados)}</span> <span style='color: #94a3b8;'>productos encontrados</span>", unsafe_allow_html=True)
+    st.markdown(f"<span style='color: #3b82f6; font-weight: 600;'>{len(productos_filtrados)}</span> <span style='color: #94a3b8;'>productos encontrados</span>", unsafe_allow_html=True)
     st.markdown("---")
 
     st.markdown("""
@@ -414,8 +414,8 @@ def render_catalogo():
     }
     .product-card-dark:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(0, 240, 255, 0.25);
-        border-color: rgba(0, 240, 255, 0.4);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.25);
+        border-color: rgba(59, 130, 246, 0.4);
     }
     .product-card-dark:hover .product-img-container {
         transform: scale(1.05);
@@ -446,7 +446,7 @@ def render_catalogo():
     .product-price-dark {
         font-size: 24px;
         font-weight: 700;
-        color: #00f0ff;
+        color: #3b82f6;
     }
     .product-badge-dark {
         font-size: 12px;
@@ -470,8 +470,8 @@ def render_catalogo():
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button[data-testid="baseButton-secondary"]:hover,
     div[data-testid="stHorizontalBlock"] > div:nth-child(2) button[data-testid="baseButton-secondary"]:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 4px 12px rgba(0, 240, 255, 0.3) !important;
-        border-color: rgba(0, 240, 255, 0.5) !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+        border-color: rgba(59, 130, 246, 0.5) !important;
         background: rgba(51, 65, 85, 0.8) !important;
     }
     </style>
@@ -590,7 +590,7 @@ def render_nuevo():
     """Renderiza el formulario de nuevo producto compacto."""
     form_version = st.session_state.get('form_version', 0)
     
-    st.markdown("<h4 style='color: #00f0ff;'>➕ Nuevo Producto</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #3b82f6;'>➕ Nuevo Producto</h4>", unsafe_allow_html=True)
     
     # Cargar datos desde cache
     productos, inventarios, categorias, proveedores = _get_productos_data()
@@ -633,7 +633,7 @@ def render_nuevo():
         
         if proveedor_id == "nuevo":
             st.markdown("<div style='background:rgba(0,240,255,0.1);padding:10px;border-radius:8px;margin-top:5px;'>", unsafe_allow_html=True)
-            st.markdown("<span style='color:#00f0ff;font-size:12px;'>Nuevo proveedor</span>", unsafe_allow_html=True)
+            st.markdown("<span style='color:#3b82f6;font-size:12px;'>Nuevo proveedor</span>", unsafe_allow_html=True)
             nuevo_prov_nombre = st.text_input("Nombre *", key=f"new_prov_nombre_{form_version}", label_visibility="collapsed", placeholder="Nombre del proveedor")
             nuevo_prov_email = st.text_input("Email *", key=f"new_prov_email_{form_version}", label_visibility="collapsed", placeholder="email@ejemplo.com")
             nuevo_prov_telefono = st.text_input("Teléfono", key=f"new_prov_telefono_{form_version}", label_visibility="collapsed", placeholder="600 000 000")
@@ -804,10 +804,10 @@ def render_edicion():
     inv = next((i for i in inventarios if i.get('producto_id') == prod_id), None)
     stock_actual = inv.get('cantidad', 0) if inv else 0
     
-    st.markdown(f"<h4 style='color: #00f0ff;'>✏️ Editando: {producto.get('nombre', '')}</h4>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #3b82f6;'>✏️ Editando: {producto.get('nombre', '')}</h4>", unsafe_allow_html=True)
     
     # SKU (no editable)
-    st.markdown(f"<div style='background:rgba(30,41,59,0.6);padding:8px 12px;border-radius:8px;margin-bottom:10px;display:inline-block;'><span style='color:#64748b;font-size:12px;'>SKU:</span> <span style='color:#00f0ff;font-weight:600;'>{producto.get('sku', 'N/A')}</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='background:rgba(30,41,59,0.6);padding:8px 12px;border-radius:8px;margin-bottom:10px;display:inline-block;'><span style='color:#64748b;font-size:12px;'>SKU:</span> <span style='color:#3b82f6;font-weight:600;'>{producto.get('sku', 'N/A')}</span></div>", unsafe_allow_html=True)
     
     # Fila 1: Nombre, Precio venta, Precio coste, Unidad
     c1, c2, c3, c4 = st.columns(4)

@@ -1,56 +1,69 @@
 #!/usr/bin/env python3
 """
-MarkeTTalento - Desarrollo local
-Inicia el Dashboard Streamlit con acceso directo a SQLite
+MarkeTTalento - Iniciar Todo (API + Dashboard)
 """
 import subprocess
 import sys
 import os
 import webbrowser
-import threading
 import time
+import threading
 
+def iniciar_api():
+    print("Iniciando API FastAPI...")
+    api_process = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api:app", "--host", "127.0.0.1", "--port", "8002", "--reload"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return api_process
 
 def iniciar_dashboard():
-    print("📦 Iniciando MarkeTTalento...")
-    dashboard_process = subprocess.Popen(
-        [sys.executable, "-m", "streamlit", "run", "streamlit_app.py", "--server.headless", "true"],
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        stdin=subprocess.DEVNULL,
+    print("Iniciando Dashboard Streamlit...")
+    dash_process = subprocess.Popen(
+        [sys.executable, "-m", "streamlit", "run", "streamlit_app.py", "--server.headless", "true", "--server.port", "8501"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
-    return dashboard_process
-
+    return dash_process
 
 def abrir_navegador():
-    time.sleep(4)
+    time.sleep(6)
     webbrowser.open("http://localhost:8501")
-    print("    ✅ Dashboard abierto: http://localhost:8501")
-
+    webbrowser.open("http://localhost:8002/docs")
 
 def main():
-    process = iniciar_dashboard()
+    print()
+    print("=" * 55)
+    print("  MarkeTTalento - Iniciando Todo...")
+    print("=" * 55)
+    print()
+    
+    api_process = iniciar_api()
+    time.sleep(4)
+    dash_process = iniciar_dashboard()
+    
     browser_thread = threading.Thread(target=abrir_navegador)
     browser_thread.daemon = True
     browser_thread.start()
-
+    
     print()
-    print("=" * 50)
-    print("  ✅ MarkeTTalento está corriendo!")
-    print("  📊 http://localhost:8501")
+    print("=" * 55)
+    print("  Todo corriendo!")
+    print("  Dashboard: http://localhost:8501")
+    print("  API Docs:  http://localhost:8002/docs")
     print("  Presiona Ctrl+C para detener")
-    print("=" * 50)
+    print("=" * 55)
     print()
-
+    
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\n🛑 Cerrando...")
-        process.terminate()
-        process.wait()
-        print("✅ MarkeTTalento cerrado")
-
+        print("\n  Cerrando servicios...")
+        dash_process.terminate()
+        api_process.terminate()
+        print("  MarkeTTalento cerrado")
 
 if __name__ == "__main__":
     main()
