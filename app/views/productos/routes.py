@@ -4,8 +4,9 @@ from app.views.productos.data.getters import get_productos_data, export_to_json,
 from app.views.productos.tabs.catalogo_tab import render as catalogo_tab
 from app.views.productos.tabs.nuevo_tab import render as nuevo_tab
 from app.views.productos.tabs.edicion_tab import render as edicion_tab
-from app.utils.api import api_delete
+from app.db import DatabaseAccess
 from app.components.success_modal import show_success_modal
+from app.views.productos.data.getters import get_productos_data as clear_cache
 
 
 def render():

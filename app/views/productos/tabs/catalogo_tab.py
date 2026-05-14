@@ -30,7 +30,7 @@ CSS_CATALOGO = """
 }
 .product-img-container {
     width: 100%;
-    height: 75px;
+    height: 160px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -38,28 +38,28 @@ CSS_CATALOGO = """
     transition: transform 0.3s ease;
 }
 .product-img-container img {
-    max-height: 65px !important;
-    max-width: 90% !important;
+    max-height: 150px !important;
+    max-width: 95% !important;
     object-fit: contain;
     border-radius: 6px;
 }
 .product-name-dark {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #f1f5f9;
-    margin: 0 0 2px 0;
-    line-height: 1.3;
+    margin: 0 0 1px 0;
+    line-height: 1.2;
 }
 .product-category-dark {
-    font-size: 9px;
+    font-size: 8px;
     color: #06b6d4;
-    margin: 0 0 6px 0;
+    margin: 0 0 3px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 500;
 }
 .product-price-dark {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
     color: #06b6d4;
 }
@@ -71,29 +71,64 @@ CSS_CATALOGO = """
     font-weight: 600;
 }
 .product-card-img-block {
-    padding: 8px 10px 4px 10px;
+    padding: 0px !important;
+    margin: 0px !important;
     text-align: center;
     background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
     border-radius: 12px 12px 0 0;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0px !important;
+}
+.product-card-img-block > * {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.product-card-img-block .stImage {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.product-card-img-block .stImage img {
+    display: block !important;
+    margin: 0 !important;
+}
+.product-card-img-block .stButton {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
 }
 .product-card-img-block .stButton button {
-    margin-top: 4px;
-    font-size: 11px !important;
-    padding: 4px 8px !important;
+    margin: 0 !important;
+    padding: 0px 8px !important;
+    font-size: 9px !important;
+    line-height: 1 !important;
+    min-height: auto !important;
+    height: auto !important;
+}
+.product-name-dark {
+    font-size: 12px;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0 0 2px 0;
+    line-height: 1.3;
 }
 @media (max-width: 1400px) {
-    .product-card-dark { margin-bottom: 10px; }
+    .product-card-dark { margin-bottom: 8px; }
+    .product-img-container { height: 150px; }
 }
 @media (max-width: 992px) {
-    .product-card-dark { margin-bottom: 8px; }
-    .product-img-container { height: 70px; }
-    .product-name-dark { font-size: 11px; }
+    .product-card-dark { margin-bottom: 6px; }
+    .product-img-container { height: 140px; }
+    .product-img-container img { max-height: 130px !important; }
+    .product-name-dark { font-size: 10px; }
 }
 @media (max-width: 768px) {
-    .product-card-dark { margin-bottom: 6px; }
-    .product-img-container { height: 60px; }
-    .product-name-dark { font-size: 10px; }
-    .product-price-dark { font-size: 12px; }
+    .product-card-dark { margin-bottom: 5px; }
+    .product-img-container { height: 120px; }
+    .product-img-container img { max-height: 110px !important; }
+    .product-name-dark { font-size: 9px; }
+    .product-price-dark { font-size: 11px; }
 }
 </style>
 """
@@ -192,21 +227,19 @@ def render():
 
                 with cols[idx]:
                     st.markdown("<div class='product-card-dark'>", unsafe_allow_html=True)
-                    st.markdown("<div class='product-card-img-block'>", unsafe_allow_html=True)
+                    st.markdown("<div class='product-card-img-block' style='display:flex;flex-direction:column;align-items:center;gap:0;'>", unsafe_allow_html=True)
 
                     if tiene_img:
                         try:
-                            st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-                            st.image(img_url, width=80)
-                            st.markdown("</div>", unsafe_allow_html=True)
+                            st.image(img_url, width=300, use_container_width=False)
                         except Exception:
                             st.markdown(
-                                f"<div style='width:100%;height:70px;background:linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.15));display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:2rem;'>{get_categoria_emoji(cat_nombre)}</div>",
+                                f"<div style='width:100%;height:150px;background:linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.15));display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:4rem;'>{get_categoria_emoji(cat_nombre)}</div>",
                                 unsafe_allow_html=True,
                             )
                     else:
                         st.markdown(
-                            f"<div style='width:100%;height:70px;background:linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.15));display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:2rem;'>{get_categoria_emoji(cat_nombre)}</div>",
+                            f"<div style='width:100%;height:150px;background:linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.15));display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:4rem;'>{get_categoria_emoji(cat_nombre)}</div>",
                             unsafe_allow_html=True,
                         )
 
@@ -220,16 +253,21 @@ def render():
                         ver_producto_modal(pid)
 
                     st.markdown("</div>", unsafe_allow_html=True)
-                    st.markdown("<div style='padding:6px 10px;'>", unsafe_allow_html=True)
+                    st.markdown("<div style='padding:2px 8px;'>", unsafe_allow_html=True)
                     st.markdown(f"<p class='product-name-dark'>{prod.get('nombre', 'Producto')}</p>", unsafe_allow_html=True)
                     st.markdown(f"<p class='product-category-dark'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
+                    
+                    desc = prod.get('descripcion', '') or ''
+                    if desc:
+                        desc_truncada = desc[:80] + '...' if len(desc) > 80 else desc
+                        st.markdown(f"<p style='font-size:9px;color:#94a3b8;margin:0 0 4px 0;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;'>{desc_truncada}</p>", unsafe_allow_html=True)
 
                     stock_pct = calcular_porcentaje(stock, max_s)
                     color_barra = "#ef4444" if stock_pct <= 20 else "#f59e0b" if stock_pct <= 50 else "#10b981"
 
                     st.markdown(f"""
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <span class='product-price-dark'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:10px;color:#94a3b8;font-weight:400;'>€/ud</span></span>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span class='product-price-dark'>€{prod.get('precio_venta', 0):.2f} <span style='font-size:9px;color:#94a3b8;font-weight:400;'>€/ud</span></span>
                         <span class='product-badge-dark' style='background:{color_estado};'>{estado}</span>
                     </div>
                     """, unsafe_allow_html=True)
@@ -237,13 +275,13 @@ def render():
                     stock_txt = f"{stock} {prod.get('unidad', 'uds')}"
 
                     st.markdown(f"""
-                    <div style="background:rgba(0,0,0,0.2);padding:6px 8px;border-radius:6px;margin-bottom:6px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                            <span style="font-size:10px;color:#e2e8f0;font-weight:600;">📦 {stock_txt}</span>
-                            <span style="font-size:10px;color:{color_barra};font-weight:600;">{stock_pct:.0f}%</span>
+                    <div style="background:rgba(0,0,0,0.2);padding:4px 6px;border-radius:4px;margin-bottom:4px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                            <span style="font-size:9px;color:#e2e8f0;font-weight:600;">📦 {stock_txt}</span>
+                            <span style="font-size:13px;color:{color_barra};font-weight:700;">{stock_pct:.0f}%</span>
                         </div>
-                        <div style="width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
-                            <div style="width:{stock_pct}%;height:100%;background:{color_barra};border-radius:3px;"></div>
+                        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
+                            <div style="width:{stock_pct}%;height:100%;background:{color_barra};border-radius:4px;"></div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)

@@ -3,7 +3,7 @@ import streamlit as st
 import os
 from app.views.productos.data.getters import get_productos_data
 from app.logic.producto import get_descripcion_default, preparar_producto_data
-from app.utils.api import api_post
+from app.db import DatabaseAccess
 from app.components.success_modal import show_success_modal
 
 
@@ -57,19 +57,22 @@ def render():
 
             if st.button("💾 Guardar proveedor", key=f"btnGuardarProv_{form_version}", width="stretch", type="secondary"):
                 if nuevo_prov_nombre and nuevo_prov_email:
-                    prov_data = {
-                        "nombre": nuevo_prov_nombre,
-                        "email": nuevo_prov_email,
-                        "telefono": nuevo_prov_telefono or None,
-                        "contacto": None
-                    }
-                    resultado = api_post("/api/v1/proveedores", prov_data, authenticated=False)
-                    if resultado and not resultado.get("error"):
-                        st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado")
-                        st.session_state['form_version'] = form_version + 1
-                        st.rerun()
-                    else:
-                        st.error("❌ Error al crear proveedor")
+                    db = DatabaseAccess()
+                    try:
+                        resultado = db.crear_proveedor({
+                            "nombre": nuevo_prov_nombre,
+                            "email": nuevo_prov_email,
+                            "telefono": nuevo_prov_telefono or None,
+                            "contacto": None
+                        })
+                        if resultado:
+                            st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado")
+                            st.session_state['form_version'] = form_version + 1
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al crear proveedor")
+                    finally:
+                        db.close()
                 else:
                     st.warning("⚠️ Nombre y email son obligatorios")
             st.markdown("</div>", unsafe_allow_html=True)
@@ -171,14 +174,18 @@ def render():
                 stock_minimo=stock_min
             )
 
-            resultado = api_post("/api/v1/productos", data, authenticated=False)
-            if resultado and not resultado.get("error"):
-                get_productos_data.clear()
-                show_success_modal("¡Producto creado!", f"{nombre} registrado en catálogo", duracion=3)
-                st.session_state['form_version'] = form_version + 1
-                st.rerun()
-            else:
-                st.error("❌ Error al crear el producto")
+            db = DatabaseAccess()
+            try:
+                resultado = db.crear_producto(data)
+                if resultado:
+                    get_productos_data.clear()
+                    show_success_modal("¡Producto creado!", f"{nombre} registrado en catálogo", duracion=3)
+                    st.session_state['form_version'] = form_version + 1
+                    st.rerun()
+                else:
+                    st.error("❌ Error al crear el producto")
+            finally:
+                db.close()
 
     with col_info:
         if errores:

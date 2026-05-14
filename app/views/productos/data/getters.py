@@ -2,18 +2,35 @@
 import json
 import pandas as pd
 import streamlit as st
-from app.utils.api import api_get
+from app.db import DatabaseAccess
 from app.utils.helpers import to_excel
+
+
+def _to_dict(obj):
+    """Convierte objeto a dict."""
+    if hasattr(obj, "__dict__"):
+        return {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+    return obj
 
 
 @st.cache_data(ttl=5, show_spinner=False)
 def get_productos_data():
-    """Obtiene datos de productos, inventarios, categorías y proveedores desde la API."""
-    productos = api_get("/api/v1/productos", use_cache=False)
-    inventarios = api_get("/api/v1/inventario", use_cache=False)
-    categorias = api_get("/api/v1/categorias", use_cache=False)
-    proveedores = api_get("/api/v1/proveedores", use_cache=False)
-    return productos, inventarios, categorias, proveedores
+    """Obtiene datos de productos, inventarios, categorías y proveedores desde SQLite."""
+    db = DatabaseAccess()
+    try:
+        productos = db.get_productos()
+        inventarios = db.get_inventario()
+        categorias = db.get_categorias()
+        proveedores = db.get_proveedores()
+
+        productos = [_to_dict(p) for p in productos]
+        inventarios = [_to_dict(i) for i in inventarios]
+        categorias = [_to_dict(c) for c in categorias]
+        proveedores = [_to_dict(p) for p in proveedores]
+
+        return productos, inventarios, categorias, proveedores
+    finally:
+        db.close()
 
 
 def export_to_json(productos, inventarios, categorias, proveedores):

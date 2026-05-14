@@ -2,7 +2,7 @@
 import streamlit as st
 import os
 from app.views.productos.data.getters import get_productos_data
-from app.utils.api import api_put, api_post
+from app.db import DatabaseAccess
 from app.components.success_modal import show_success_modal
 from app.utils.state import set_editar_producto, clear_editar_producto
 
