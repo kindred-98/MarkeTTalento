@@ -122,10 +122,10 @@ def ver_producto_modal(pid):
     a1, a2 = st.columns(2)
     with a1:
         if st.button("Modificar", key=f"modal_edit_{pid}", width="stretch", type="primary"):
-            set_editar_producto(pid)
-            st.session_state["producto_tab_activo"] = 2
-            st.rerun()
+            st.session_state['editar_producto'] = pid
+            st.session_state['producto_tab_activo'] = 2
+            st.session_state['_cerrar_modal_edicion'] = True
     with a2:
         if st.button("Eliminar", key=f"modal_del_{pid}", width="stretch"):
             st.session_state["producto_eliminar"] = pid
-            st.rerun()
+            st.session_state['_cerrar_modal_eliminar'] = True

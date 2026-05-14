@@ -12,6 +12,14 @@ def render():
     """Renderiza la página de productos."""
     st.markdown("<h2>📦 Gestión de Productos</h2>", unsafe_allow_html=True)
 
+    if st.session_state.get('_cerrar_modal_edicion'):
+        del st.session_state['_cerrar_modal_edicion']
+        st.rerun()
+    
+    if st.session_state.get('_cerrar_modal_eliminar'):
+        del st.session_state['_cerrar_modal_eliminar']
+        st.rerun()
+
     if 'producto_eliminar' in st.session_state and st.session_state['producto_eliminar']:
         pid_eliminar = st.session_state['producto_eliminar']
         productos, _, _, _ = get_productos_data()

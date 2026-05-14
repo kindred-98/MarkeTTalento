@@ -18,16 +18,27 @@ def render():
         return
 
     prod_id = st.session_state['editar_producto']
-
-    productos, inventarios, categorias, proveedores = get_productos_data()
+    
+    try:
+        productos, inventarios, categorias, proveedores = get_productos_data()
+    except Exception as e:
+        st.error(f"Error al cargar datos: {e}")
+        return
+        
+    if not productos:
+        st.error("No hay productos disponibles")
+        return
+        
     producto = next((p for p in productos if p.get('id') == prod_id), None)
 
     if not producto:
         st.error("Producto no encontrado")
         return
 
-    inv = next((i for i in inventarios if i.get('producto_id') == prod_id), None)
-    stock_actual = inv.get('cantidad', 0) if inv else 0
+    inv = None
+    if inventarios:
+        inv = next((i for i in inventarios if i.get('producto_id') == prod_id), None)
+    stock_actual = inv.get('cantidad', 0) if inv and inv.get('cantidad') is not None else 0
 
     st.markdown(f"<h4 style='color: #3b82f6;'>✏️ Editando: {producto.get('nombre', '')}</h4>", unsafe_allow_html=True)
 
@@ -47,21 +58,21 @@ def render():
 
     c5, c6, c7, c8 = st.columns(4)
     with c5:
-        cat_nombres = [c.get('nombre') for c in categorias]
+        cat_nombres = [c.get('nombre') for c in categorias] if categorias else ["Sin categoría"]
         cat_actual = producto.get('categoria_id')
-        cat_index = next((i for i, c in enumerate(categorias) if c.get('id') == cat_actual), 0)
+        cat_index = next((i for i, c in enumerate(categorias) if c.get('id') == cat_actual), 0) if categorias else 0
         edit_cat = st.selectbox("Categoría *", cat_nombres, index=cat_index, key="edit_cat")
-        edit_cat_id = next((c.get('id') for c in categorias if c.get('nombre') == edit_cat), 1)
+        edit_cat_id = next((c.get('id') for c in categorias if c.get('nombre') == edit_cat), 1) if categorias else 1
     with c6:
         edit_codigo_barras = st.text_input("Cód. barras", value=producto.get('codigo_barras') or '', key="edit_codigo_barras")
     with c7:
-        edit_tiempo = st.number_input("Días repo", min_value=1, value=int(producto.get('tiempo_reposicion', 3)), key="edit_tiempo")
+        edit_tiempo = st.number_input("Días repo", min_value=1, value=int(producto.get('tiempo_reposicion', 3) or 3), key="edit_tiempo")
     with c8:
-        prov_options = {p.get("nombre", "Sin nombre"): p.get("id") for p in proveedores}
+        prov_options = {p.get("nombre", "Sin nombre"): p.get("id") for p in proveedores} if proveedores else {}
         prov_options["Sin proveedor"] = None
         prov_actual_id = producto.get('proveedor_id')
-        prov_actual_nombre = next((p.get('nombre') for p in proveedores if p.get('id') == prov_actual_id), "Sin proveedor")
-        prov_nombres_select = list(prov_options.keys())
+        prov_actual_nombre = next((p.get('nombre') for p in proveedores if p.get('id') == prov_actual_id), "Sin proveedor") if proveedores else "Sin proveedor"
+        prov_nombres_select = list(prov_options.keys()) if prov_options else ["Sin proveedor"]
         prov_index = prov_nombres_select.index(prov_actual_nombre) if prov_actual_nombre in prov_nombres_select else 0
         edit_proveedor_nombre = st.selectbox("Proveedor", prov_nombres_select, index=prov_index, key="edit_proveedor")
         edit_proveedor_id = prov_options.get(edit_proveedor_nombre)
