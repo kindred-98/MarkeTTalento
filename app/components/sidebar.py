@@ -3,6 +3,9 @@ Componente de Sidebar para navegación
 """
 import html
 import streamlit as st
+
+from app.config import API_URL as _API_URL_CFG
+from app.utils.api_health import refresh_api_health_cache
 from app.utils.state import get_menu, set_menu
 
 # Etiquetas de UI (sin emojis) — valores internos sin cambiar para compatibilidad con main.py
@@ -17,6 +20,38 @@ _NAV_OPTIONS: list[tuple[str, str]] = [
 ]
 _NAV_LABELS = [pair[0] for pair in _NAV_OPTIONS]
 _NAV_LABEL_TO_MENU = {pair[0]: pair[1] for pair in _NAV_OPTIONS}
+
+
+def _render_api_status_sidebar():
+    """Estado de la API FastAPI (HTTP): auto cada ~25 s o al pulsar Comprobar."""
+    force = st.button("Comprobar API", key="sidebar_check_api", width="stretch")
+    cache = refresh_api_health_cache(force=force)
+    ok = cache.get("ok", False)
+    err = cache.get("error") or ""
+    ms = cache.get("latency_ms")
+    url = html.escape(str(cache.get("url") or _API_URL_CFG))
+    lat_txt = f"{ms} ms" if ms is not None else "—"
+    state_cls = "sidebar-api-card--ok" if ok else "sidebar-api-card--down"
+    dot_cls = "sidebar-api-dot--ok" if ok else "sidebar-api-dot--down"
+    title = "API en línea" if ok else "API no disponible"
+    err_html = f'<div class="sidebar-api-err">{html.escape(err)}</div>' if (not ok and err) else ""
+
+    st.markdown(
+        f"""
+        <div class="sidebar-api-card {state_cls}">
+            <div class="sidebar-api-card__row">
+                <span class="sidebar-api-dot {dot_cls}" aria-hidden="true"></span>
+                <div class="sidebar-api-card__text">
+                    <div class="sidebar-api-card__title">{html.escape(title)}</div>
+                    <div class="sidebar-api-card__meta">Latencia: {html.escape(lat_txt)}</div>
+                </div>
+            </div>
+            <div class="sidebar-api-card__url" title="{url}">{url}</div>
+            {err_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _on_sidebar_nav_change():
@@ -68,10 +103,13 @@ def render_sidebar():
             on_change=_on_sidebar_nav_change,
         )
 
+        st.markdown('<p class="sidebar-section-label">Conectividad</p>', unsafe_allow_html=True)
+        _render_api_status_sidebar()
+
         st.markdown('<div class="sidebar-spacer-sm"></div>', unsafe_allow_html=True)
 
         if st.button("Cerrar sesión", key="sidebar_logout", width="stretch", type="secondary"):
-            for key in ["auth_token", "auth_user", "api_conectada"]:
+            for key in ["auth_token", "auth_user", "api_conectada", "_api_health_cache"]:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()

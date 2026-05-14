@@ -56,6 +56,84 @@
     height: 0.75rem;
 }
 
+/* Estado API FastAPI (sidebar) */
+.sidebar-api-card {
+    padding: 0.65rem 0.75rem 0.7rem;
+    border-radius: 10px;
+    margin-bottom: 0.35rem;
+    font-size: 0.78rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.sidebar-api-card--ok {
+    border-color: rgba(34, 197, 94, 0.35);
+    background: rgba(34, 197, 94, 0.07);
+}
+
+.sidebar-api-card--down {
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.sidebar-api-card__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.sidebar-api-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-top: 0.35rem;
+    flex-shrink: 0;
+}
+
+.sidebar-api-dot--ok {
+    background: #22c55e;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.65);
+}
+
+.sidebar-api-dot--down {
+    background: #f87171;
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+    animation: pulse 2s infinite;
+}
+
+.sidebar-api-card__text {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-api-card__title {
+    font-weight: 700;
+    color: #fafafa;
+    font-size: 0.82rem;
+}
+
+.sidebar-api-card__meta {
+    color: #a1a1aa;
+    font-size: 0.7rem;
+    margin-top: 0.15rem;
+}
+
+.sidebar-api-card__url {
+    margin-top: 0.45rem;
+    font-size: 0.62rem;
+    color: #71717a;
+    word-break: break-all;
+    line-height: 1.35;
+    font-family: ui-monospace, monospace;
+}
+
+.sidebar-api-err {
+    margin-top: 0.4rem;
+    font-size: 0.68rem;
+    color: #fecaca;
+    line-height: 1.35;
+}
+
 /* Radio del menú: lista vertical compacta */
 [data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div[data-testid="stRadio"] {
     margin-bottom: 0.25rem;
