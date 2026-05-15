@@ -5,6 +5,7 @@ from app.views.productos.data.getters import get_productos_data
 from app.logic.producto import get_descripcion_default, preparar_producto_data
 from app.db import DatabaseAccess
 from app.components.success_modal import show_success_modal
+from src.core.logging import log_success, log_error
 
 
 def render():
@@ -180,10 +181,12 @@ def render():
                 if resultado:
                     get_productos_data.clear()
                     show_success_modal("¡Producto creado!", f"{nombre} registrado en catálogo", duracion=3)
+                    log_success(f"Producto creado: {nombre} (SKU: {sku})")
                     st.session_state['form_version'] = form_version + 1
                     st.rerun()
                 else:
                     st.error("❌ Error al crear el producto")
+                    log_error("productos", f"Error al crear producto {sku}")
             finally:
                 db.close()
 

@@ -1,7 +1,7 @@
 """Catálogo de productos tab"""
 import streamlit as st
 import os
-from app.views.productos.data.getters import get_productos_data
+from app.views.productos.data.getters import get_productos_data, export_to_json, export_to_excel
 from app.views.productos.utils.helpers import get_estado_producto
 from app.logic.producto import get_categoria_emoji
 from app.utils.helpers import calcular_porcentaje
@@ -106,13 +106,6 @@ CSS_CATALOGO = """
     min-height: auto !important;
     height: auto !important;
 }
-.product-name-dark {
-    font-size: 12px;
-    font-weight: 600;
-    color: #f1f5f9;
-    margin: 0 0 2px 0;
-    line-height: 1.3;
-}
 @media (max-width: 1400px) {
     .product-card-dark { margin-bottom: 8px; }
     .product-img-container { height: 150px; }
@@ -145,6 +138,29 @@ def render():
     loading.empty()
 
     st.markdown("<h3 style='color: #3b82f6;'>🏪 Catálogo de Productos</h3>", unsafe_allow_html=True)
+
+    col_exp1, col_exp2 = st.columns(2)
+    with col_exp1:
+        productos_exp, inventarios_exp, categorias_exp, proveedores_exp = get_productos_data()
+        st.download_button(
+            label="📥 Exportar JSON",
+            data=export_to_json(productos_exp, inventarios_exp, categorias_exp, proveedores_exp),
+            file_name="productos.json",
+            mime="application/octet-stream",
+            width="stretch",
+            type="secondary"
+        )
+    with col_exp2:
+        st.download_button(
+            label="📊 Exportar Excel",
+            data=export_to_excel(productos_exp, inventarios_exp, categorias_exp, proveedores_exp),
+            file_name="productos.xlsx",
+            mime="application/octet-stream",
+            width="stretch",
+            type="secondary"
+        )
+
+    st.markdown("---")
 
     col_busq1, col_busq2, col_busq3 = st.columns([2, 1, 1])
 
@@ -192,9 +208,7 @@ def render():
         fin = min(inicio + productos_por_pagina, len(productos_filtrados))
         productos_pagina = productos_filtrados[inicio:fin]
 
-        cols_config = {"desktop": 6, "tablet": 4, "mobile": 2}
-
-        rows = [productos_pagina[i:i+cols_config["desktop"]] for i in range(0, len(productos_pagina), cols_config["desktop"])]
+        rows = [productos_pagina[i:i+6] for i in range(0, len(productos_pagina), 6)]
 
         st.markdown("""
         <style>
@@ -223,8 +237,6 @@ def render():
                 img_url = prod.get("imagen_url")
                 tiene_img = img_url and os.path.exists(img_url)
 
-                descripcion = prod.get("descripcion", "") or f"{prod.get('unidad', 'unidad')} • {cat_nombre}"
-
                 with cols[idx]:
                     st.markdown("<div class='product-card-dark'>", unsafe_allow_html=True)
                     st.markdown("<div class='product-card-img-block' style='display:flex;flex-direction:column;align-items:center;gap:0;'>", unsafe_allow_html=True)
@@ -250,13 +262,16 @@ def render():
                         type="tertiary",
                         help="Ver detalle, modificar o eliminar",
                     ):
-                        ver_producto_modal(pid)
+                        if not st.session_state.get('_modal_cerrar'):
+                            ver_producto_modal(pid)
+                        else:
+                            st.session_state['_modal_cerrar'] = False
 
                     st.markdown("</div>", unsafe_allow_html=True)
                     st.markdown("<div style='padding:2px 8px;'>", unsafe_allow_html=True)
                     st.markdown(f"<p class='product-name-dark'>{prod.get('nombre', 'Producto')}</p>", unsafe_allow_html=True)
                     st.markdown(f"<p class='product-category-dark'>🏷️ {cat_nombre}</p>", unsafe_allow_html=True)
-                    
+
                     desc = prod.get('descripcion', '') or ''
                     if desc:
                         desc_truncada = desc[:80] + '...' if len(desc) > 80 else desc

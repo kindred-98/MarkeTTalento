@@ -5,7 +5,6 @@ from app.views.productos.data.getters import get_productos_data
 from app.views.productos.utils.helpers import get_estado_producto
 from app.logic.producto import get_categoria_emoji
 from app.utils.helpers import calcular_porcentaje
-from app.utils.state import set_editar_producto
 
 
 CSS_MODAL = """
@@ -44,6 +43,11 @@ CSS_MODAL = """
 @st.dialog("Detalle del Producto", width="small")
 def ver_producto_modal(pid):
     """Muestra el modal de detalle del producto."""
+    # Si se solicitó cerrar el modal, no renderizar
+    if st.session_state.get('_modal_cerrar'):
+        st.session_state['_modal_cerrar'] = False
+        return
+    
     productos, inventarios, categorias, proveedores = get_productos_data()
     prod = next((p for p in productos if p.get("id") == pid), None)
     if not prod:
@@ -124,8 +128,10 @@ def ver_producto_modal(pid):
         if st.button("Modificar", key=f"modal_edit_{pid}", width="stretch", type="primary"):
             st.session_state['editar_producto'] = pid
             st.session_state['producto_tab_activo'] = 2
-            st.session_state['_cerrar_modal_edicion'] = True
+            st.session_state['_modal_cerrar'] = True
+            st.rerun()
     with a2:
         if st.button("Eliminar", key=f"modal_del_{pid}", width="stretch"):
             st.session_state["producto_eliminar"] = pid
-            st.session_state['_cerrar_modal_eliminar'] = True
+            st.session_state['_modal_cerrar'] = True
+            st.rerun()

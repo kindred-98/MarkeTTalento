@@ -5,6 +5,7 @@ from app.views.productos.data.getters import get_productos_data
 from app.db import DatabaseAccess
 from app.components.success_modal import show_success_modal
 from app.utils.state import set_editar_producto, clear_editar_producto
+from src.core.logging import log_success, log_error
 
 
 def render():
@@ -177,16 +178,26 @@ def render():
                 "imagen_url": nueva_imagen_url
             }
 
-            resultado = api_put(f"/api/v1/productos/{prod_id}", data_edit, authenticated=False)
-            if resultado and not resultado.get("error"):
-                nuevo_stock = edit_stock_actual + edit_ingreso
-                api_post(f"/api/v1/inventario/{prod_id}", {"cantidad": nuevo_stock}, authenticated=False)
-                get_productos_data.clear()
-                st.session_state['producto_actualizado'] = True
-                clear_editar_producto()
-                st.rerun()
-            else:
-                st.error("❌ Error al actualizar")
+            db = DatabaseAccess()
+            try:
+                resultado = db.actualizar_producto(prod_id, data_edit)
+                if resultado:
+                    nuevo_stock = edit_stock_actual + edit_ingreso
+                    from src.dominio.entidades.entidades import Inventario
+                    inv = db.session.query(Inventario).filter_by(producto_id=prod_id).first()
+                    if inv:
+                        inv.cantidad = nuevo_stock
+                        db.session.commit()
+                    get_productos_data.clear()
+                    st.session_state['producto_actualizado'] = True
+                    log_success(f"Producto actualizado: {edit_nombre}")
+                    clear_editar_producto()
+                    st.rerun()
+                else:
+                    st.error("❌ Error al actualizar")
+                    log_error("productos", f"Error al actualizar producto {prod_id}")
+            finally:
+                db.close()
 
     with col_btn2:
         if st.button("❌ Cancelar", width="stretch", key="btnCancelarEdit"):

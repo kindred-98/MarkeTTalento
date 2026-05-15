@@ -12,8 +12,12 @@ st.set_page_config(page_title="MarkeTTalento", page_icon="📦", layout="wide")
 
 from app.utils.state import init_session_state
 from app.components.sidebar import render_sidebar
-from app.views import dashboard, productos, inventario, ventas, predicciones, barcode, login, api_docs
+from app.views import dashboard, productos, inventario, ventas, predicciones, barcode, login, api_docs, logs
 from app.db import DatabaseAccess
+from src.core.logging import setup_logging, log_info
+
+setup_logging()
+log_info("App iniciada")
 
 
 @st.cache_resource
@@ -76,6 +80,8 @@ def main():
         predicciones.render()
     elif menu == "🔍 Inspector":
         barcode.render()
+    elif menu == "📋 Logs":
+        logs.render()
     elif menu == "📚 API Docs":
         api_docs.render()
 

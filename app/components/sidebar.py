@@ -16,7 +16,8 @@ _NAV_OPTIONS: list[tuple[str, str]] = [
     ("Ventas", "💰 Ventas"),
     ("Predicciones", "🔮 Predicciones"),
     ("Inspector", "🔍 Inspector"),
-    ("Documentación API", "📚 API Docs"),
+    ("Logs", "📋 Logs"),
+    ("Documentación API", " API Docs"),
 ]
 _NAV_LABELS = [pair[0] for pair in _NAV_OPTIONS]
 _NAV_LABEL_TO_MENU = {pair[0]: pair[1] for pair in _NAV_OPTIONS}

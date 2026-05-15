@@ -13,7 +13,7 @@ def _to_dict(obj):
     return obj
 
 
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(show_spinner=False)
 def get_productos_data():
     """Obtiene datos de productos, inventarios, categorías y proveedores desde SQLite."""
     db = DatabaseAccess()
