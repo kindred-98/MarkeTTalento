@@ -32,6 +32,22 @@
     --border-glow: rgba(59, 130, 246, 0.25);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+    /* Superficies teñidas, pre-compuestas sobre --bg-card.
+       Son el equivalente opaco de un rgba(..., 0.15) sobre una superficie
+       opaca: se ven igual, pero al no depender del alfa el contraste con el
+       texto es inequivoco y se puede comprobar (WCAG AA >= 4.5:1). */
+    --tint-blue-soft: #293242;    /* rgba(59, 130, 246, 0.12) */
+    --tint-indigo-soft: #2e2f42;  /* rgba(99, 102, 241, 0.12) */
+    --tint-green-soft: #263a30;   /* rgba(34, 197, 94, 0.12) */
+    --tint-red-soft: #452b2e;     /* rgba(239, 68, 68, 0.15) */
+    --tint-amber-soft: #463925;   /* rgba(245, 158, 11, 0.15) */
+    --tint-green-15: #263f32;     /* rgba(34, 197, 94, 0.15) */
+    --tint-gray-soft: #36363a;    /* rgba(113, 113, 122, 0.2) */
+    --tint-red-20: #4f2d2f;       /* rgba(239, 68, 68, 0.2) */
+    --tint-green-20: #22443b;     /* rgba(16, 185, 129, 0.2) */
+    --tint-rose-10: #3c2e31;      /* rgba(248, 113, 113, 0.1) */
+    --tint-green-08: #253331;     /* rgba(16, 185, 129, 0.08) */
 }
 
 .stApp {

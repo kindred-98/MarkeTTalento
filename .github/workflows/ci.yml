@@ -12,7 +12,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # 3.14 queda fuera mientras requirements.txt fije pandas==2.2.3 y
+        # pillow==11.1.0: no publican ruedas cp314, y con --only-binary :all:
+        # pip no podria instalarlas. Paraeadir 3.14 hay que subir pandas a 3.x
+        # y pillow a 12.x, y adaptar el codigo a sus cambios de API.
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout del repositorio

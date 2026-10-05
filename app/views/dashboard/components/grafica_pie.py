@@ -12,7 +12,7 @@ def grafica_pie(data, colors=None):
     fig = go.Figure(go.Pie(
         labels=[d['label'] for d in data],
         values=[d['value'] for d in data],
-        marker=dict(colors=colors[:len(data)]),
+        marker={"colors": colors[:len(data)]},
         hole=0.6,
         textinfo='label+percent',
         textfont={"color": 'white', "size": 12},

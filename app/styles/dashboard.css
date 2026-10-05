@@ -34,9 +34,9 @@
     font-size: 0.8rem;
     font-weight: 600;
 }
-.hdr-b1 { background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; }
-.hdr-b2 { background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); color: #a5b4fc; }
-.hdr-b3 { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac; }
+.hdr-b1 { background: var(--tint-blue-soft); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; }
+.hdr-b2 { background: var(--tint-indigo-soft); border: 1px solid rgba(99, 102, 241, 0.3); color: #a5b4fc; }
+.hdr-b3 { background: var(--tint-green-soft); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac; }
 
 .stock-table {
     width: 100%;

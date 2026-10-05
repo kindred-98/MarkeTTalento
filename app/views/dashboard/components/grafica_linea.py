@@ -10,7 +10,7 @@ def grafica_linea(data, color='#3b82f6'):
         x=[d['label'] for d in data],
         y=[d['value'] for d in data],
         mode='lines+markers',
-        line=dict(color=color, width=2),
+        line={"color": color, "width": 2},
         marker={"size": 8},
         fill='tozeroy',
         fillcolor=f'{color}30'

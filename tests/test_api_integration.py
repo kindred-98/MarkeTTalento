@@ -187,11 +187,62 @@ def test_historial_producto():
 # PREDICCIONES
 # ============================================================================
 
+DIAS_HISTORIA_PREDICCION = 90
+
+
+def _producto_con_historia_reciente(dias=DIAS_HISTORIA_PREDICCION):
+    """Id de un producto vendido en los ultimos `dias`, o None si no hay ninguno.
+
+    Los tests corren contra la BD local, cuyo contenido cambia con el uso real,
+    asi que no se puede asumir que un id concreto siga teniendo historial.
+    """
+    import sqlite3
+    from datetime import datetime, timedelta
+
+    if not BD_SEMBRADA:
+        return None
+
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        corte = (datetime.now() - timedelta(days=dias)).isoformat()
+        fila = conn.execute(
+            """
+            SELECT l.producto_id
+            FROM ticket_lineas l
+            JOIN tickets t ON t.id = l.ticket_id
+            WHERE t.fecha >= ?
+            GROUP BY l.producto_id
+            ORDER BY COUNT(*) DESC
+            LIMIT 1
+            """,
+            (corte,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    return fila[0] if fila else None
+
+
 def test_prediccion_producto():
-    response = client.get("/api/v1/prediccion/producto/1?dias_futuro=7")
+    producto_id = _producto_con_historia_reciente()
+    if producto_id is None:
+        pytest.skip(
+            f"Ningun producto tiene ventas en los ultimos {DIAS_HISTORIA_PREDICCION} dias. "
+            "Ejecuta scripts/generar_datos_demo.py para sembrar historial."
+        )
+
+    response = client.get(f"/api/v1/prediccion/producto/{producto_id}?dias_futuro=7")
     assert response.status_code == 200
     data = response.json()
     assert "producto_nombre" in data
+    assert data["producto_id"] == producto_id
+
+
+def test_prediccion_producto_sin_historial_devuelve_404():
+    """Sin ventas recientes el endpoint responde 404, no 200 con datos vacios."""
+    response = client.get("/api/v1/prediccion/producto/999999?dias_futuro=7")
+    assert response.status_code == 404
+    assert "detail" in response.json()
 
 
 def test_alertas_reposicion():

@@ -73,13 +73,13 @@
 }
 
 .stock-control-btn.menos:hover {
-    background: rgba(239, 68, 68, 0.2);
+    background: var(--tint-red-20);
     border-color: rgba(239, 68, 68, 0.5);
-    color: #f04d4d;
+    color: #fca5a5;
 }
 
 .stock-control-btn.mas:hover {
-    background: rgba(16, 185, 129, 0.2);
+    background: var(--tint-green-20);
     border-color: rgba(16, 185, 129, 0.5);
-    color: #10b981;
+    color: #6ee7b7;
 }

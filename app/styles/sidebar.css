@@ -199,7 +199,7 @@
 }
 
 [data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
-    background: rgba(248, 113, 113, 0.1) !important;
+    background: var(--tint-rose-10) !important;
     border-color: rgba(248, 113, 113, 0.55) !important;
     color: #fecaca !important;
     transform: none !important;
@@ -212,7 +212,7 @@
     margin-top: 1rem;
     padding: 0.65rem 0.75rem;
     border-radius: 8px;
-    background: rgba(16, 185, 129, 0.08);
+    background: var(--tint-green-08);
     border: 1px solid rgba(16, 185, 129, 0.22);
     font-size: 0.78rem;
     color: #6ee7b7;

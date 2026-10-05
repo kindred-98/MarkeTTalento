@@ -126,7 +126,7 @@ PESO_CATEGORIA_BASICA = 0.8
 
 def _regla_en_temporada(regla, mes, dia_semana):
     """Indica si una regla de estacionalidad aplica en la fecha dada."""
-    terminos, meses, dia_min, _, _ = regla
+    _, meses, dia_min, _, _ = regla
     en_meses = bool(meses) and mes in meses
     en_dias = dia_min is not None and dia_semana >= dia_min
     return en_meses or en_dias
@@ -156,6 +156,45 @@ def aplicar_estacionalidad_productos(fecha, productos):
     return [_peso_producto(p, fecha.month, fecha.weekday()) for p in productos]
 
 
+DIAS_HISTORIAL = 180
+MAX_LINEAS_POR_TICKET = 5
+HORA_MINIMA = 8
+HORA_MAXIMA = 22
+PESOS_TICKETS_POR_DIA = ([1, 2, 3], [60, 30, 10])
+
+
+def _elegir_productos(productos, fecha_ticket):
+    """Selecciona hasta MAX_LINEAS_POR_TICKET productos según su peso estacional."""
+    pesos = aplicar_estacionalidad_productos(fecha_ticket, productos)
+    ponderados = random.choices(productos, weights=pesos, k=len(productos))
+
+    seleccionados, vistos = [], set()
+    for p in ponderados:
+        if p["id"] not in vistos:
+            vistos.add(p["id"])
+            seleccionados.append(p)
+        if len(seleccionados) >= MAX_LINEAS_POR_TICKET:
+            break
+
+    return seleccionados
+
+
+def _generar_ticket_del_dia(conn, fecha_dia, productos):
+    """Genera los tickets de un día. Devuelve cuántos se han creado."""
+    if random.random() >= calcular_probabilidad_ticket(fecha_dia):
+        return 0
+
+    num_tickets = random.choices(*PESOS_TICKETS_POR_DIA)[0]
+    for _ in range(num_tickets):
+        fecha_ticket = fecha_dia.replace(
+            hour=random.randint(HORA_MINIMA, HORA_MAXIMA),
+            minute=random.randint(0, 59),
+        )
+        generar_ticket(conn, fecha_ticket, _elegir_productos(productos, fecha_ticket))
+
+    return num_tickets
+
+
 def main():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -175,34 +214,8 @@ def main():
     hoy = utcnow_naive().replace(hour=12, minute=0, second=0, microsecond=0)
     total_generados = 0
 
-    for i in range(180, -1, -1):
-        fecha_dia = hoy - timedelta(days=i)
-        prob = calcular_probabilidad_ticket(fecha_dia)
-
-        # Número de tickets en este día (0-3)
-        if random.random() < prob:
-            num_tickets = random.choices([1, 2, 3], weights=[60, 30, 10])[0]
-            for _ in range(num_tickets):
-                # Variar hora
-                hora = random.randint(8, 22)
-                minuto = random.randint(0, 59)
-                fecha_ticket = fecha_dia.replace(hour=hora, minute=minuto)
-
-                # Aplicar pesos estacionales a productos para este ticket
-                pesos = aplicar_estacionalidad_productos(fecha_ticket, productos)
-                productos_ponderados = random.choices(productos, weights=pesos, k=len(productos))
-                # Tomar los primeros N únicos
-                seleccionados = []
-                vistos = set()
-                for p in productos_ponderados:
-                    if p["id"] not in vistos:
-                        vistos.add(p["id"])
-                        seleccionados.append(p)
-                    if len(seleccionados) >= 5:
-                        break
-
-                generar_ticket(conn, fecha_ticket, seleccionados)
-                total_generados += 1
+    for i in range(DIAS_HISTORIAL, -1, -1):
+        total_generados += _generar_ticket_del_dia(conn, hoy - timedelta(days=i), productos)
 
     conn.commit()
     conn.close()
