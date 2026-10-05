@@ -5,18 +5,22 @@ from typing import Dict, List, Any, Optional
 from app.config import ESTADOS_STOCK
 
 
+UMBRAL_CRITICO = 25
+UMBRAL_BAJO = 59
+
+
 def calcular_estado_stock(stock: int, stock_maximo: int) -> str:
     """Calcula el estado del stock basado en el porcentaje del máximo."""
     if stock <= 0:
         return "Agotado"
-    
+
     if stock_maximo > 0:
         pct = (stock / stock_maximo) * 100
-        if pct <= 25:
+        if pct <= UMBRAL_CRITICO:
             return "Crítico"
-        elif pct <= 59:
+        if pct <= UMBRAL_BAJO:
             return "Bajo"
-    
+
     return "Saludable"
 
 

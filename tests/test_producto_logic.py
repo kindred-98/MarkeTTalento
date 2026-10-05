@@ -1,21 +1,10 @@
 """
 Tests para lógica de productos
 """
-import pytest
-from app.logic.producto import (
-    get_categoria_emoji,
-    get_descripcion_default,
-    validar_producto,
-    filtrar_productos,
-    preparar_producto_data,
-)
-
-
-"""
-Tests para lógica de productos
-"""
-import pytest
 import json
+
+import pytest
+
 from app.logic.producto import (
     get_categoria_emoji,
     get_descripcion_default,
@@ -23,7 +12,7 @@ from app.logic.producto import (
     filtrar_productos,
     preparar_producto_data,
 )
-from app.views.productos import _export_to_json, _export_to_excel
+from app.views.productos.data.getters import export_to_json, export_to_excel
 
 
 class TestExportToJson:
@@ -40,7 +29,7 @@ class TestExportToJson:
         categorias = [{"id": 1, "nombre": "Lacteos"}]
         proveedores = [{"id": 1, "nombre": "Proveedor A"}]
         
-        resultado = _export_to_json(productos, inventarios, categorias, proveedores)
+        resultado = export_to_json(productos, inventarios, categorias, proveedores)
         data = json.loads(resultado)
         
         assert len(data) == 1
@@ -62,7 +51,7 @@ class TestExportToJson:
         categorias = [{"id": 1, "nombre": "Lacteos"}]
         proveedores = []
         
-        resultado = _export_to_json(productos, inventarios, categorias, proveedores)
+        resultado = export_to_json(productos, inventarios, categorias, proveedores)
         data = json.loads(resultado)
         
         assert data[0]["proveedor"] == "Sin proveedor"
@@ -78,7 +67,7 @@ class TestExportToJson:
         categorias = [{"id": 1, "nombre": "Lacteos"}]
         proveedores = []
         
-        resultado = _export_to_json(productos, inventarios, categorias, proveedores)
+        resultado = export_to_json(productos, inventarios, categorias, proveedores)
         data = json.loads(resultado)
         
         assert data[0]["codigo_barras"] == "123456789"
@@ -98,13 +87,13 @@ class TestExportToExcel:
         categorias = [{"id": 1, "nombre": "Lácteos"}]
         proveedores = [{"id": 1, "nombre": "Proveedor A"}]
         
-        resultado = _export_to_excel(productos, inventarios, categorias, proveedores)
+        resultado = export_to_excel(productos, inventarios, categorias, proveedores)
         
         assert isinstance(resultado, bytes)
         assert len(resultado) > 0
 
     def test_export_lista_vacia_devuelve_bytes_vacios(self):
-        resultado = _export_to_excel([], [], [], [])
+        resultado = export_to_excel([], [], [], [])
         
         assert isinstance(resultado, bytes)
         assert len(resultado) == 0

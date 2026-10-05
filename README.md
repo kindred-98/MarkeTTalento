@@ -54,7 +54,7 @@ Sistema de gestión de inventario con **Dashboard Streamlit** + **FastAPI**.
    - Conecta tu repo de GitHub
    - Configura:
      - **Build Command**: `pip install -r requirements.txt`
-     - **Start Command**: `sh -c "python scripts/init_db.py && uvicorn main:app --host 0.0.0.0 --port 8002"`
+     - **Start Command**: `sh -c "python scripts/init_db.py && uvicorn src.api:app --host 0.0.0.0 --port 8002"`
    - **Environment**: Docker (o Python)
    - **Variables de Entorno**:
      - `DATABASE_URL`: PostgreSQL connection string (del paso anterior)

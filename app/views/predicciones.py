@@ -97,7 +97,7 @@ def _render_demanda():
         endpoint = f"/api/v1/prediccion/categoria/{cid}"
 
     if st.button("🔮 Generar Pronóstico", type="primary"):
-        st.info("🔮 Las predicciones ML requieren iniciar la API: uvicorn main:app --port 8002")
+        st.info("🔮 Las predicciones ML requieren iniciar la API: uvicorn src.api:app --port 8002")
         st.markdown("**Demo - Productos disponibles:**")
         for p in productos[:5]:
             st.markdown(f"- {p.get('nombre', 'N/A')} — €{p.get('precio_venta', 0):.2f}")
@@ -193,7 +193,7 @@ def _render_inteligencia():
 
 
 def _render_abc():
-    st.info("📊 Análisis ABC requiere iniciar la API con: uvicorn main:app --port 8002")
+    st.info("📊 Análisis ABC requiere iniciar la API con: uvicorn src.api:app --port 8002")
     st.markdown("O inicia con `python start_api.py` para ver predicciones ML.")
     
     db = DatabaseAccess()
@@ -220,7 +220,7 @@ def _render_abc():
 
 
 def _render_precios():
-    st.info("💰 Precio óptimo requiere iniciar la API con: uvicorn main:app --port 8002")
+    st.info("💰 Precio óptimo requiere iniciar la API con: uvicorn src.api:app --port 8002")
     st.markdown("Las predicciones ML avanzadas necesitan el backend FastAPI.")
 
     db = DatabaseAccess()
@@ -255,7 +255,7 @@ def _render_precios():
 
 
 def _render_estacionalidad():
-    st.info("📅 Estacionalidad requiere iniciar la API con: uvicorn main:app --port 8002")
+    st.info("📅 Estacionalidad requiere iniciar la API con: uvicorn src.api:app --port 8002")
     
     db = DatabaseAccess()
     try:

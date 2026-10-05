@@ -3,7 +3,7 @@ Configuración de Múltiples Bases de Datos
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from typing import Dict, Optional
+from typing import Dict
 import os
 
 # Configuración de bases de datos disponibles
@@ -104,24 +104,28 @@ def init_all_databases():
 def migrate_data(source_db: str, target_db: str, table_name: str = None):
     """
     Migra datos entre bases de datos.
-    
+
     Args:
         source_db: Nombre de la base de datos origen
         target_db: Nombre de la base de datos destino
-        table_name: Nombre de la tabla específica (opcional, si es None migra todo)
+        table_name: Nombre de la tabla específica (opcional). La migración
+                    automatica aún no está implementada, así que no se usa.
     """
-    from sqlalchemy.orm import Session
-    
-    source_engine = get_engine(source_db)
-    target_engine = get_engine(target_db)
-    
-    # Aquí iría la lógica de migración
-    # Por ahora solo imprime información
-    print(f"[INFO] Migrando datos de '{DATABASES[source_db]['name']}' a '{DATABASES[target_db]['name']}'")
-    
+    for nombre in (source_db, target_db):
+        if nombre not in DATABASES:
+            raise ValueError(
+                f"Base de datos '{nombre}' no existe. Opciones: {list(DATABASES.keys())}"
+            )
+
+    # Lógica de migración pendiente: por ahora solo se valida el alcance.
+    alcance = table_name or "todas las tablas"
+
+    print(f"[INFO] Migrando {alcance} de '{DATABASES[source_db]['name']}' a '{DATABASES[target_db]['name']}'")
+
     return {
         "source": source_db,
         "target": target_db,
+        "table_name": table_name,
         "status": "Funcionalidad en desarrollo"
     }
 

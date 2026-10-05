@@ -10,8 +10,8 @@ def calcular_total_venta(cantidad: int, precio_unitario: float) -> float:
     return cantidad * precio_unitario
 
 
-def validar_venta(producto_id: int, cantidad: int, stock_actual: int) -> Dict[str, Any]:
-    """Valida si una venta es posible."""
+def validar_venta(cantidad: int, stock_actual: int) -> Dict[str, Any]:
+    """Valida si una venta es posible a partir de la cantidad y el stock disponible."""
     errores = []
     
     if cantidad <= 0:

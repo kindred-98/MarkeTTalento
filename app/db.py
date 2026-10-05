@@ -81,7 +81,7 @@ class DatabaseAccess:
         return prod
 
     def actualizar_producto(self, producto_id, data):
-        prod = self.session.query(Producto).get(producto_id)
+        prod = self.session.get(Producto, producto_id)
         if not prod:
             return None
         for key, value in data.items():
@@ -92,7 +92,7 @@ class DatabaseAccess:
         return prod
 
     def eliminar_producto(self, producto_id):
-        prod = self.session.query(Producto).get(producto_id)
+        prod = self.session.get(Producto, producto_id)
         if prod:
             prod.activo = False
             self.session.commit()
@@ -121,7 +121,7 @@ class DatabaseAccess:
             else:
                 try:
                     nuevo_num = int(ultimo.numero_ticket) + 1
-                except:
+                except ValueError:
                     nuevo_num = 1
         else:
             nuevo_num = 1

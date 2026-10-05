@@ -11,6 +11,7 @@ import os
 import base64
 import io
 import time
+from typing import Optional
 
 from app.db import DatabaseAccess
 
@@ -78,7 +79,7 @@ METODOS_PAGO = ["efectivo", "tarjeta", "transferencia"]
 PRODUCTOS_POR_PAGINA = 12
 
 
-def _buscar_imagen_producto(producto: dict) -> str:
+def _buscar_imagen_producto(producto: dict) -> Optional[str]:
     """Intenta encontrar una imagen para el producto (redimensionada a thumbnail)."""
     imagen_url = producto.get('imagen_url')
     candidatos = []
@@ -847,7 +848,7 @@ def render_dashboard():
         st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")
         return
     
-    st.info("📊 Dashboard de ventas requiere iniciar la API con: uvicorn main:app --port 8002")
+    st.info("📊 Dashboard de ventas requiere iniciar la API con: uvicorn src.api:app --port 8002")
     st.markdown("### Datos Disponibles")
     st.metric("💰 Total Ingresos", f"€{resumen.get('total_ingresos', 0):.2f}")
     st.metric("🎫 Tickets", resumen.get('total_tickets', 0))
@@ -916,9 +917,9 @@ def render_dashboard():
                 if len(fecha) > 13:
                     try:
                         hora = int(fecha[11:13])
-                        horas[hora] += t.get('total', 0)
-                    except:
-                        pass
+                    except ValueError:
+                        continue
+                    horas[hora] += t.get('total', 0)
             
             fig = go.Figure()
             fig.add_trace(go.Bar(x=list(horas.keys()), y=list(horas.values()), marker_color='#f59e0b'))

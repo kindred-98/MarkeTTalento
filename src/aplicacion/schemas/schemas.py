@@ -103,7 +103,7 @@ class ProductoResponse(ProductoBase):
     activo: bool
     fecha_creacion: datetime
     categoria: CategoriaResponse
-    proveedor: Optional[ProveedorResponse]
+    proveedor: Optional[ProveedorResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,326 +1,287 @@
 """
 Tests para el módulo de API (app/utils/api.py).
+
+`app/utils/api.py` es una capa de acceso directo a SQLite (no un cliente HTTP),
+por lo que los tests trabajan contra una base de datos temporal aislada en vez
+de mockear `requests`.
+
 Ejecutar con: python -m pytest tests/test_api.py -v
 """
+import os
+import tempfile
+
 import pytest
-from unittest.mock import patch, MagicMock
-import requests
-from app.utils.api import (
+from sqlalchemy.exc import SQLAlchemyError
+
+# El path de la BD debe fijarse ANTES de importar app.utils.api: app/db.py
+# construye el engine en tiempo de importacion.
+_TMP_DIR = tempfile.mkdtemp(prefix="markettalento_test_")
+os.environ["DATABASE_PATH"] = os.path.join(_TMP_DIR, "test.db")
+
+from app.db import DatabaseAccess, get_engine  # noqa: E402
+from app.utils import api as api_mod  # noqa: E402
+from app.utils.api import (  # noqa: E402
     api_get,
     api_post,
     api_put,
     api_delete,
     verificar_api,
     esperar_api,
-    _cached_api_get,
-    _invalidate_cache_for_endpoint
 )
+from src.core.database.base import Base  # noqa: E402
+from src.dominio.entidades.entidades import (  # noqa: E402
+    Categoria, Proveedor, Producto, Inventario, Ticket
+)
+
+MODELOS = (Ticket, Inventario, Producto, Proveedor, Categoria)
+
+
+@pytest.fixture(scope="module")
+def bd():
+    """Crea el esquema y expone una sesion compartida durante el modulo."""
+    Base.metadata.create_all(bind=get_engine())
+    session = DatabaseAccess().session
+    yield session
+    session.close()
+
+
+@pytest.fixture(autouse=True)
+def limpio(bd):
+    """Vacia todas las tablas antes de cada test para que sean independientes."""
+    for modelo in MODELOS:
+        bd.query(modelo).delete()
+    bd.commit()
+    return bd
+
+
+@pytest.fixture
+def datos(bd):
+    """Categoría, proveedor y producto base. Devuelve sus ids."""
+    cat = Categoria(nombre="Bebidas", descripcion="Refrescos y agua")
+    prov = Proveedor(nombre="Distribuciones SL", email="ventas@distribuciones.es",
+                     telefono="+34 600 000 000")
+    bd.add_all([cat, prov])
+    bd.flush()
+
+    prod = Producto(
+        sku="BEB-001", codigo_barras="8412345678901", nombre="Agua 1.5L",
+        descripcion="Agua mineral sin gas", precio_venta=0.75, precio_coste=0.30,
+        unidad="botella", stock_minimo=10, stock_maximo=100, tiempo_reposicion=3,
+        categoria_id=cat.id, proveedor_id=prov.id,
+    )
+    bd.add(prod)
+    bd.flush()
+    bd.add(Inventario(producto_id=prod.id, cantidad=40, ubicacion="Almacén A"))
+    bd.commit()
+
+    return {"cat_id": cat.id, "prov_id": prov.id, "prod_id": prod.id}
 
 
 class TestApiGet:
     """Tests para api_get."""
-    
-    @patch('app.utils.api.requests.get')
-    def test_get_exitoso_con_cache(self, mock_get):
-        """GET exitoso debe retornar datos y usar caché."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [{"id": 1, "nombre": "Test"}]
-        mock_get.return_value = mock_response
-        
-        # Primera llamada
-        resultado1 = api_get("/api/v1/productos", use_cache=False)
-        
-        assert resultado1 == [{"id": 1, "nombre": "Test"}]
-        mock_get.assert_called_once()
-    
-    @patch('app.utils.api.requests.get')
-    def test_get_error_404(self, mock_get):
-        """GET con error 404 debe retornar lista vacía."""
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_get.return_value = mock_response
-        
-        resultado = api_get("/api/v1/productos/999", use_cache=False)
-        
+
+    def test_get_categorias(self, datos):
+        resultado = api_get("/api/v1/categorias")
+
+        assert any(c["nombre"] == "Bebidas" for c in resultado)
+        assert {"id", "nombre", "descripcion"} <= set(resultado[0])
+
+    def test_get_proveedores(self, datos):
+        resultado = api_get("/api/v1/proveedores")
+
+        assert any(p["nombre"] == "Distribuciones SL" for p in resultado)
+
+    def test_get_productos(self, datos):
+        resultado = api_get("/api/v1/productos")
+
+        prod = next(p for p in resultado if p["id"] == datos["prod_id"])
+        assert prod["sku"] == "BEB-001"
+        assert prod["categoria"]["nombre"] == "Bebidas"
+        assert prod["proveedor"]["nombre"] == "Distribuciones SL"
+        assert prod["stock"] == 40
+
+    def test_get_inventario(self, datos):
+        resultado = api_get("/api/v1/inventario")
+
+        fila = next(i for i in resultado if i["producto_id"] == datos["prod_id"])
+        assert fila["stock"] == 40
+        assert fila["max_s"] == 100
+        assert fila["estado"] == "Saludable"
+        assert fila["ubicacion"] == "Almacén A"
+
+    def test_get_inventario_resumen(self, datos):
+        resumen = api_get("/api/v1/inventario/resumen")
+
+        assert resumen["total_productos"] >= 1
+        assert resumen["total_unidades"] >= 40
+
+    def test_get_tickets_vacio(self, datos):
+        resultado = api_get("/api/v1/tickets")
+
         assert resultado == []
-    
-    @patch('app.utils.api.requests.get')
-    def test_get_timeout(self, mock_get):
-        """GET con timeout debe retornar lista vacía."""
-        mock_get.side_effect = requests.Timeout("Timeout")
-        
-        resultado = api_get("/api/v1/productos", timeout=1, use_cache=False)
-        
-        assert resultado == []
-    
-    @patch('app.utils.api.requests.get')
-    def test_get_connection_error(self, mock_get):
-        """GET con error de conexión debe retornar lista vacía."""
-        mock_get.side_effect = requests.ConnectionError("No connection")
-        
-        resultado = api_get("/api/v1/productos", use_cache=False)
-        
-        assert resultado == []
-    
-    @patch('app.utils.api.requests.get')
-    def test_get_sin_cache(self, mock_get):
-        """GET sin caché debe hacer petición fresca."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [{"id": 1}]
-        mock_get.return_value = mock_response
-        
-        resultado = api_get("/api/v1/productos", use_cache=False)
-        
-        mock_get.assert_called_once()
-        assert resultado == [{"id": 1}]
+
+    def test_get_endpoint_desconocido(self, datos):
+        assert api_get("/api/v1/inexistente") == []
+
+    def test_get_salud(self, datos):
+        assert api_get("/api/v1/salud") == {"estado": "saludable"}
 
 
 class TestApiPost:
     """Tests para api_post."""
-    
-    @patch('app.utils.api.requests.post')
-    @patch('app.utils.api._invalidate_cache_for_endpoint')
-    def test_post_exitoso(self, mock_invalidate, mock_post):
-        """POST exitoso debe retornar datos e invalidar caché."""
-        mock_response = MagicMock()
-        mock_response.status_code = 201
-        mock_response.json.return_value = {"id": 1, "nombre": "Nuevo"}
-        mock_post.return_value = mock_response
-        
-        datos = {"nombre": "Nuevo Producto"}
-        resultado = api_post("/api/v1/productos", datos)
-        
-        assert resultado == {"id": 1, "nombre": "Nuevo"}
-        mock_invalidate.assert_called_once()
-    
-    @patch('app.utils.api.requests.post')
-    def test_post_error_400(self, mock_post):
-        """POST con error 400 debe retornar None."""
-        mock_response = MagicMock()
-        mock_response.status_code = 400
-        mock_response.text = "Bad Request"
-        mock_post.return_value = mock_response
-        
-        resultado = api_post("/api/v1/productos", {"invalido": True})
-        
-        assert resultado is None
-    
-    @patch('app.utils.api.requests.post')
-    def test_post_error_500(self, mock_post):
-        """POST con error 500 debe retornar None."""
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal Server Error"
-        mock_post.return_value = mock_response
-        
-        resultado = api_post("/api/v1/productos", {"datos": "test"})
-        
-        assert resultado is None
-    
-    @patch('app.utils.api.requests.post')
-    def test_post_timeout(self, mock_post):
-        """POST con timeout debe retornar None."""
-        mock_post.side_effect = requests.Timeout("Timeout")
-        
-        resultado = api_post("/api/v1/productos", {"datos": "test"}, timeout=1)
-        
-        assert resultado is None
-    
-    @patch('app.utils.api.requests.post')
-    def test_post_exception(self, mock_post):
-        """POST con excepción debe retornar None."""
-        mock_post.side_effect = Exception("Error inesperado")
-        
-        resultado = api_post("/api/v1/productos", {"datos": "test"})
-        
-        assert resultado is None
+
+    def test_post_producto_crea_inventario(self, datos):
+        resultado = api_post("/api/v1/productos", {
+            "sku": "BEB-002", "nombre": "Refresco 2L", "precio_venta": 2.10,
+            "unidad": "botella", "categoria_id": datos["cat_id"],
+            "cantidad_inicial": 7, "ubicacion": "Almacén B",
+        })
+
+        assert resultado["mensaje"] == "Producto creado"
+        filas = api_get("/api/v1/inventario")
+        nuevo = next(i for i in filas if i["producto"]["sku"] == "BEB-002")
+        assert nuevo["stock"] == 7
+        assert nuevo["ubicacion"] == "Almacén B"
+
+    def test_post_proveedor(self, datos):
+        resultado = api_post("/api/v1/proveedores", {
+            "nombre": "Proveedor Nuevo", "email": "nuevo@proveedor.es",
+        })
+
+        assert resultado["nombre"] == "Proveedor Nuevo"
+        assert any(p["nombre"] == "Proveedor Nuevo"
+                   for p in api_get("/api/v1/proveedores"))
+
+    def test_post_inventario_actualiza_cantidad(self, datos):
+        resultado = api_post(f"/api/v1/inventario/{datos['prod_id']}", {"cantidad": 12})
+
+        assert resultado["mensaje"] == "Inventario actualizado"
+        filas = api_get("/api/v1/inventario")
+        assert next(i for i in filas
+                    if i["producto_id"] == datos["prod_id"])["stock"] == 12
+
+    def test_post_inventario_inexistente(self, datos):
+        resultado = api_post("/api/v1/inventario/999999", {"cantidad": 5})
+
+        assert resultado == {"error": "Inventario no encontrado"}
+
+    def test_post_producto_sin_categoria_devuelve_error(self, datos):
+        resultado = api_post("/api/v1/productos", {"sku": "SIN-CAT", "nombre": "X"})
+
+        assert "error" in resultado
+
+    def test_post_endpoint_no_soportado(self, datos):
+        assert api_post("/api/v1/desconocido", {}) is None
 
 
 class TestApiPut:
     """Tests para api_put."""
-    
-    @patch('app.utils.api.requests.put')
-    @patch('app.utils.api._invalidate_cache_for_endpoint')
-    def test_put_exitoso(self, mock_invalidate, mock_put):
-        """PUT exitoso debe retornar datos e invalidar caché."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"id": 1, "actualizado": True}
-        mock_put.return_value = mock_response
-        
-        datos = {"nombre": "Actualizado"}
-        resultado = api_put("/api/v1/productos/1", datos)
-        
-        assert resultado == {"id": 1, "actualizado": True}
-        mock_invalidate.assert_called_once()
-    
-    @patch('app.utils.api.requests.put')
-    def test_put_error_404(self, mock_put):
-        """PUT con error 404 debe retornar error."""
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.text = "Not Found"
-        mock_put.return_value = mock_response
-        
-        resultado = api_put("/api/v1/productos/999", {"nombre": "Test"})
-        
+
+    def test_put_actualiza_producto(self, datos):
+        resultado = api_put(f"/api/v1/productos/{datos['prod_id']}",
+                            {"nombre": "Agua 1.5L Renovada"})
+
+        assert resultado["mensaje"] == "Producto actualizado"
+        prod = next(p for p in api_get("/api/v1/productos")
+                    if p["id"] == datos["prod_id"])
+        assert prod["nombre"] == "Agua 1.5L Renovada"
+
+    def test_put_ignora_id(self, datos):
+        api_put(f"/api/v1/productos/{datos['prod_id']}", {"id": 99999})
+
+        prod = next(p for p in api_get("/api/v1/productos")
+                    if p["id"] == datos["prod_id"])
+        assert prod["id"] == datos["prod_id"]
+
+    def test_put_producto_inexistente(self, datos):
+        resultado = api_put("/api/v1/productos/999999", {"nombre": "Test"})
+
+        assert resultado == {"error": "Producto no encontrado"}
+
+    def test_put_endpoint_no_soportado(self, datos):
+        resultado = api_put("/api/v1/categorias/1", {"nombre": "Test"})
+
+        assert resultado == {"error": "Endpoint no soportado"}
+
+    def test_put_id_no_numerico(self, datos):
+        resultado = api_put("/api/v1/productos/abc", {"nombre": "Test"})
+
         assert "error" in resultado
-    
-    @patch('app.utils.api.requests.put')
-    def test_put_error_con_mensaje(self, mock_put):
-        """PUT debe incluir mensaje de error en respuesta."""
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Error del servidor"
-        mock_put.return_value = mock_response
-        
-        resultado = api_put("/api/v1/productos/1", {"nombre": "Test"})
-        
-        assert "error" in resultado
-        assert "Error del servidor" in resultado["error"]
-    
-    @patch('app.utils.api.requests.put')
-    def test_put_timeout(self, mock_put):
-        """PUT con timeout debe retornar error."""
-        mock_put.side_effect = requests.Timeout("Timeout")
-        
-        resultado = api_put("/api/v1/productos/1", {"nombre": "Test"})
-        
-        assert "error" in resultado
-        assert "Timeout" in resultado["error"]
 
 
 class TestApiDelete:
     """Tests para api_delete."""
-    
-    @patch('app.utils.api.requests.delete')
-    @patch('app.utils.api._invalidate_cache_for_endpoint')
-    def test_delete_exitoso(self, mock_invalidate, mock_delete):
-        """DELETE exitoso debe retornar True e invalidar caché."""
-        mock_response = MagicMock()
-        mock_response.status_code = 204
-        mock_delete.return_value = mock_response
-        
-        resultado = api_delete("/api/v1/productos/1")
-        
-        assert resultado is True
-        mock_invalidate.assert_called_once()
-    
-    @patch('app.utils.api.requests.delete')
-    def test_delete_error_404(self, mock_delete):
-        """DELETE con error 404 debe retornar False."""
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_delete.return_value = mock_response
-        
-        resultado = api_delete("/api/v1/productos/999")
-        
-        assert resultado is False
-    
-    @patch('app.utils.api.requests.delete')
-    def test_delete_exception(self, mock_delete):
-        """DELETE con excepción debe retornar False."""
-        mock_delete.side_effect = Exception("Error de red")
-        
-        resultado = api_delete("/api/v1/productos/1")
-        
-        assert resultado is False
 
+    def test_delete_hace_baja_logica(self, datos):
+        assert api_delete(f"/api/v1/productos/{datos['prod_id']}") is True
 
-class TestCacheInvalidation:
-    """Tests para invalidación de caché."""
-    
-    @patch('app.utils.api._cached_api_get.clear')
-    def test_invalidate_cache_llama_clear(self, mock_clear):
-        """Invalidar caché debe llamar a clear."""
-        _invalidate_cache_for_endpoint("/api/v1/productos")
-        
-        mock_clear.assert_called_once()
+        assert all(p["id"] != datos["prod_id"] for p in api_get("/api/v1/productos"))
+
+    def test_delete_producto_inexistente(self, datos):
+        assert api_delete("/api/v1/productos/999999") is False
+
+    def test_delete_endpoint_no_soportado(self, datos):
+        assert api_delete("/api/v1/categorias/1") is False
+
+    def test_delete_id_no_numerico(self, datos):
+        assert api_delete("/api/v1/productos/abc") is False
 
 
 class TestVerificarApi:
     """Tests para verificar_api."""
-    
-    @patch('app.utils.api.requests.get')
-    def test_api_disponible(self, mock_get):
-        """API disponible debe retornar True."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_get.return_value = mock_response
-        
-        resultado = verificar_api(use_cache=False)
-        
-        assert resultado is True
-    
-    @patch('app.utils.api.requests.get')
-    def test_api_no_disponible(self, mock_get):
-        """API no disponible debe retornar False."""
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_get.return_value = mock_response
-        
-        resultado = verificar_api(use_cache=False)
-        
-        assert resultado is False
-    
-    @patch('app.utils.api.requests.get')
-    def test_api_exception(self, mock_get):
-        """API con excepción debe retornar False."""
-        mock_get.side_effect = requests.ConnectionError("No connection")
-        
-        resultado = verificar_api(use_cache=False)
-        
-        assert resultado is False
+
+    def test_bd_respondiendo(self):
+        assert verificar_api() is True
+
+    def test_falla_con_db_rota(self, monkeypatch):
+        def _boom(*_args, **_kwargs):
+            raise SQLAlchemyError("db no disponible")
+
+        monkeypatch.setattr(api_mod.db.session, "execute", _boom)
+        monkeypatch.setattr(api_mod.db.session, "rollback", lambda: None)
+
+        assert verificar_api() is False
 
 
 class TestEsperarApi:
     """Tests para esperar_api."""
-    
-    @patch('app.utils.api.requests.get')
-    def test_esperar_api_exitoso(self, mock_get):
-        """Esperar API debe retornar True cuando esté disponible."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_get.return_value = mock_response
-        
-        resultado = esperar_api(intentos=3)
-        
-        assert resultado is True
-    
-    @patch('app.utils.api.requests.get')
-    def test_esperar_api_falla(self, mock_get):
-        """Esperar API debe retornar False después de todos los intentos."""
-        mock_get.side_effect = requests.ConnectionError("No connection")
-        
-        resultado = esperar_api(intentos=2)
-        
-        assert resultado is False
-        assert mock_get.call_count == 2
-    
-    @patch('app.utils.api.requests.get')
-    def test_esperar_api_eventualmente_exitoso(self, mock_get):
-        """Esperar API debe retornar True si eventualmente responde."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        
-        # Falla 2 veces, luego éxito
-        mock_get.side_effect = [
-            requests.ConnectionError("Fail 1"),
-            requests.ConnectionError("Fail 2"),
-            mock_response
-        ]
-        
-        resultado = esperar_api(intentos=5)
-        
-        assert resultado is True
-        assert mock_get.call_count == 3
 
+    def test_exitoso_en_el_primer_intento(self):
+        assert esperar_api(intentos=3, espera_s=0) is True
 
-if __name__ == "__main__":
-    print("=" * 60)
-    print("TESTS DE API")
-    print("=" * 60)
-    print("\nEjecutar con: python -m pytest tests/test_api.py -v")
-    print("=" * 60)
+    def test_falla_despues_de_todos_los_intentos(self, monkeypatch):
+        intentos = []
+
+        def _falla():
+            intentos.append(1)
+            return False
+
+        monkeypatch.setattr("app.utils.api.verificar_api", _falla)
+
+        assert esperar_api(intentos=4, espera_s=0) is False
+        assert len(intentos) == 4
+
+    def test_exitoso_en_un_intento_posterior(self, monkeypatch):
+        respuestas = iter([False, False, True])
+        intentos = []
+
+        def _secuencia():
+            intentos.append(1)
+            return next(respuestas)
+
+        monkeypatch.setattr("app.utils.api.verificar_api", _secuencia)
+
+        assert esperar_api(intentos=5, espera_s=0) is True
+        assert len(intentos) == 3
+
+    def test_intentos_no_positivo_usa_un_intento(self, monkeypatch):
+        intentos = []
+
+        def _falla():
+            intentos.append(1)
+            return False
+
+        monkeypatch.setattr("app.utils.api.verificar_api", _falla)
+
+        assert esperar_api(intentos=0, espera_s=0) is False
+        assert len(intentos) == 1

@@ -4,7 +4,7 @@ Escanea codigo de barras o SKU y muestra ficha completa, stock, prediccion ML e 
 """
 import streamlit as st
 from datetime import datetime
-from app.utils.api import api_get, api_post
+from app.utils.api import api_get
 import requests
 from app.config import API_URL
 
@@ -82,7 +82,7 @@ def _buscar_producto(texto, tipo):
         elif tipo == "SKU":
             r = requests.get(f"{API_URL}/api/v1/productos/sku/{texto}", timeout=5)
         else:  # Nombre
-            productos = api_get("/api/v1/productos", use_cache=False)
+            productos = api_get("/api/v1/productos")
             for p in productos:
                 if texto.lower() in p.get("nombre", "").lower():
                     return p

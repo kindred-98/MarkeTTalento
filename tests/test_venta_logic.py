@@ -32,26 +32,26 @@ class TestValidarVenta:
     """Tests para validar_venta"""
 
     def test_venta_valida(self):
-        resultado = validar_venta(producto_id=1, cantidad=5, stock_actual=20)
+        resultado = validar_venta(cantidad=5, stock_actual=20)
         assert resultado["valido"] is True
         assert len(resultado["errores"]) == 0
 
     def test_cantidad_cero_invalida(self):
-        resultado = validar_venta(producto_id=1, cantidad=0, stock_actual=20)
+        resultado = validar_venta(cantidad=0, stock_actual=20)
         assert resultado["valido"] is False
         assert any("mayor a 0" in e for e in resultado["errores"])
 
     def test_cantidad_negativa_invalida(self):
-        resultado = validar_venta(producto_id=1, cantidad=-3, stock_actual=20)
+        resultado = validar_venta(cantidad=-3, stock_actual=20)
         assert resultado["valido"] is False
 
     def test_cantidad_excede_stock(self):
-        resultado = validar_venta(producto_id=1, cantidad=25, stock_actual=20)
+        resultado = validar_venta(cantidad=25, stock_actual=20)
         assert resultado["valido"] is False
         assert any("insuficiente" in e.lower() for e in resultado["errores"])
 
     def test_cantidad_igual_al_stock_es_valida(self):
-        resultado = validar_venta(producto_id=1, cantidad=20, stock_actual=20)
+        resultado = validar_venta(cantidad=20, stock_actual=20)
         assert resultado["valido"] is True
 
 

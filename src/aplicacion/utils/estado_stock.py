@@ -3,6 +3,21 @@ Utilidades para calcular el estado del stock de forma unificada.
 Usado por la API y los servicios para mantener consistencia.
 """
 
+STOCK_MAXIMO_POR_DEFECTO = 100
+UMBRAL_CRITICO = 25
+UMBRAL_BAJO = 50
+UMBRAL_MODERADO = 75
+
+ESTADOS_AGOTADO = ("AGOTADO", "CRITICO")
+
+
+def _porcentaje_stock(cantidad: int, stock_maximo: int) -> float:
+    """Porcentaje del stock máximo, con máximo por defecto si el indicado no es utilizable."""
+    maximo = stock_maximo or STOCK_MAXIMO_POR_DEFECTO
+    if maximo <= 0:
+        maximo = STOCK_MAXIMO_POR_DEFECTO
+    return (cantidad / maximo) * 100
+
 
 def calcular_estado_stock(cantidad: int, stock_minimo: int, stock_maximo: int) -> str:
     """
@@ -18,33 +33,20 @@ def calcular_estado_stock(cantidad: int, stock_minimo: int, stock_maximo: int) -
     if cantidad <= 0:
         return "AGOTADO"
 
-    maximo = stock_maximo or 100
-    if maximo <= 0:
-        maximo = 100
+    pct = _porcentaje_stock(cantidad, stock_maximo)
 
-    pct = (cantidad / maximo) * 100
-
-    if pct <= 25:
+    if pct <= UMBRAL_CRITICO:
         return "CRITICO"
-    elif pct <= 50:
+    if pct <= UMBRAL_BAJO:
         return "BAJO"
-    elif pct <= 75:
+    if pct <= UMBRAL_MODERADO:
         return "MODERADO"
-    else:
-        return "ADECUADO"
+    return "ADECUADO"
 
 
 def calcular_necesita_reposicion(cantidad: int, stock_minimo: int, stock_maximo: int) -> bool:
     """Determina si el producto necesita reposición."""
-    if cantidad <= 0:
-        return True
-
-    maximo = stock_maximo or 100
-    if maximo <= 0:
-        maximo = 100
-
-    pct = (cantidad / maximo) * 100
-    return pct <= 25
+    return calcular_estado_stock(cantidad, stock_minimo, stock_maximo) in ESTADOS_AGOTADO
 
 
 def clasificar_resumen_inventario(cantidad: int, stock_minimo: int, stock_maximo: int) -> str:
@@ -53,9 +55,9 @@ def clasificar_resumen_inventario(cantidad: int, stock_minimo: int, stock_maximo
     Retorna: critico, bajo, adecuado
     """
     estado = calcular_estado_stock(cantidad, stock_minimo, stock_maximo)
-    if estado in ("AGOTADO", "CRITICO"):
+
+    if estado in ESTADOS_AGOTADO:
         return "critico"
-    elif estado == "BAJO":
+    if estado == "BAJO":
         return "bajo"
-    else:
-        return "adecuado"
+    return "adecuado"

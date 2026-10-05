@@ -3,7 +3,7 @@ Servicio de Machine Learning para predicción de demanda e inteligencia de negoc
 Usa scikit-learn para regresión lineal y numpy para análisis estadístico.
 """
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import numpy as np
 from collections import defaultdict
 
@@ -395,8 +395,11 @@ class PrediccionServicioML:
     # =====================================================================
 
     def analisis_abc(self, dias: int = 90) -> List[ProductoABC]:
-        """Clasifica productos por método ABC (Pareto 80/20)."""
+        """Clasifica productos por método ABC (Pareto 80/20) en los últimos N días."""
         tickets = self.ticket_repo.obtener_todos_completados(limite=500)
+        fecha_limite = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=max(1, dias))
+        tickets = [t for t in tickets if t.fecha is not None and t.fecha >= fecha_limite]
+
         if not tickets:
             return []
 
@@ -513,7 +516,7 @@ class PrediccionServicioML:
     # MODELO 5: ESTACIONALIDAD
     # =====================================================================
 
-    def analisis_estacionalidad(self, categoria_id: Optional[int] = None) -> Dict:
+    def analisis_estacionalidad(self) -> Dict:
         """Analiza patrones estacionales comparando meses."""
         hoy = datetime.utcnow()
         mes_actual = hoy.month

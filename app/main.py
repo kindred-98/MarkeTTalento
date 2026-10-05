@@ -6,6 +6,8 @@ import streamlit as st
 import os
 import sys
 
+from sqlalchemy.exc import SQLAlchemyError
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 st.set_page_config(page_title="MarkeTTalento", page_icon="📦", layout="wide")
@@ -43,9 +45,8 @@ def verificar_db():
         if not os.path.exists(db_path):
             return False
         db = DatabaseAccess()
-        cats = db.get_categorias()
-        return len(cats) >= 0
-    except Exception:
+        return len(db.get_categorias()) > 0
+    except (OSError, SQLAlchemyError):
         return False
 
 
@@ -58,10 +59,9 @@ def main():
         st.info("Consulta la documentación para configurar la base de datos.")
         return
     
-    from app.auth_local import autenticar_usuario
-    
-    dev_mode = False
-    
+    # Bypass de login solo con DEV_MODE=1 explicito; nunca activo por defecto.
+    dev_mode = os.getenv("DEV_MODE", "").strip().lower() in ("1", "true", "yes")
+
     if not dev_mode and not st.session_state.get("auth_token"):
         login.render()
         return
