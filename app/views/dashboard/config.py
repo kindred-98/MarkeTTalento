@@ -20,12 +20,22 @@ HEIGHTS = {
     'heatmap': 280,
 }
 
+STOCK_AGOTADO = 'Agotado'
+STOCK_CRITICO = 'Crítico'
+STOCK_BAJO = 'Bajo'
+STOCK_SALUDABLE = 'Saludable'
+
 STOCK_STATUS = {
-    'Agotado': {'color': '#6b7280', 'threshold': 0},
-    'Crítico': {'color': '#ef4444', 'threshold': 0.2},
-    'Bajo': {'color': '#f59e0b', 'threshold': 0.5},
-    'Saludable': {'color': '#10b981', 'threshold': 1.0},
+    STOCK_AGOTADO: {'color': '#6b7280', 'threshold': 0},
+    STOCK_CRITICO: {'color': '#ef4444', 'threshold': 0.2},
+    STOCK_BAJO: {'color': '#f59e0b', 'threshold': 0.5},
+    STOCK_SALUDABLE: {'color': '#10b981', 'threshold': 1.0},
 }
+
+# Orden de mayor a menor gravedad, para graficas y alertas.
+STOCK_STATUS_ORDEN = (STOCK_SALUDABLE, STOCK_BAJO, STOCK_CRITICO, STOCK_AGOTADO)
+STOCK_STATUS_ALERTA = (STOCK_CRITICO, STOCK_AGOTADO)
+
 
 def get_stock_status(stock, max_s):
     if stock is None:
@@ -33,10 +43,10 @@ def get_stock_status(stock, max_s):
     if max_s is None:
         max_s = 100
     if stock <= 0:
-        return 'Agotado'
+        return STOCK_AGOTADO
     ratio = stock / max_s if max_s > 0 else 0
     if ratio <= 0.2:
-        return 'Crítico'
+        return STOCK_CRITICO
     elif ratio <= 0.5:
-        return 'Bajo'
-    return 'Saludable'
+        return STOCK_BAJO
+    return STOCK_SALUDABLE

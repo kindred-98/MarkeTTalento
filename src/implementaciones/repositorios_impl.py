@@ -8,7 +8,8 @@ from src.dominio.repositorios.repositorios import (
     TicketRepositorio as ITicketRepositorio,
 )
 from src.core.database.database import SessionLocal
-from datetime import datetime, timedelta
+from src.core.utils.fechas import utcnow_naive
+from datetime import timedelta
 
 
 class SQLAlchemyProductoRepositorio(IProductoRepositorio):
@@ -127,13 +128,13 @@ class SQLAlchemyInventarioRepositorio(IInventarioRepositorio):
                 inventario.cantidad = cantidad
                 if ubicacion:
                     inventario.ubicacion = ubicacion
-                inventario.fecha_ultima_actualizacion = datetime.utcnow()
+                inventario.fecha_ultima_actualizacion = utcnow_naive()
             else:
                 inventario = Inventario(
                     producto_id=producto_id,
                     cantidad=cantidad,
                     ubicacion=ubicacion,
-                    fecha_ultima_actualizacion=datetime.utcnow()
+                    fecha_ultima_actualizacion=utcnow_naive()
                 )
                 db.add(inventario)
             db.commit()
@@ -175,7 +176,7 @@ class SQLAlchemyVentaRepositorio(IVentaRepositorio):
                     inventario.cantidad -= venta.cantidad
                 else:
                     inventario.cantidad += venta.cantidad
-                inventario.fecha_ultima_actualizacion = datetime.utcnow()
+                inventario.fecha_ultima_actualizacion = utcnow_naive()
 
             db.commit()
             db.refresh(venta)
@@ -221,7 +222,7 @@ class SQLAlchemyTicketRepositorio(ITicketRepositorio):
     def obtener_por_producto(self, producto_id: int, dias: int = 90) -> List[TicketLinea]:
         db = SessionLocal()
         try:
-            fecha_limite = datetime.utcnow() - timedelta(days=dias)
+            fecha_limite = utcnow_naive() - timedelta(days=dias)
             return db.query(TicketLinea).options(
                 joinedload(TicketLinea.ticket),
                 joinedload(TicketLinea.producto)
@@ -260,7 +261,7 @@ class SQLAlchemyTicketRepositorio(ITicketRepositorio):
     def obtener_lineas_por_categoria(self, categoria_id: int, dias: int = 90) -> List[TicketLinea]:
         db = SessionLocal()
         try:
-            fecha_limite = datetime.utcnow() - timedelta(days=dias)
+            fecha_limite = utcnow_naive() - timedelta(days=dias)
             return db.query(TicketLinea).options(
                 joinedload(TicketLinea.ticket),
                 joinedload(TicketLinea.producto)

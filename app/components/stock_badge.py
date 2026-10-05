@@ -2,7 +2,7 @@
 Componente de Badge de Estado para Stock
 """
 import streamlit as st
-from app.logic.inventario import get_estado_info
+from app.logic.inventario import get_estado_info, get_color_estado
 
 
 def render_stock_badge(estado: str):
@@ -13,13 +13,7 @@ def render_stock_badge(estado: str):
         estado: Estado del stock (Agotado, Crítico, Bajo, Saludable)
     """
     info = get_estado_info(estado)
-    color_map = {
-        "Agotado": "#6b7280",
-        "Crítico": "#ef4444",
-        "Bajo": "#f59e0b",
-        "Saludable": "#10b981"
-    }
-    color = color_map.get(estado, "#10b981")
+    color = get_color_estado(estado)
     
     st.markdown(f"""
     <span style="padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;

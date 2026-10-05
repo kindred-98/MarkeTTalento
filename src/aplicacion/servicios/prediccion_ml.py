@@ -3,7 +3,7 @@ Servicio de Machine Learning para predicción de demanda e inteligencia de negoc
 Usa scikit-learn para regresión lineal y numpy para análisis estadístico.
 """
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import numpy as np
 from collections import defaultdict
 
@@ -15,6 +15,7 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 from src.dominio.repositorios.repositorios import TicketRepositorio, ProductoRepositorio, InventarioRepositorio
+from src.core.utils.fechas import hoy_utc, utcnow_naive
 from src.implementaciones.repositorios_impl import SQLAlchemyTicketRepositorio, SQLAlchemyProductoRepositorio, SQLAlchemyInventarioRepositorio
 
 
@@ -157,7 +158,7 @@ class PrediccionServicioML:
 
     def _rellenar_dias_faltantes(self, ventas_por_dia: Dict[str, float], dias: int = 90) -> List[Tuple[str, float]]:
         """Rellena días sin ventas con 0 para tener serie temporal completa."""
-        hoy = datetime.utcnow().date()
+        hoy = hoy_utc()
         resultado = []
         for i in range(dias, -1, -1):
             fecha = hoy - timedelta(days=i)
@@ -228,7 +229,7 @@ class PrediccionServicioML:
                 model.fit(X, y)
 
                 # Generar predicciones futuras
-                hoy = datetime.utcnow().date()
+                hoy = hoy_utc()
                 for i in range(1, dias_futuro + 1):
                     fecha_futura = hoy + timedelta(days=i)
                     x_futuro = np.array([[fecha_futura.weekday(), fecha_futura.day, fecha_futura.month]])
@@ -271,7 +272,7 @@ class PrediccionServicioML:
 
     def _pronostico_simple(self, consumo_promedio: float, tendencia: str, dias: int) -> List[Dict]:
         """Fallback de pronóstico sin sklearn."""
-        hoy = datetime.utcnow().date()
+        hoy = hoy_utc()
         factor = {"ALZA": 1.05, "BAJA": 0.95, "ESTABLE": 1.0}.get(tendencia, 1.0)
         resultado = []
         for i in range(1, dias + 1):
@@ -317,7 +318,7 @@ class PrediccionServicioML:
         historico = [{"fecha": f, "cantidad": c} for f, c in serie]
 
         # Pronóstico
-        hoy = datetime.utcnow().date()
+        hoy = hoy_utc()
         factor = {"ALZA": 1.05, "BAJA": 0.95, "ESTABLE": 1.0}.get(tendencia, 1.0)
         pronostico = []
         for i in range(1, dias_futuro + 1):
@@ -397,7 +398,7 @@ class PrediccionServicioML:
     def analisis_abc(self, dias: int = 90) -> List[ProductoABC]:
         """Clasifica productos por método ABC (Pareto 80/20) en los últimos N días."""
         tickets = self.ticket_repo.obtener_todos_completados(limite=500)
-        fecha_limite = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=max(1, dias))
+        fecha_limite = utcnow_naive() - timedelta(days=max(1, dias))
         tickets = [t for t in tickets if t.fecha is not None and t.fecha >= fecha_limite]
 
         if not tickets:
@@ -518,7 +519,7 @@ class PrediccionServicioML:
 
     def analisis_estacionalidad(self) -> Dict:
         """Analiza patrones estacionales comparando meses."""
-        hoy = datetime.utcnow()
+        hoy = utcnow_naive()
         mes_actual = hoy.month
         mes_anterior = (hoy.replace(day=1) - timedelta(days=1)).month
 

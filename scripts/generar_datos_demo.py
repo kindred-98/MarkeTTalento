@@ -4,8 +4,13 @@ Crea ~200 tickets de los últimos 6 meses con patrones estacionales realistas.
 """
 import sqlite3
 import random
-from datetime import datetime, timedelta
+from datetime import timedelta
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.core.utils.fechas import utcnow_naive
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "markettalento.db")
 CAJEROS = ["andres", "edu", "carlos", "alberto", "irrael", "YioQueSe", "fernando", "ernesto", "raul"]
@@ -163,7 +168,7 @@ def main():
     print(f"Productos activos encontrados: {len(productos)}")
 
     # Generar tickets para los últimos 180 días (~6 meses)
-    hoy = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
+    hoy = utcnow_naive().replace(hour=12, minute=0, second=0, microsecond=0)
     total_generados = 0
 
     for i in range(180, -1, -1):

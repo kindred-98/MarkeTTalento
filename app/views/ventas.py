@@ -53,7 +53,7 @@ def _get_ventas_data():
     try:
         productos = db.get_productos()
         inventarios = db.get_inventario()
-        tickets = db.get_tickets(limite=500)
+        tickets = db.get_tickets(limite=LIMITE_TICKETS_DASHBOARD)
         
         productos = [_obj_to_dict(p) for p in productos]
         inventarios = [_obj_to_dict(i) for i in inventarios]
@@ -79,35 +79,56 @@ METODOS_PAGO = ["efectivo", "tarjeta", "transferencia"]
 PRODUCTOS_POR_PAGINA = 12
 
 
+DIRECTORIO_IMAGENES = 'docs/img_productos'
+EXTENSIONES_IMAGEN = ['.jpg', '.jpeg', '.png']
+THUMBNAIL_TAMANIO = (100, 100)
+
+
+def _candidatos_imagen_directo(imagen_url):
+    """Devuelve la lista de rutas candidatas si la imagen_url existe en disco."""
+    return [imagen_url] if imagen_url and os.path.exists(imagen_url) else []
+
+
+def _candidatos_imagen_documentos(nombre_producto):
+    """Busca en docs/img_productos/ ficheros cuyo nombre coincide con el producto."""
+    if not os.path.exists(DIRECTORIO_IMAGENES):
+        return []
+
+    candidatos = []
+    for fname in os.listdir(DIRECTORIO_IMAGENES):
+        lower = fname.lower()
+        if not any(lower.endswith(ext) for ext in EXTENSIONES_IMAGEN):
+            continue
+        sin_extension = lower.rsplit('.', 1)[0]
+        if nombre_producto in lower or sin_extension in nombre_producto:
+            candidatos.append(os.path.join(DIRECTORIO_IMAGENES, fname))
+    return candidatos
+
+
+def _candidatos_imagen(producto):
+    """Devuelve todas las rutas candidatas de imagen para el producto."""
+    nombre = producto.get('nombre', '').lower().replace(' ', '_')
+    return _candidatos_imagen_directo(producto.get('imagen_url')) + _candidatos_imagen_documentos(nombre)
+
+
+def _imagen_como_data_uri(path):
+    """Redimensiona la imagen y la devuelve como data URI, o None si falla."""
+    if not PIL_AVAILABLE:
+        return path
+
+    with Image.open(path) as img:
+        img.thumbnail(THUMBNAIL_TAMANIO, Image.Resampling.LANCZOS)
+        buffer = io.BytesIO()
+        fmt = 'PNG' if path.lower().endswith('.png') else 'JPEG'
+        img.save(buffer, format=fmt)
+        return f"data:image/{fmt.lower()};base64," + base64.b64encode(buffer.getvalue()).decode()
+
+
 def _buscar_imagen_producto(producto: dict) -> Optional[str]:
     """Intenta encontrar una imagen para el producto (redimensionada a thumbnail)."""
-    imagen_url = producto.get('imagen_url')
-    candidatos = []
-    if imagen_url and os.path.exists(imagen_url):
-        candidatos.append(imagen_url)
-
-    # Buscar en docs/img_productos/
-    nombre = producto.get('nombre', '').lower().replace(' ', '_')
-    docs_dir = 'docs/img_productos'
-    if os.path.exists(docs_dir):
-        for ext in ['.jpg', '.jpeg', '.png']:
-            for fname in os.listdir(docs_dir):
-                if fname.lower().endswith(ext):
-                    if nombre in fname.lower() or fname.lower().replace(ext, '') in nombre:
-                        candidatos.append(os.path.join(docs_dir, fname))
-
-    for path in candidatos:
+    for path in _candidatos_imagen(producto):
         try:
-            if PIL_AVAILABLE:
-                with Image.open(path) as img:
-                    img.thumbnail((100, 100), Image.Resampling.LANCZOS)
-                    buffer = io.BytesIO()
-                    fmt = 'PNG' if path.lower().endswith('.png') else 'JPEG'
-                    img.save(buffer, format=fmt)
-                    return f"data:image/{fmt.lower()};base64," + base64.b64encode(buffer.getvalue()).decode()
-            else:
-                # Fallback: devolver path directo
-                return path
+            return _imagen_como_data_uri(path)
         except Exception:
             continue
     return None
@@ -169,16 +190,194 @@ def render_tpv():
         render_panel_productos()
 
 
+DIV_CLOSE = "</div>"
+
+COLS_LINEA_CARRITO = [1, 4, 2, 2, 1, 1, 1]
+DESCUENTOS_RAPIDOS = (5, 10, 20)
+
+
+def _linea_seleccionada(idx):
+    """Indica si la línea indicada es la seleccionada en el TPV."""
+    return st.session_state.get('tpv_linea_seleccionada') == idx
+
+
+def _estilos_linea_seleccionada(seleccionada):
+    """Devuelve (color_fondo, color_borde) de la línea del carrito."""
+    if seleccionada:
+        return "rgba(59, 130, 246,0.1)", "#3b82f6"
+    return "transparent", "rgba(255,255,255,0.05)"
+
+
+def _seleccionar_linea(idx):
+    """Marca la línea como seleccionada y limpia el teclado."""
+    st.session_state['tpv_linea_seleccionada'] = idx
+    st.session_state['tpv_teclado_buffer'] = ''
+    st.rerun()
+
+
+def _render_celda_seleccion(idx, col):
+    """Renderiza el botón que selecciona la línea."""
+    with col:
+        marcador = '●' if _linea_seleccionada(idx) else '○'
+        if st.button(marcador, key=f"sel_linea_{idx}", help="Seleccionar línea"):
+            _seleccionar_linea(idx)
+
+
+def _render_celda_datos(linea, cols):
+    """Renderiza descripción, precio unitario y subtotal de la línea."""
+    with cols[1]:
+        st.markdown(f"<div style='font-size: 0.9rem; color: #f8fafc;'>{linea['cantidad']} x {linea['nombre']}</div>", unsafe_allow_html=True)
+    with cols[2]:
+        st.markdown(f"<div style='font-size: 0.85rem; color: #94a3b8; text-align: right;'>€{linea['precio_unitario']:.2f}</div>", unsafe_allow_html=True)
+    with cols[3]:
+        st.markdown(f"<div style='font-size: 0.9rem; color: #10b981; text-align: right; font-weight: 600;'>€{linea['subtotal']:.2f}</div>", unsafe_allow_html=True)
+
+
+def _ajustar_linea(idx, delta):
+    """Aplica un delta de cantidad a la línea y recarga."""
+    actualizar_cantidad_linea(idx, delta)
+    st.rerun()
+
+
+def _render_controles_cantidad(linea, idx, cols):
+    """Renderiza los botones de +/- y eliminar de la línea."""
+    with cols[4]:
+        if st.button("➖", key=f"btn_menos_{idx}"):
+            _ajustar_linea(idx, linea['cantidad'] - 1)
+    with cols[5]:
+        if st.button("➕", key=f"btn_mas_{idx}"):
+            _ajustar_linea(idx, linea['cantidad'] + 1)
+    with cols[6]:
+        if st.button("🗑️", key=f"btn_del_{idx}"):
+            _ajustar_linea(idx, 0)
+
+
+def _render_linea_carrito(linea, idx):
+    """Renderiza una línea completa del carrito."""
+    cols = st.columns(COLS_LINEA_CARRITO)
+
+    _render_celda_seleccion(idx, cols[0])
+    _render_celda_datos(linea, cols)
+    _render_controles_cantidad(linea, idx, cols)
+
+    bg_color, border_color = _estilos_linea_seleccionada(_linea_seleccionada(idx))
+    st.markdown(f"<div style='background: {bg_color}; border: 1px solid {border_color}; border-radius: 6px; margin: 2px -5px; padding: 4px 8px;'></div>", unsafe_allow_html=True)
+
+
+def _render_lineas_carrito(carrito):
+    """Renderiza el bloque con scroll del carrito, o el mensaje de ticket vacío."""
+    st.markdown("<div class='tpv-panel-scroll'>", unsafe_allow_html=True)
+
+    if not carrito:
+        st.markdown("<p style='color: #64748b; text-align: center; padding: 30px 0;'>🛒 Ticket vacío<br>Haz clic en un producto para agregarlo</p>", unsafe_allow_html=True)
+    else:
+        for idx, linea in enumerate(carrito):
+            _render_linea_carrito(linea, idx)
+
+    st.markdown(DIV_CLOSE, unsafe_allow_html=True)
+
+
+def _render_totales():
+    """Muestra el total del carrito y el desglose de descuento."""
+    total = calcular_total_carrito()
+    descuento_pct = st.session_state.get('tpv_descuento', 0)
+
+    if descuento_pct > 0:
+        total_con_desc = round(total * (1 - descuento_pct / 100), 2)
+        st.markdown(f"<p style='text-align: center; color: #f59e0b; font-size: 0.85rem;'>Descuento: {descuento_pct}% | Original: €{total:.2f}</p>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: #3b82f6; margin: 5px 0;'>Total: €{total_con_desc:.2f}</h2>", unsafe_allow_html=True)
+        return
+
+    st.markdown(f"<h2 style='text-align: center; color: #3b82f6; margin: 10px 0;'>Total: €{total:.2f}</h2>", unsafe_allow_html=True)
+
+
+def _alternar_descuento(pct):
+    """Activa el descuento o lo desactiva si ya estaba activo."""
+    st.session_state['tpv_descuento'] = 0 if st.session_state.get('tpv_descuento') == pct else pct
+    st.rerun()
+
+
+def _render_descuentos_rapidos():
+    """Muestra los botones de descuento rápido."""
+    for col, pct in zip(st.columns(len(DESCUENTOS_RAPIDOS)), DESCUENTOS_RAPIDOS):
+        with col:
+            if st.button(f"DTO {pct}%", key=f"dto_{pct}", width="stretch"):
+                _alternar_descuento(pct)
+
+
+def _css_boton_accion(pos, color_inicio, color_fin, color_texto, peso, sombra=None):
+    """Genera el CSS del gradiente de un botón de acción del TPV."""
+    regla_sombra = f"\n    box-shadow: 0 4px 12px {sombra} !important;" if sombra else ""
+    return f"""
+<style>
+div[data-testid="stHorizontalBlock"] div:nth-child({pos}) button[data-testid="baseButton-primary"],
+div[data-testid="stHorizontalBlock"] div:nth-child({pos}) button[data-testid="baseButton-secondary"] {{
+    background: linear-gradient(135deg, {color_inicio}, {color_fin}) !important;
+    color: {color_texto} !important; border: none !important;
+    border-radius: 10px !important; font-weight: {peso} !important;{regla_sombra}
+}}
+</style>
+"""
+
+
+def _abrir_cobro(metodo):
+    """Selecciona el método de pago y abre el modal de cobro."""
+    st.session_state['tpv_metodo_pago'] = metodo
+    st.session_state['tpv_mostrar_cobro'] = True
+    st.rerun()
+
+
+def _abrir_cobro_efectivo():
+    _abrir_cobro('efectivo')
+
+
+def _abrir_cobro_tarjeta():
+    _abrir_cobro('tarjeta')
+
+
+def _limpiar_ticket():
+    """Limpia el carrito y el descuento aplicado."""
+    st.session_state['tpv_descuento'] = 0
+    limpiar_carrito()
+    st.rerun()
+
+
+# (etiqueta, clave, tipo, css, requiere_carrito_para_habilitarse, accion)
+ACCIONES_TPV = (
+    (
+        "💶 Efectivo", "btn_efectivo_grad", "primary", True, _abrir_cobro_efectivo,
+        _css_boton_accion(1, "#10b981", "#059669", "white", 700, "rgba(16,185,129,0.3)"),
+    ),
+    (
+        "💳 Tarjeta", "btn_tarjeta_grad", "primary", True, _abrir_cobro_tarjeta,
+        _css_boton_accion(2, "#3b82f6", "#1d4ed8", "#0f172a", 700, "rgba(59,130,246,0.3)"),
+    ),
+    (
+        "🧹 Limpiar", "btn_limpiar_grad", "secondary", False, _limpiar_ticket,
+        _css_boton_accion(3, "#64748b", "#475569", "white", 600),
+    ),
+)
+
+
+def _render_botones_accion(carrito):
+    """Renderiza los botones de cobro y limpieza del TPV."""
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+    for col, (etiqueta, clave, tipo, requiere_carrito, accion, css) in zip(st.columns(len(ACCIONES_TPV)), ACCIONES_TPV):
+        with col:
+            st.markdown(css, unsafe_allow_html=True)
+            if st.button(etiqueta, width="stretch", type=tipo, disabled=requiere_carrito and not carrito, key=clave):
+                accion()
+
+
 def render_panel_ticket():
     """Panel izquierdo: Ticket actual con scroll, barcode, descuento y alertas."""
     st.markdown("<div style='background: rgba(30,41,59,0.6); border-radius: 10px; padding: 15px; border: 1px solid rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
 
-    # Header
     cajero = st.selectbox("🧑‍💼 Cajero", CAJEROS, key="tpv_cajero_select")
     st.session_state['tpv_cajero'] = cajero
     st.markdown(f"<p style='color: #64748b; font-size: 0.8rem;'>📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>", unsafe_allow_html=True)
 
-    # Input código de barras
     barcode = st.text_input("🔍 Código de barras / Nombre", placeholder="Escanea o escribe...", key="tpv_barcode", label_visibility="collapsed")
     if barcode:
         _procesar_barcode(barcode)
@@ -187,128 +386,26 @@ def render_panel_ticket():
 
     carrito = get_tpv_carrito()
 
-    # Scroll de líneas
-    st.markdown("<div class='tpv-panel-scroll'>", unsafe_allow_html=True)
-    if not carrito:
-        st.markdown("<p style='color: #64748b; text-align: center; padding: 30px 0;'>🛒 Ticket vacío<br>Haz clic en un producto para agregarlo</p>", unsafe_allow_html=True)
-    else:
-        for idx, linea in enumerate(carrito):
-            seleccionada = st.session_state.get('tpv_linea_seleccionada') == idx
-            bg_color = "rgba(59, 130, 246,0.1)" if seleccionada else "transparent"
-            border_color = "#3b82f6" if seleccionada else "rgba(255,255,255,0.05)"
-
-            cols = st.columns([1, 4, 2, 2, 1, 1, 1])
-            with cols[0]:
-                if st.button(f"{'●' if seleccionada else '○'}", key=f"sel_linea_{idx}", help="Seleccionar línea"):
-                    st.session_state['tpv_linea_seleccionada'] = idx
-                    st.session_state['tpv_teclado_buffer'] = ''
-                    st.rerun()
-            with cols[1]:
-                st.markdown(f"<div style='font-size: 0.9rem; color: #f8fafc;'>{linea['cantidad']} x {linea['nombre']}</div>", unsafe_allow_html=True)
-            with cols[2]:
-                st.markdown(f"<div style='font-size: 0.85rem; color: #94a3b8; text-align: right;'>€{linea['precio_unitario']:.2f}</div>", unsafe_allow_html=True)
-            with cols[3]:
-                st.markdown(f"<div style='font-size: 0.9rem; color: #10b981; text-align: right; font-weight: 600;'>€{linea['subtotal']:.2f}</div>", unsafe_allow_html=True)
-            with cols[4]:
-                if st.button("➖", key=f"btn_menos_{idx}"):
-                    actualizar_cantidad_linea(idx, linea['cantidad'] - 1)
-                    st.rerun()
-            with cols[5]:
-                if st.button("➕", key=f"btn_mas_{idx}"):
-                    actualizar_cantidad_linea(idx, linea['cantidad'] + 1)
-                    st.rerun()
-            with cols[6]:
-                if st.button("🗑️", key=f"btn_del_{idx}"):
-                    actualizar_cantidad_linea(idx, 0)
-                    st.rerun()
-
-            st.markdown(f"<div style='background: {bg_color}; border: 1px solid {border_color}; border-radius: 6px; margin: 2px -5px; padding: 4px 8px;'></div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    _render_lineas_carrito(carrito)
 
     st.markdown("---")
 
-    # Teclado numérico funcional
     if carrito:
         render_teclado_numerico()
 
     st.markdown("---")
 
-    # Total y descuento
-    total = calcular_total_carrito()
-    descuento_pct = st.session_state.get('tpv_descuento', 0)
-    total_con_desc = round(total * (1 - descuento_pct / 100), 2)
+    _render_totales()
 
-    if descuento_pct > 0:
-        st.markdown(f"<p style='text-align: center; color: #f59e0b; font-size: 0.85rem;'>Descuento: {descuento_pct}% | Original: €{total:.2f}</p>", unsafe_allow_html=True)
-        st.markdown(f"<h2 style='text-align: center; color: #3b82f6; margin: 5px 0;'>Total: €{total_con_desc:.2f}</h2>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<h2 style='text-align: center; color: #3b82f6; margin: 10px 0;'>Total: €{total:.2f}</h2>", unsafe_allow_html=True)
-
-    # Botón descuento rápido
     if carrito:
-        col_dto1, col_dto2, col_dto3 = st.columns(3)
-        for col, pct in zip([col_dto1, col_dto2, col_dto3], [5, 10, 20]):
-            with col:
-                if st.button(f"DTO {pct}%", key=f"dto_{pct}", width="stretch"):
-                    st.session_state['tpv_descuento'] = pct if st.session_state.get('tpv_descuento') != pct else 0
-                    st.rerun()
+        _render_descuentos_rapidos()
 
-    # Botones de acción con gradientes (usando markdown HTML porque Streamlit no permite clases CSS en buttons)
-    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("""
-        <style>
-        div[data-testid="stHorizontalBlock"] div:nth-child(1) button[data-testid="baseButton-primary"],
-        div[data-testid="stHorizontalBlock"] div:nth-child(1) button[data-testid="baseButton-secondary"] {
-            background: linear-gradient(135deg, #10b981, #059669) !important;
-            color: white !important; border: none !important;
-            border-radius: 10px !important; font-weight: 700 !important;
-            box-shadow: 0 4px 12px rgba(16,185,129,0.3) !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        if st.button("💶 Efectivo", width="stretch", type="primary", disabled=not carrito, key="btn_efectivo_grad"):
-            st.session_state['tpv_metodo_pago'] = 'efectivo'
-            st.session_state['tpv_mostrar_cobro'] = True
-            st.rerun()
-    with col2:
-        st.markdown("""
-        <style>
-        div[data-testid="stHorizontalBlock"] div:nth-child(2) button[data-testid="baseButton-primary"],
-        div[data-testid="stHorizontalBlock"] div:nth-child(2) button[data-testid="baseButton-secondary"] {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
-            color: #0f172a !important; border: none !important;
-            border-radius: 10px !important; font-weight: 700 !important;
-            box-shadow: 0 4px 12px rgba(59, 130, 246,0.3) !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        if st.button("💳 Tarjeta", width="stretch", type="primary", disabled=not carrito, key="btn_tarjeta_grad"):
-            st.session_state['tpv_metodo_pago'] = 'tarjeta'
-            st.session_state['tpv_mostrar_cobro'] = True
-            st.rerun()
-    with col3:
-        st.markdown("""
-        <style>
-        div[data-testid="stHorizontalBlock"] div:nth-child(3) button[data-testid="baseButton-primary"],
-        div[data-testid="stHorizontalBlock"] div:nth-child(3) button[data-testid="baseButton-secondary"] {
-            background: linear-gradient(135deg, #64748b, #475569) !important;
-            color: white !important; border: none !important;
-            border-radius: 10px !important; font-weight: 600 !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        if st.button("🧹 Limpiar", width="stretch", type="secondary", key="btn_limpiar_grad"):
-            st.session_state['tpv_descuento'] = 0
-            limpiar_carrito()
-            st.rerun()
+    _render_botones_accion(carrito)
 
-    # Alerta de stock bajo
     if carrito:
         _render_alerta_stock_bajo(carrito)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(DIV_CLOSE, unsafe_allow_html=True)
 
 
 def _procesar_barcode(texto: str):
@@ -342,45 +439,53 @@ def _render_alerta_stock_bajo(carrito: list):
         st.markdown(f"<div class='alerta-stock-bajo'>{'<br>'.join(alertas)}</div>", unsafe_allow_html=True)
 
 
-def render_teclado_numerico():
-    """Teclado numérico funcional para cambiar cantidades."""
-    linea_sel = st.session_state.get('tpv_linea_seleccionada')
-    if linea_sel is None:
-        st.markdown("<p style='color: #64748b; font-size: 0.8rem; text-align: center;'>👆 Selecciona una línea y usa el teclado para cambiar la cantidad</p>", unsafe_allow_html=True)
+TECLADO_NUMERICO = (
+    ['7', '8', '9'],
+    ['4', '5', '6'],
+    ['1', '2', '3'],
+    ['0', '.', 'CLR'],
+)
+TECLA_LIMPIAR = 'CLR'
+BILLETES_RAPIDOS = (5, 10, 20, 50)
+
+
+def _pulsar_tecla(tecla):
+    """Añade la tecla al buffer o lo limpia si es CLR."""
+    if tecla == TECLA_LIMPIAR:
+        st.session_state['tpv_teclado_buffer'] = ''
+    else:
+        st.session_state['tpv_teclado_buffer'] += tecla
+    st.rerun()
+
+
+def _render_teclado_numerico():
+    """Renderiza la rejilla de teclas numéricas."""
+    for fila in TECLADO_NUMERICO:
+        cols = st.columns(len(fila))
+        for col, tecla in zip(cols, fila):
+            with col:
+                if st.button(tecla, key=f"tecla_{tecla}", width="stretch"):
+                    _pulsar_tecla(tecla)
+
+
+def _aplicar_cantidad_teclado(linea_sel, buffer):
+    """Muestra el botón de aplicar cantidad escrita con el teclado."""
+    if not buffer:
         return
 
-    buffer = st.session_state.get('tpv_teclado_buffer', '')
-    st.markdown(f"<p style='color: #3b82f6; font-size: 1.2rem; text-align: center; margin: 5px 0;'>Cantidad: {buffer if buffer else '...'}</p>", unsafe_allow_html=True)
+    try:
+        cantidad = int(float(buffer))
+    except ValueError:
+        st.error("Cantidad inválida")
+        return
 
-    teclas = [
-        ['7', '8', '9'],
-        ['4', '5', '6'],
-        ['1', '2', '3'],
-        ['0', '.', 'CLR']
-    ]
+    if st.button("✅ Aplicar Cantidad", width="stretch", type="primary"):
+        actualizar_cantidad_linea(linea_sel, cantidad)
+        st.rerun()
 
-    for fila in teclas:
-        cols = st.columns(3)
-        for i, tecla in enumerate(fila):
-            with cols[i]:
-                if st.button(tecla, key=f"tecla_{tecla}", width="stretch"):
-                    if tecla == 'CLR':
-                        st.session_state['tpv_teclado_buffer'] = ''
-                    else:
-                        st.session_state['tpv_teclado_buffer'] += tecla
-                    st.rerun()
 
-    # Botón aplicar (teclado)
-    if buffer:
-        try:
-            cantidad = int(float(buffer))
-            if st.button("✅ Aplicar Cantidad", width="stretch", type="primary"):
-                actualizar_cantidad_linea(linea_sel, cantidad)
-                st.rerun()
-        except ValueError:
-            st.error("Cantidad inválida")
-
-    # Alternativa rápida: input directo
+def _render_aplicar_rapido(linea_sel):
+    """Muestra el input numérico alternative al teclado."""
     st.markdown("<p style='color: #64748b; font-size: 0.75rem; text-align: center; margin-top: 10px;'>— o escribe directamente —</p>", unsafe_allow_html=True)
     cantidad_rapida = st.number_input(
         "Cantidad",
@@ -395,142 +500,204 @@ def render_teclado_numerico():
         st.rerun()
 
 
+def render_teclado_numerico():
+    """Teclado numérico funcional para cambiar cantidades."""
+    linea_sel = st.session_state.get('tpv_linea_seleccionada')
+    if linea_sel is None:
+        st.markdown("<p style='color: #64748b; font-size: 0.8rem; text-align: center;'>👆 Selecciona una línea y usa el teclado para cambiar la cantidad</p>", unsafe_allow_html=True)
+        return
+
+    buffer = st.session_state.get('tpv_teclado_buffer', '')
+    st.markdown(f"<p style='color: #3b82f6; font-size: 1.2rem; text-align: center; margin: 5px 0;'>Cantidad: {buffer if buffer else '...'}</p>", unsafe_allow_html=True)
+
+    _render_teclado_numerico()
+    _aplicar_cantidad_teclado(linea_sel, buffer)
+    _render_aplicar_rapido(linea_sel)
+
+
+CSS_MODAL_COBRO = """
+<style>
+@keyframes modalFadeIn {{ from {{ opacity:0; transform:scale(0.92); }} to {{ opacity:1; transform:scale(1); }} }}
+@keyframes iconoPop {{ 0% {{ transform:scale(0); }} 50% {{ transform:scale(1.2); }} 100% {{ transform:scale(1); }} }}
+.modal-caja {{
+    animation: modalFadeIn 0.35s ease forwards;
+    background: linear-gradient(145deg, rgba(30,41,59,0.98), rgba(15,23,42,1));
+    border: 1px solid rgba(59, 130, 246,0.25);
+    border-radius: 18px;
+    padding: 25px 20px;
+    box-shadow: 0 0 40px rgba(59, 130, 246,0.12);
+    text-align: center;
+    margin: 15px 0;
+}}
+.modal-icon {{ font-size: 3rem; display:inline-block; animation: iconoPop 0.5s ease 0.1s both; margin-bottom: 5px; }}
+.modal-titulo {{ color: #3b82f6; font-size: 1.6rem; font-weight: 700; }}
+.modal-total {{ color: #3b82f6; font-size: 1.9rem; font-weight: 800; margin: 8px 0; }}
+.modal-sub {{ color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }}
+.modal-cambio {{ color: #10b981; font-size: 1.15rem; font-weight: 700; margin: 6px 0 12px 0; }}
+</style>
+<div class="modal-caja">
+    <div class="modal-icon">{icono}</div>
+    <div class="modal-titulo">Cobrar</div>
+    <div class="modal-total">Total: €{total:.2f}</div>
+    <div class="modal-sub">Método: {metodo_mayusculas}</div>
+</div>
+"""
+
+AUDIO_COBRO = """
+<audio id="sonido-cobro" preload="auto">
+  <source src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" type="audio/mpeg">
+</audio>
+<script>
+  setTimeout(() => {
+    const input = document.querySelector('input[data-testid="stNumberInput"]');
+    if (input) input.focus();
+  }, 400);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      const checkbox = document.querySelector('input[type="checkbox"]');
+      const btn = document.querySelector('button[kind="primary"]');
+      if (checkbox && checkbox.checked && btn && !btn.disabled) { btn.click(); }
+    }
+  });
+</script>
+"""
+
+
+def _pulsar_billete(valor):
+    """Selecciona un billete como importe de entrega."""
+    st.session_state['tpv_billete_pulsado'] = float(valor)
+    st.rerun()
+
+
+def _importe_entrega_por_defecto(total):
+    """Devuelve la entrega sugerida: billete pulsado si cubre el total, si no total*1.1."""
+    billete_pulsado = st.session_state.pop('tpv_billete_pulsado', None)
+    if billete_pulsado and billete_pulsado >= total:
+        return float(billete_pulsado)
+    return float(total * 1.1)
+
+
+def _seccion_entrega_efectivo(total):
+    """Renderiza los billetes rápidos y el input de entrega. Devuelve (entrega, cambio)."""
+    st.markdown("<p style='color:#64748b; font-size:0.75rem; margin:0 0 6px 0; text-align:center;'>Rápido:</p>", unsafe_allow_html=True)
+
+    for col, valor in zip(st.columns(len(BILLETES_RAPIDOS)), BILLETES_RAPIDOS):
+        with col:
+            if st.button(f"€{valor}", key=f"billete_{valor}", width="stretch"):
+                _pulsar_billete(valor)
+
+    entrega = st.number_input(
+        "💶 Entrega (€)", min_value=float(total), value=_importe_entrega_por_defecto(total),
+        step=0.5, format="%.2f", key="modal_entrega_v2"
+    )
+    cambio = round(entrega - total, 2)
+    st.markdown(f"<p class='modal-cambio' style='text-align:center;'>Cambio: €{cambio:.2f}</p>", unsafe_allow_html=True)
+
+    return entrega, cambio
+
+
+def _lineas_ticket_desde_carrito():
+    """Construye las líneas del ticket a partir del carrito actual."""
+    return [
+        {
+            "producto_id": linea['producto_id'],
+            "cantidad": linea['cantidad'],
+            "precio_unitario": linea['precio_unitario'],
+            "subtotal": linea['cantidad'] * linea['precio_unitario'],
+        }
+        for linea in get_tpv_carrito()
+    ]
+
+
+def _datos_ticket(metodo, entrega, cambio):
+    """Construye el payload del ticket."""
+    es_efectivo = metodo == 'efectivo'
+    return {
+        "cajero": st.session_state['tpv_cajero'],
+        "metodo_pago": metodo,
+        "entrega_efectivo": entrega if es_efectivo else None,
+        "cambio": cambio if es_efectivo else None,
+        "total": calcular_total_carrito(),
+        "lineas": _lineas_ticket_desde_carrito(),
+    }
+
+
+def _cerrar_modal_cobro():
+    """Cierra el modal de cobro."""
+    st.session_state['tpv_mostrar_cobro'] = False
+    st.rerun()
+
+
+def _registrar_ticket(metodo, entrega, cambio):
+    """Registra la venta y prepara el ticket post-cobro."""
+    db = DatabaseAccess()
+    try:
+        result = db.crear_ticket(_datos_ticket(metodo, entrega, cambio))
+        if not result:
+            st.error("❌ Error al registrar el ticket")
+            return
+
+        result_dict = _obj_to_dict(result)
+        result_dict['lineas'] = [_obj_to_dict(l) for l in result.lineas]
+        st.session_state['tpv_mostrar_cobro'] = False
+        st.session_state['tpv_mostrar_ticket'] = True
+        st.session_state['tpv_ticket_reciente'] = result_dict
+        st.session_state['tpv_ticket_time'] = time.time()
+        limpiar_carrito()
+        st.rerun()
+    finally:
+        db.close()
+
+
+def _finalizar_venta(metodo, entrega, cambio):
+    """Ejecuta el cobro: sonido, registro y recarga."""
+    components.html("""
+    <script>document.getElementById('sonido-cobro').play();</script>
+    """, height=0)
+    with st.spinner("Registrando venta..."):
+        _registrar_ticket(metodo, entrega, cambio)
+
+
 def render_cobro_modal():
     """Modal centrado de cobro a pantalla completa."""
     total = calcular_total_carrito()
     metodo = st.session_state.get('tpv_metodo_pago', 'efectivo')
-    icono = "💵" if metodo == 'efectivo' else "💳"
 
-    # ========== SONIDO AL COBRAR (precarga) ==========
-    components.html("""
-    <audio id="sonido-cobro" preload="auto">
-      <source src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" type="audio/mpeg">
-    </audio>
-    <script>
-      setTimeout(() => {
-        const input = document.querySelector('input[data-testid="stNumberInput"]');
-        if (input) input.focus();
-      }, 400);
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          const checkbox = document.querySelector('input[type="checkbox"]');
-          const btn = document.querySelector('button[kind="primary"]');
-          if (checkbox && checkbox.checked && btn && !btn.disabled) { btn.click(); }
-        }
-      });
-    </script>
-    """, height=0)
+    components.html(AUDIO_COBRO, height=0)
 
-    # ========== LAYOUT DEL MODAL ==========
-    # Centramos todo usando columnas de Streamlit (sin position:fixed que tapa widgets)
     _, col_center, _ = st.columns([1, 3, 1])
 
     with col_center:
-        # Caja del modal con animación CSS inline
-        st.markdown(f"""
-        <style>
-        @keyframes modalFadeIn {{ from {{ opacity:0; transform:scale(0.92); }} to {{ opacity:1; transform:scale(1); }} }}
-        @keyframes iconoPop {{ 0% {{ transform:scale(0); }} 50% {{ transform:scale(1.2); }} 100% {{ transform:scale(1); }} }}
-        .modal-caja {{
-            animation: modalFadeIn 0.35s ease forwards;
-            background: linear-gradient(145deg, rgba(30,41,59,0.98), rgba(15,23,42,1));
-            border: 1px solid rgba(59, 130, 246,0.25);
-            border-radius: 18px;
-            padding: 25px 20px;
-            box-shadow: 0 0 40px rgba(59, 130, 246,0.12);
-            text-align: center;
-            margin: 15px 0;
-        }}
-        .modal-icon {{ font-size: 3rem; display:inline-block; animation: iconoPop 0.5s ease 0.1s both; margin-bottom: 5px; }}
-        .modal-titulo {{ color: #3b82f6; font-size: 1.6rem; font-weight: 700; }}
-        .modal-total {{ color: #3b82f6; font-size: 1.9rem; font-weight: 800; margin: 8px 0; }}
-        .modal-sub {{ color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }}
-        .modal-cambio {{ color: #10b981; font-size: 1.15rem; font-weight: 700; margin: 6px 0 12px 0; }}
-        </style>
-        <div class="modal-caja">
-            <div class="modal-icon">{icono}</div>
-            <div class="modal-titulo">Cobrar</div>
-            <div class="modal-total">Total: €{total:.2f}</div>
-            <div class="modal-sub">Método: {metodo.upper()}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            CSS_MODAL_COBRO.format(
+                icono="💵" if metodo == 'efectivo' else "💳",
+                total=total,
+                metodo_mayusculas=metodo.upper(),
+            ),
+            unsafe_allow_html=True,
+        )
 
-        entrega = total
-        cambio = 0.0
-
+        entrega, cambio = (total, 0.0)
         if metodo == 'efectivo':
-            # Botones rápidos de billetes
-            st.markdown("<p style='color:#64748b; font-size:0.75rem; margin:0 0 6px 0; text-align:center;'>Rápido:</p>", unsafe_allow_html=True)
-            bc1, bc2, bc3, bc4 = st.columns(4)
-            for col, val in zip([bc1, bc2, bc3, bc4], [5, 10, 20, 50]):
-                with col:
-                    if st.button(f"€{val}", key=f"billete_{val}", width="stretch"):
-                        st.session_state['tpv_billete_pulsado'] = float(val)
-                        st.rerun()
+            entrega, cambio = _seccion_entrega_efectivo(total)
 
-            # Si se pulsó un billete, usar ese valor
-            billete_pulsado = st.session_state.pop('tpv_billete_pulsado', None)
-            default_val = float(billete_pulsado) if billete_pulsado and billete_pulsado >= total else float(total * 1.1)
-
-            entrega = st.number_input(
-                "💶 Entrega (€)", min_value=float(total), value=default_val,
-                step=0.5, format="%.2f", key="modal_entrega_v2"
-            )
-            cambio = round(entrega - total, 2)
-            st.markdown(f"<p class='modal-cambio' style='text-align:center;'>Cambio: €{cambio:.2f}</p>", unsafe_allow_html=True)
-
-        # Checkbox
         confirmar = st.checkbox("✅ Confirmar cobro", key="confirmar_cobro_modal_v2")
 
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-        # Botones de acción
-        c1, c2 = st.columns(2)
-        with c1:
+        col_cancelar, col_ok = st.columns(2)
+        with col_cancelar:
             if st.button("❌ Cancelar", width="stretch", key="modal_btn_cancel_v2"):
-                st.session_state['tpv_mostrar_cobro'] = False
-                st.rerun()
-        with c2:
-            disabled = not confirmar
-            btn_type = "primary" if confirmar else "secondary"
-            if st.button("✅ Finalizar Venta", width="stretch", type=btn_type, disabled=disabled, key="modal_btn_ok_v2"):
-                # Reproducir sonido
-                components.html("""
-                <script>document.getElementById('sonido-cobro').play();</script>
-                """, height=0)
-                with st.spinner("Registrando venta..."):
-                    db = DatabaseAccess()
-                    try:
-                        lineas_data = []
-                        for linea in get_tpv_carrito():
-                            lineas_data.append({
-                                "producto_id": linea['producto_id'],
-                                "cantidad": linea['cantidad'],
-                                "precio_unitario": linea['precio_unitario'],
-                                "subtotal": linea['cantidad'] * linea['precio_unitario']
-                            })
-                        data = {
-                            "cajero": st.session_state['tpv_cajero'],
-                            "metodo_pago": metodo,
-                            "entrega_efectivo": entrega if metodo == 'efectivo' else None,
-                            "cambio": cambio if metodo == 'efectivo' else None,
-                            "total": calcular_total_carrito(),
-                            "lineas": lineas_data
-                        }
-                        result = db.crear_ticket(data)
-                        if result:
-                            result_dict = _obj_to_dict(result)
-                            result_dict['lineas'] = [_obj_to_dict(l) for l in result.lineas]
-                            st.session_state['tpv_mostrar_cobro'] = False
-                            st.session_state['tpv_mostrar_ticket'] = True
-                            st.session_state['tpv_ticket_reciente'] = result_dict
-                            st.session_state['tpv_ticket_time'] = time.time()
-                            limpiar_carrito()
-                            st.rerun()
-                        else:
-                            st.error("❌ Error al registrar el ticket")
-                    finally:
-                        db.close()
+                _cerrar_modal_cobro()
+        with col_ok:
+            if st.button(
+                "✅ Finalizar Venta",
+                width="stretch",
+                type="primary" if confirmar else "secondary",
+                disabled=not confirmar,
+                key="modal_btn_ok_v2",
+            ):
+                _finalizar_venta(metodo, entrega, cambio)
 
 
 def render_ticket_post_cobro():
@@ -590,7 +757,7 @@ def render_ticket_post_cobro():
         st.markdown(f"<p style='text-align: right; color: #10b981; font-size: 0.85rem;'>Cambio: €{ticket['cambio']:.2f}</p>", unsafe_allow_html=True)
 
     st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 15px;'>¡Gracias por su visita!</p>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(DIV_CLOSE, unsafe_allow_html=True)
 
     # Botones de acción
     ticket_txt = generar_ticket_txt(ticket)
@@ -647,152 +814,262 @@ def generar_ticket_txt(ticket: dict) -> str:
     return "\n".join(lineas)
 
 
-def render_panel_productos():
-    """Panel derecho: Categorías y productos con búsqueda, colores, badges y favoritos."""
-    productos, inventarios, tickets = _get_ventas_data()
+COLORES_CAT = {
+    'Bebidas': '#f59e0b', 'Cervezas': '#fbbf24', 'Whiskies': '#a78bfa',
+    'Cafés': '#92400e', 'Refrescos': '#ef4444', 'Hamburguesas': '#f97316',
+    'Pizzas': '#f59e0b', 'Bocadillos': '#10b981', 'Menus': '#3b82f6',
+    'Todos': '#3b82f6',
+}
+COLOR_CAT_POR_DEFECTO = '#3b82f6'
+CATEGORIA_TODOS = 'todos'
+MAX_CATEGORIAS_BARRA = 6
+COLS_GRID_PRODUCTOS = 4
+STOCK_BAJO_UMBRAL = 5
+
+
+def _cargar_categorias():
+    """Carga las categorías del catálogo."""
     db = DatabaseAccess()
     try:
-        categorias = db.get_categorias()
-        categorias = [_obj_to_dict(c) for c in categorias]
+        return [_obj_to_dict(c) for c in db.get_categorias()]
     finally:
         db.close()
 
+
+def _comprobar_datos_tpv(productos, inventarios):
+    """Valida los datos cargados. Devuelve el inventario usable."""
     if not productos:
         st.warning("⚠️ No hay productos disponibles")
-        return
+        return None
 
     if not inventarios:
         st.error("⚠️ Error al cargar inventario. Los productos pueden aparecer como no disponibles.")
         st.button("🔄 Reintentar", on_click=lambda: st.rerun(), key="retry_inventario")
-        inventarios = []
+        return []
 
-    cat_activa = st.session_state.get('tpv_categoria_activa', 'todos')
+    return inventarios
 
-    # ========== BARRA DE BÚSQUEDA ==========
-    busqueda = st.text_input("🔍 Buscar producto...", key="tpv_busqueda_prod", label_visibility="collapsed")
-    if busqueda:
-        productos = [p for p in productos if busqueda.lower() in p.get('nombre', '').lower()]
 
-    # ========== COLORES POR CATEGORÍA ==========
-    COLORES_CAT = {
-        'Bebidas': '#f59e0b', 'Cervezas': '#fbbf24', 'Whiskies': '#a78bfa',
-        'Cafés': '#92400e', 'Refrescos': '#ef4444', 'Hamburguesas': '#f97316',
-        'Pizzas': '#f59e0b', 'Bocadillos': '#10b981', 'Menus': '#3b82f6',
-        'Todos': '#3b82f6'
-    }
+def _filtrar_por_busqueda(productos, busqueda):
+    """Filtra los productos por nombre."""
+    if not busqueda:
+        return productos
+    return [p for p in productos if busqueda.lower() in p.get('nombre', '').lower()]
 
-    # Fila de categorías
-    cats_filtradas = [{"id": "todos", "nombre": "Todos"}] + [{"id": c["id"], "nombre": c["nombre"]} for c in categorias]
-    cols_cats = st.columns(min(len(cats_filtradas), 6))
-    for i, cat in enumerate(cats_filtradas[:6]):
-        with cols_cats[i]:
-            es_activa = cat_activa == cat["id"]
-            color_cat = COLORES_CAT.get(cat["nombre"], '#3b82f6')
-            bg = f"rgba({int(color_cat[1:3],16)},{int(color_cat[3:5],16)},{int(color_cat[5:7],16)},0.15)" if es_activa else "rgba(30,41,59,0.6)"
-            border = f"1px solid {color_cat}" if es_activa else "1px solid rgba(255,255,255,0.1)"
-            st.markdown(f"""
-            <style>
-            div[data-testid="stHorizontalBlock"] div:nth-child({i+1}) button[data-testid="baseButton-secondary"] {{
-                background: {bg} !important;
-                border: {border} !important;
-                color: {color_cat if es_activa else '#94a3b8'} !important;
-                border-radius: 10px !important;
-                font-weight: {'700' if es_activa else '500'} !important;
-            }}
-            </style>
-            """, unsafe_allow_html=True)
+
+def _filtrar_por_categoria(productos, cat_activa):
+    """Filtra los productos por id de categoría."""
+    if cat_activa == CATEGORIA_TODOS:
+        return productos
+    return [p for p in productos if p.get('categoria_id') == cat_activa]
+
+
+def _css_boton_categoria(posicion, color_cat, es_activa):
+    """Genera el CSS del botón de categoría activo."""
+    if es_activa:
+        bg = f"rgba({int(color_cat[1:3],16)},{int(color_cat[3:5],16)},{int(color_cat[5:7],16)},0.15)"
+        border = f"1px solid {color_cat}"
+    else:
+        bg = "rgba(30,41,59,0.6)"
+        border = "1px solid rgba(255,255,255,0.1)"
+
+    return f"""
+    <style>
+    div[data-testid="stHorizontalBlock"] div:nth-child({posicion}) button[data-testid="baseButton-secondary"] {{
+        background: {bg} !important;
+        border: {border} !important;
+        color: {color_cat if es_activa else '#94a3b8'} !important;
+        border-radius: 10px !important;
+        font-weight: {'700' if es_activa else '500'} !important;
+    }}
+    </style>
+    """
+
+
+def _activar_categoria(cat_id):
+    """Selecciona la categoría activa del TPV."""
+    st.session_state['tpv_categoria_activa'] = cat_id
+    st.rerun()
+
+
+def _render_fila_categorias(categorias, cat_activa):
+    """Renderiza la barra de filtros por categoría."""
+    cats_filtradas = [{"id": CATEGORIA_TODOS, "nombre": "Todos"}] + [
+        {"id": c["id"], "nombre": c["nombre"]} for c in categorias
+    ]
+    visibles = cats_filtradas[:MAX_CATEGORIAS_BARRA]
+
+    for posicion, (col, cat) in enumerate(zip(st.columns(min(len(cats_filtradas), MAX_CATEGORIAS_BARRA)), visibles)):
+        es_activa = cat_activa == cat["id"]
+        color_cat = COLORES_CAT.get(cat["nombre"], COLOR_CAT_POR_DEFECTO)
+
+        with col:
+            st.markdown(_css_boton_categoria(posicion + 1, color_cat, es_activa), unsafe_allow_html=True)
             if st.button(cat["nombre"], key=f"cat_{cat['id']}", width="stretch"):
-                st.session_state['tpv_categoria_activa'] = cat["id"]
-                st.rerun()
+                _activar_categoria(cat["id"])
 
-    st.markdown("<hr style='margin: 10px 0; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
 
-    # Filtrar por categoría
-    if cat_activa != 'todos':
-        productos = [p for p in productos if p.get('categoria_id') == cat_activa]
-
-    # ========== ORDENAR POR MÁS VENDIDOS (FAVORITOS) ==========
+def _calcular_mas_vendidos():
+    """Devuelve un dict producto_id -> unidades vendidas. {} si falla la consulta."""
     try:
         db = DatabaseAccess()
-        tickets = db.get_tickets(limite=200)
-        tickets = [_obj_to_dict(t) for t in tickets]
-        db.close()
-        
-        prod_ventas = {}
+        try:
+            tickets = [_obj_to_dict(t) for t in db.get_tickets(limite=LIMITE_TICKETS_FAVORITOS)]
+        finally:
+            db.close()
+
+        ventas = {}
         for t in tickets:
             for linea in t.get('lineas', []):
                 pid = linea.get('producto_id')
-                prod_ventas[pid] = prod_ventas.get(pid, 0) + linea.get('cantidad', 0)
-        
-        productos.sort(key=lambda p: (-prod_ventas.get(p.get('id'), 0), p.get('nombre', '')))
+                ventas[pid] = ventas.get(pid, 0) + linea.get('cantidad', 0)
+        return ventas
     except Exception:
-        pass
+        return {}
 
-    # ========== MODAL CANTIDAD (doble-click simulado) ==========
+
+def _es_favorito(prod, prod_ventas):
+    """Indica si el producto tiene ventas registradas."""
+    return prod_ventas.get(prod.get('id'), 0) > 0
+
+
+def _estilos_tarjeta(sin_stock, es_favorito):
+    """Devuelve (opacity, cursor, border_color, border_width) de la tarjeta."""
+    if sin_stock:
+        border_color = "#ef4444"
+    elif es_favorito:
+        border_color = "#f59e0b"
+    else:
+        border_color = "rgba(255,255,255,0.1)"
+
+    return (
+        "0.4" if sin_stock else "1",
+        "not-allowed" if sin_stock else "pointer",
+        border_color,
+        "2px" if (sin_stock or es_favorito) else "1px",
+    )
+
+
+def _badge_stock_html(stock, sin_stock):
+    """Devuelve el badge de stock de la tarjeta, o vacío si no hay stock."""
+    if sin_stock:
+        return ''
+
+    badge_class = "tpv-badge-stock"
+    if stock < STOCK_BAJO_UMBRAL:
+        badge_class += " tpv-badge-stock-bajo"
+    return f'<div class="{badge_class}">{stock}</div>'
+
+
+def _placeholder_imagen():
+    """Emoji mostrado cuando el producto no tiene imagen."""
+    return '<div style="font-size: 2rem; margin: 0 auto;">📦</div>'
+
+
+def _html_imagen_base64(imagen):
+    """Codifica en base64 una imagen en disco. None si no se puede leer."""
+    try:
+        with open(imagen, "rb") as f:
+            datos_b64 = base64.b64encode(f.read()).decode()
+    except Exception:
+        return None
+    fmt = 'png' if imagen.lower().endswith('.png') else 'jpeg'
+    return f'data:image/{fmt};base64,{datos_b64}'
+
+
+def _html_imagen_tarjeta(imagen):
+    """Devuelve el HTML de la imagen de la tarjeta, o el placeholder."""
+    if not imagen:
+        return _placeholder_imagen()
+
+    if imagen.startswith("data:image"):
+        return f'<img src="{imagen}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
+
+    if os.path.exists(imagen):
+        codificada = _html_imagen_base64(imagen)
+        if codificada:
+            return f'<img src="{codificada}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
+
+    return _placeholder_imagen()
+
+
+def _abrir_modal_cantidad(prod_id):
+    """Abre el modal para elegir la cantidad a añadir."""
+    st.session_state['tpv_modal_cantidad_prod_id'] = prod_id
+    st.rerun()
+
+
+def _agregar_al_carrito(prod):
+    """Añade una unidad del producto al carrito."""
+    agregar_linea_carrito(prod)
+    st.rerun()
+
+
+def _render_tarjeta_producto(prod, stock, es_favorito, col):
+    """Renderiza la tarjeta de un producto en el grid del TPV."""
+    sin_stock = stock <= 0
+    imagen = _buscar_imagen_producto(prod)
+    opacity, cursor, border_color, border_width = _estilos_tarjeta(sin_stock, es_favorito)
+    nombre_display = prod.get('nombre') + (' ⭐' if es_favorito else '')
+
+    with col:
+        card_html = f"""
+        <div style="position: relative; opacity: {opacity}; border: {border_width} solid {border_color}; border-radius: 10px; padding: 10px;
+                    background: rgba(30,41,59,0.8); cursor: {cursor}; text-align: center;
+                    margin-bottom: 10px; height: 150px; display: flex; flex-direction: column;
+                    justify-content: space-between;">
+            {_badge_stock_html(stock, sin_stock)}
+        """
+        card_html += _html_imagen_tarjeta(imagen)
+        card_html += f"""
+            <div style="font-size: 0.85rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{nombre_display}</div>
+            <div style="font-size: 0.9rem; color: #3b82f6; font-weight: 700;">€{prod.get('precio_venta', 0):.2f}</div>
+        </div>
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
+
+        if sin_stock:
+            return
+
+        col_agregar, col_cantidad = st.columns(2)
+        with col_agregar:
+            if st.button("➕", key=f"add_prod_{prod.get('id')}", width="stretch"):
+                _agregar_al_carrito(prod)
+        with col_cantidad:
+            if st.button("#️⃣", key=f"cant_prod_{prod.get('id')}", width="stretch", help="Cantidad"):
+                _abrir_modal_cantidad(prod.get('id'))
+
+
+def render_panel_productos():
+    """Panel derecho: Categorías y productos con búsqueda, colores, badges y favoritos."""
+    productos, inventarios, tickets = _get_ventas_data()
+    categorias = _cargar_categorias()
+
+    inventarios = _comprobar_datos_tpv(productos, inventarios)
+    if inventarios is None:
+        return
+
+    cat_activa = st.session_state.get('tpv_categoria_activa', CATEGORIA_TODOS)
+
+    busqueda = st.text_input("🔍 Buscar producto...", key="tpv_busqueda_prod", label_visibility="collapsed")
+    productos = _filtrar_por_busqueda(productos, busqueda)
+
+    _render_fila_categorias(categorias, cat_activa)
+
+    st.markdown("<hr style='margin: 10px 0; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
+
+    productos = _filtrar_por_categoria(productos, cat_activa)
+
+    prod_ventas = _calcular_mas_vendidos()
+    productos.sort(key=lambda p: (-prod_ventas.get(p.get('id'), 0), p.get('nombre', '')))
+
     if st.session_state.get('tpv_modal_cantidad_prod_id'):
         _render_modal_cantidad(productos, inventarios)
 
-    # Grid de productos
-    cols_grid = st.columns(4)
+    cols_grid = st.columns(COLS_GRID_PRODUCTOS)
     for idx, prod in enumerate(productos):
         stock = _get_stock(prod.get('id'), inventarios)
-        sin_stock = stock <= 0
-        imagen = _buscar_imagen_producto(prod)
-        es_favorito = prod.get('id') in prod_ventas and prod_ventas.get(prod.get('id'), 0) > 0
-
-        with cols_grid[idx % 4]:
-            opacity = "0.4" if sin_stock else "1"
-            cursor = "not-allowed" if sin_stock else "pointer"
-            border_color = "#ef4444" if sin_stock else ("#f59e0b" if es_favorito else "rgba(255,255,255,0.1)")
-            border_width = "2px" if (sin_stock or es_favorito) else "1px"
-
-            # Badge stock
-            badge_class = "tpv-badge-stock"
-            if stock <= 0:
-                badge_class += " tpv-badge-stock-critico"
-            elif stock < 5:
-                badge_class += " tpv-badge-stock-bajo"
-            badge_html = f'<div class="{badge_class}">{stock}</div>' if not sin_stock else ''
-
-            card_html = f"""
-            <div style="position: relative; opacity: {opacity}; border: {border_width} solid {border_color}; border-radius: 10px; padding: 10px;
-                        background: rgba(30,41,59,0.8); cursor: {cursor}; text-align: center;
-                        margin-bottom: 10px; height: 150px; display: flex; flex-direction: column;
-                        justify-content: space-between;">
-                {badge_html}
-            """
-
-            if imagen and imagen.startswith("data:image"):
-                card_html += f'<img src="{imagen}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
-            elif imagen and os.path.exists(imagen):
-                try:
-                    with open(imagen, "rb") as f:
-                        img_b64 = base64.b64encode(f.read()).decode()
-                    fmt = 'png' if imagen.lower().endswith('.png') else 'jpeg'
-                    card_html += f'<img src="data:image/{fmt};base64,{img_b64}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin: 0 auto;">'
-                except Exception:
-                    card_html += f'<div style="font-size: 2rem; margin: 0 auto;">📦</div>'
-            else:
-                card_html += f'<div style="font-size: 2rem; margin: 0 auto;">📦</div>'
-
-            nombre_display = prod.get('nombre') + (' ⭐' if es_favorito else '')
-            card_html += f"""
-                <div style="font-size: 0.85rem; font-weight: 600; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{nombre_display}</div>
-                <div style="font-size: 0.9rem; color: #3b82f6; font-weight: 700;">€{prod.get('precio_venta', 0):.2f}</div>
-            </div>
-            """
-            st.markdown(card_html, unsafe_allow_html=True)
-
-            if not sin_stock:
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("➕", key=f"add_prod_{prod.get('id')}", width="stretch"):
-                        agregar_linea_carrito(prod)
-                        st.rerun()
-                with c2:
-                    if st.button("#️⃣", key=f"cant_prod_{prod.get('id')}", width="stretch", help="Cantidad"):
-                        st.session_state['tpv_modal_cantidad_prod_id'] = prod.get('id')
-                        st.rerun()
+        _render_tarjeta_producto(prod, stock, _es_favorito(prod, prod_ventas), cols_grid[idx % COLS_GRID_PRODUCTOS])
 
 
 def _render_modal_cantidad(productos, inventarios):
@@ -811,7 +1088,7 @@ def _render_modal_cantidad(productos, inventarios):
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown(f"<div class='mini-modal'>", unsafe_allow_html=True)
+    st.markdown("<div class='mini-modal'>", unsafe_allow_html=True)
     st.markdown(f"<h4 style='color: #3b82f6; text-align: center;'>📦 {prod.get('nombre')}</h4>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #94a3b8;'>Stock disponible: {stock}</p>", unsafe_allow_html=True)
 
@@ -827,191 +1104,287 @@ def _render_modal_cantidad(productos, inventarios):
                 agregar_linea_carrito(prod)
             st.session_state['tpv_modal_cantidad_prod_id'] = None
             st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(DIV_CLOSE, unsafe_allow_html=True)
 
 
 # ============================================================================
 # TAB DASHBOARD
 # ============================================================================
 
-def render_dashboard():
-    """Dashboard completo con métricas y 10 gráficas."""
+SIN_DATOS = "sin datos"
+SIN_CATEGORIA = "Sin categoría"
+MODO_LINEAS = 'lines+markers'
+DIAS_TENDENCIA = 15
+TOP_PRODUCTOS = 10
+LIMITE_TICKETS_DASHBOARD = 500
+LIMITE_TICKETS_FAVORITOS = 200
+COLOR_FONDO_TRANSPARENTE = 'rgba(0,0,0,0)'
+COLOR_TEXTO_GRAFICA = '#94a3b8'
+ALTURA_GRAFICA = 280
+MARGEN_GRAFICA = dict(l=0, r=0, t=30, b=0)
+
+LAYOUT_DASHBOARD = dict(
+    plot_bgcolor=COLOR_FONDO_TRANSPARENTE,
+    paper_bgcolor=COLOR_FONDO_TRANSPARENTE,
+    font_color=COLOR_TEXTO_GRAFICA,
+    height=ALTURA_GRAFICA,
+    margin=MARGEN_GRAFICA,
+)
+
+# (etiqueta, limite superior inclusivo; None = sin limite)
+RANGOS_IMPORTE = (
+    ("€0-10", 10),
+    ("€10-25", 25),
+    ("€25-50", 50),
+    ("€50-100", 100),
+    ("€100+", None),
+)
+COLORES_RANGOS = ["#b21798", "#116025", "#ffa200", "#dd1f1f", "#5c1bf3"]
+
+
+def _aplicar_layout_dashboard(fig):
+    """Aplica el layout común de las gráficas del dashboard."""
+    fig.update_layout(**LAYOUT_DASHBOARD)
+    return fig
+
+
+def _cargar_datos_dashboard():
+    """Carga resumen, tickets, productos y categorías del dashboard."""
     db = DatabaseAccess()
     try:
-        resumen = db.obtener_estadisticas_resumen()
-        tickets = db.get_tickets(limite=500)
-        tickets_dict = [_obj_to_dict(t) for t in tickets]
+        return (
+            db.obtener_estadisticas_resumen(),
+            [_obj_to_dict(t) for t in db.get_tickets(limite=LIMITE_TICKETS_DASHBOARD)],
+            [_obj_to_dict(p) for p in db.get_productos()],
+            [_obj_to_dict(c) for c in db.get_categorias()],
+        )
     finally:
         db.close()
-    
-    if not tickets_dict or resumen.get('total_tickets', 0) == 0:
-        st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")
-        return
-    
-    st.info("📊 Dashboard de ventas requiere iniciar la API con: uvicorn src.api:app --port 8002")
-    st.markdown("### Datos Disponibles")
+
+
+def _render_metricas(resumen):
+    """Muestra las 4 métricas principales."""
     st.metric("💰 Total Ingresos", f"€{resumen.get('total_ingresos', 0):.2f}")
     st.metric("🎫 Tickets", resumen.get('total_tickets', 0))
     st.metric("📦 Unidades", resumen.get('total_unidades', 0))
     st.metric("📈 Ticket Promedio", f"€{resumen.get('ticket_promedio', 0):.2f}")
+
+
+def _ventas_por_dia(tickets):
+    """Devuelve un dict fecha (YYYY-MM-DD) -> ingresos acumulados."""
+    ventas = {}
+    for t in tickets:
+        fecha = str(t.get('fecha', ''))[:10]
+        ventas[fecha] = ventas.get(fecha, 0) + t.get('total', 0)
+    return ventas
+
+
+def _grafica_tendencia_ventas(tickets):
+    """Gráfica 1: ingresos por día."""
+    ventas_dia = _ventas_por_dia(tickets)
+    if not ventas_dia:
+        return
+
+    st.markdown("#### 📈 Tendencia de Ventas")
+    fechas = sorted(ventas_dia.keys())[-DIAS_TENDENCIA:]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=fechas, y=[ventas_dia[f] for f in fechas], mode=MODO_LINEAS,
+        line=dict(color='#3b82f6', width=2), fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)',
+    ))
+    st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
+
+
+def _nombre_por_producto(productos):
+    """Devuelve un dict producto_id -> nombre de producto."""
+    return {p.get('id'): p.get('nombre') for p in productos}
+
+
+def _ventas_por_producto(tickets, productos):
+    """Devuelve un dict nombre_producto -> unidades vendidas."""
+    nombres = _nombre_por_producto(productos)
+    ventas = {}
+    for t in tickets:
+        for linea in t.get('lineas', []):
+            nombre = nombres.get(linea.get('producto_id')) or f"Prod {linea.get('producto_id')}"
+            ventas[nombre] = ventas.get(nombre, 0) + linea.get('cantidad', 0)
+    return ventas
+
+
+def _grafica_top_productos(tickets, productos):
+    """Gráfica 2: top de productos por unidades."""
+    st.markdown("#### 🏆 Top Productos")
+    ventas = _ventas_por_producto(tickets, productos)
+
+    if not ventas:
+        ventas = {p.get('nombre', f"Prod {p.get('id')}"): 0 for p in productos[:5]}
+
+    top = sorted(ventas.items(), key=lambda x: x[1], reverse=True)[:TOP_PRODUCTOS]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=[n for n, _ in top], y=[c for _, c in top], marker_color='#10b981'))
+    st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
+
+
+def _ventas_por_hora(tickets):
+    """Devuelve un dict hora (0-23) -> ingresos acumulados."""
+    horas = dict.fromkeys(range(24), 0)
+    for t in tickets:
+        fecha = str(t.get('fecha', ''))
+        if len(fecha) <= 13:
+            continue
+        try:
+            hora = int(fecha[11:13])
+        except ValueError:
+            continue
+        horas[hora] += t.get('total', 0)
+    return horas
+
+
+def _grafica_ventas_por_hora(tickets):
+    """Gráfica 3: ingresos por hora del día."""
+    st.markdown("#### ⏰ Ventas por Hora")
+    horas = _ventas_por_hora(tickets)
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=list(horas.keys()), y=list(horas.values()), marker_color='#f59e0b'))
+    st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
+
+
+def _grafica_metodos_pago(tickets):
+    """Gráfica 4: reparto por método de pago."""
+    st.markdown("#### 💳 Métodos de Pago")
+    metodos = {}
+    for t in tickets:
+        mp = t.get('metodo_pago', 'desconocido')
+        metodos[mp] = metodos.get(mp, 0) + 1
+
+    if not metodos:
+        metodos = {SIN_DATOS: 1}
+
+    fig = go.Figure()
+    fig.add_trace(go.Pie(labels=list(metodos.keys()), values=list(metodos.values()), hole=0.4))
+    st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
+
+
+def _categoria_por_producto(productos):
+    """Devuelve un dict producto_id -> id de categoría."""
+    return {p.get('id'): p.get('categoria_id') for p in productos}
+
+
+def _ingresos_por_categoria(tickets, productos, categorias):
+    """Devuelve un dict nombre_categoria -> ingresos acumulados."""
+    cat_map = {c.get('id'): c.get('nombre', SIN_CATEGORIA) for c in categorias}
+    cat_por_producto = _categoria_por_producto(productos)
+
+    ingresos = {}
+    for t in tickets:
+        for linea in t.get('lineas', []):
+            cat_id = cat_por_producto.get(linea.get('producto_id'))
+            cat_nombre = cat_map.get(cat_id, SIN_CATEGORIA)
+            ingresos[cat_nombre] = ingresos.get(cat_nombre, 0) + linea.get('subtotal', 0)
+    return ingresos
+
+
+def _grafica_ingresos_por_categoria(tickets, productos, categorias):
+    """Gráfica 5: ingresos por categoría."""
+    st.markdown("#### 🏷️ Ingresos por Categoría")
+    ingresos = _ingresos_por_categoria(tickets, productos, categorias)
+
+    if not ingresos:
+        ingresos = {SIN_DATOS: 0}
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=list(ingresos.keys()), y=list(ingresos.values()), marker_color='#8b5cf6'))
+    st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
+
+
+def _grafica_ticket_promedio(tickets):
+    """Gráfica 6: evolución del ticket promedio."""
+    st.markdown("#### 📊 Evolución Ticket Promedio")
+    dia_tickets = {}
+    for t in tickets:
+        fecha = str(t.get('fecha', ''))[:10]
+        dia = dia_tickets.setdefault(fecha, {'total': 0, 'count': 0})
+        dia['total'] += t.get('total', 0)
+        dia['count'] += 1
+
+    fechas = sorted(dia_tickets.keys())[-DIAS_TENDENCIA:] if dia_tickets else []
+    if not fechas:
+        fechas = [SIN_DATOS]
+        promedios = [0]
+    else:
+        promedios = [
+            round(dia_tickets[f]['total'] / dia_tickets[f]['count'], 2) if dia_tickets[f]['count'] > 0 else 0
+            for f in fechas
+        ]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=fechas, y=promedios, mode=MODO_LINEAS,
+        line=dict(color='#ef4444', width=2), fill='tozeroy', fillcolor='rgba(239,68,68,0.1)',
+    ))
+    st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
+
+
+def _rango_importe(total):
+    """Devuelve la etiqueta del rango de importe al que pertenece un total."""
+    for etiqueta, limite in RANGOS_IMPORTE:
+        if limite is None or total <= limite:
+            return etiqueta
+    return RANGOS_IMPORTE[-1][0]
+
+
+def _contar_por_rango_importe(tickets):
+    """Devuelve un dict etiqueta_de_rango -> número de tickets."""
+    rangos = dict.fromkeys((etiqueta for etiqueta, _ in RANGOS_IMPORTE), 0)
+    for t in tickets:
+        rangos[_rango_importe(t.get('total', 0))] += 1
+    return rangos
+
+
+def _grafica_distribucion_importe(tickets):
+    """Gráfica 7: distribución de tickets por rango de importe."""
+    st.markdown("#### 💰 Distribución por Importe")
+    rangos = _contar_por_rango_importe(tickets)
+
+    fig = go.Figure()
+    fig.add_trace(go.Pie(
+        labels=list(rangos.keys()), values=list(rangos.values()),
+        hole=0.4, marker_colors=COLORES_RANGOS,
+    ))
+    st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
+
+
+def render_dashboard():
+    """Dashboard completo con métricas y gráficas."""
+    resumen, tickets_dict, productos, categorias = _cargar_datos_dashboard()
+
+    if not tickets_dict or resumen.get('total_tickets', 0) == 0:
+        st.info("📊 No hay tickets registrados aún. ¡Usa el TPV para registrar ventas!")
+        return
+
+    st.info("📊 Dashboard de ventas requiere iniciar la API con: uvicorn src.api:app --port 8002")
+    st.markdown("### Datos Disponibles")
+    _render_metricas(resumen)
     st.markdown("---")
-    
-    # Gráficas básicas
+
     try:
-        db = DatabaseAccess()
-        tickets = db.get_tickets(limite=500)
-        productos = db.get_productos()
-        categorias = db.get_categorias()
-        tickets_dict = [_obj_to_dict(t) for t in tickets]
-        productos = [_obj_to_dict(p) for p in productos]
-        categorias = [_obj_to_dict(c) for c in categorias]
-        db.close()
-        
-        if tickets_dict:
-            # Gráfica 1: Ventas por día
-            st.markdown("#### 📈 Tendencia de Ventas")
-            ventas_dia = {}
-            for t in tickets_dict:
-                fecha = str(t.get('fecha', ''))[:10]
-                ventas_dia[fecha] = ventas_dia.get(fecha, 0) + t.get('total', 0)
-            
-            if ventas_dia:
-                fechas = sorted(ventas_dia.keys())[-15:]
-                valores = [ventas_dia[f] for f in fechas]
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color='#3b82f6', width=2), fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)'))
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
-                st.plotly_chart(fig, width="stretch")
-            
-            # Gráfica 2: Top productos (siempre mostrar)
-            st.markdown("#### 🏆 Top Productos")
-            prod_ventas = {}
-            for t in tickets_dict:
-                for linea in t.get('lineas', []):
-                    pid = linea.get('producto_id')
-                    nombre = f"Prod {pid}"
-                    for p in productos:
-                        if p.get('id') == pid:
-                            nombre = p.get('nombre', f"Prod {pid}")
-                            break
-                    prod_ventas[nombre] = prod_ventas.get(nombre, 0) + linea.get('cantidad', 0)
-            
-            if not prod_ventas:
-                # Demo data si no hay ventas
-                for p in productos[:5]:
-                    prod_ventas[p.get('nombre', f"Prod {p.get('id')}")] = 0
-            
-            top_prods = sorted(prod_ventas.items(), key=lambda x: x[1], reverse=True)[:10]
-            nombres = [p[0] for p in top_prods]
-            cantidades = [p[1] for p in top_prods]
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=nombres, y=cantidades, marker_color='#10b981'))
-            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, width="stretch")
-            
-            # Gráfica 3: Ventas por hora
-            st.markdown("#### ⏰ Ventas por Hora")
-            horas = {h: 0 for h in range(24)}
-            for t in tickets_dict:
-                fecha = str(t.get('fecha', ''))
-                if len(fecha) > 13:
-                    try:
-                        hora = int(fecha[11:13])
-                    except ValueError:
-                        continue
-                    horas[hora] += t.get('total', 0)
-            
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=list(horas.keys()), y=list(horas.values()), marker_color='#f59e0b'))
-            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, width="stretch")
-            
-            # Gráfica 4: Métodos de pago (siempre mostrar aunque vacío)
-            st.markdown("#### 💳 Métodos de Pago")
-            metodos = {}
-            for t in tickets_dict:
-                mp = t.get('metodo_pago', 'desconocido')
-                metodos[mp] = metodos.get(mp, 0) + 1
-            
-            if not metodos:
-                metodos = {"sin datos": 1}
-            fig = go.Figure()
-            fig.add_trace(go.Pie(labels=list(metodos.keys()), values=list(metodos.values()), hole=0.4))
-            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, width="stretch")
-            
-            # Gráfica 5: Ingresos por categoría (siempre mostrar)
-            st.markdown("#### 🏷️ Ingresos por Categoría")
-            cat_ingresos = {}
-            cat_map = {c.get('id'): c.get('nombre', 'Sin categoría') for c in categorias}
-            for t in tickets_dict:
-                for linea in t.get('lineas', []):
-                    pid = linea.get('producto_id')
-                    cat_id = None
-                    for p in productos:
-                        if p.get('id') == pid:
-                            cat_id = p.get('categoria_id')
-                            break
-                    cat_nombre = cat_map.get(cat_id, 'Sin categoría')
-                    cat_ingresos[cat_nombre] = cat_ingresos.get(cat_nombre, 0) + linea.get('subtotal', 0)
-            
-            if not cat_ingresos:
-                cat_ingresos = {"sin datos": 0}
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=list(cat_ingresos.keys()), y=list(cat_ingresos.values()), marker_color='#8b5cf6'))
-            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, width="stretch")
-            
-            # Gráfica 6: Ticket promedio por día (siempre mostrar)
-            st.markdown("#### 📊 Evolución Ticket Promedio")
-            dia_tickets = {}
-            for t in tickets_dict:
-                fecha = str(t.get('fecha', ''))[:10]
-                if fecha not in dia_tickets:
-                    dia_tickets[fecha] = {'total': 0, 'count': 0}
-                dia_tickets[fecha]['total'] += t.get('total', 0)
-                dia_tickets[fecha]['count'] += 1
-            
-            fechas = sorted(dia_tickets.keys())[-15:] if dia_tickets else []
-            prom_tickets = [round(dia_tickets[f]['total'] / dia_tickets[f]['count'], 2) if dia_tickets[f]['count'] > 0 else 0 for f in fechas]
-            if not fechas:
-                fechas = ["sin datos"]
-                prom_tickets = [0]
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=fechas, y=prom_tickets, mode='lines+markers', line=dict(color='#ef4444', width=2), fill='tozeroy', fillcolor='rgba(239,68,68,0.1)'))
-            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, width="stretch")
-            
-            # Gráfica 7: Distribución tickets por rango de precio (siempre mostrar)
-            st.markdown("#### 💰 Distribución por Importe")
-            rangos = {"€0-10": 0, "€10-25": 0, "€25-50": 0, "€50-100": 0, "€100+": 0}
-            for t in tickets_dict:
-                total = t.get('total', 0)
-                if total <= 10:
-                    rangos["€0-10"] += 1
-                elif total <= 25:
-                    rangos["€10-25"] += 1
-                elif total <= 50:
-                    rangos["€25-50"] += 1
-                elif total <= 100:
-                    rangos["€50-100"] += 1
-                else:
-                    rangos["€100+"] += 1
-            
-            fig = go.Figure()
-            fig.add_trace(go.Pie(labels=list(rangos.keys()), values=list(rangos.values()), hole=0.4, marker_colors=["#b21798", "#116025", "#ffa200", "#dd1f1f", "#5c1bf3"]))
-            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#94a3b8', height=280, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, width="stretch")
+        _grafica_tendencia_ventas(tickets_dict)
+        _grafica_top_productos(tickets_dict, productos)
+        _grafica_ventas_por_hora(tickets_dict)
+        _grafica_metodos_pago(tickets_dict)
+        _grafica_ingresos_por_categoria(tickets_dict, productos, categorias)
+        _grafica_ticket_promedio(tickets_dict)
+        _grafica_distribucion_importe(tickets_dict)
     except Exception as e:
         st.warning(f"Error cargando gráficas: {str(e)}")
 
 
-def _plotly_config(fig, height=280):
+def _plotly_config(fig, height=ALTURA_GRAFICA):
     fig.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font_color='#94a3b8',
-        margin=dict(l=0, r=0, t=30, b=0),
+        plot_bgcolor=COLOR_FONDO_TRANSPARENTE,
+        paper_bgcolor=COLOR_FONDO_TRANSPARENTE,
+        font_color=COLOR_TEXTO_GRAFICA,
+        margin=MARGEN_GRAFICA,
         height=height,
         xaxis_gridcolor='rgba(255,255,255,0.05)',
         yaxis_gridcolor='rgba(255,255,255,0.05)',
@@ -1028,7 +1401,7 @@ def grafica_tendencia(datos):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['fecha'], y=df['ingresos'],
-        mode='lines+markers',
+        mode=MODO_LINEAS,
         name='Ingresos',
         line=dict(color='#3b82f6', width=3),
         fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)'
@@ -1069,7 +1442,7 @@ def grafica_distribucion_ingresos(resumen):
     st.markdown("#### 📊 Distribución Ingresos")
     db = DatabaseAccess()
     try:
-        tickets = db.get_tickets(limite=500)
+        tickets = db.get_tickets(limite=LIMITE_TICKETS_DASHBOARD)
         tickets = [_obj_to_dict(t) for t in tickets]
     finally:
         db.close()
@@ -1077,23 +1450,12 @@ def grafica_distribucion_ingresos(resumen):
     if not tickets:
         st.info("Sin datos")
         return
-    rangos = {"€0-10": 0, "€10-25": 0, "€25-50": 0, "€50-100": 0, "€100+": 0}
-    for t in tickets:
-        total = t.get('total', 0)
-        if total <= 10:
-            rangos["€0-10"] += 1
-        elif total <= 25:
-            rangos["€10-25"] += 1
-        elif total <= 50:
-            rangos["€25-50"] += 1
-        elif total <= 100:
-            rangos["€50-100"] += 1
-        else:
-            rangos["€100+"] += 1
+
+    rangos = _contar_por_rango_importe(tickets)
     fig = go.Figure(data=[go.Pie(
         labels=list(rangos.keys()), values=list(rangos.values()),
         hole=0.4,
-        marker_colors=["#b21798", "#116025", "#ffa200", "#dd1f1f", "#5c1bf3"]
+        marker_colors=COLORES_RANGOS
     )])
     fig.update_layout(title_text="Por rango de ticket", title_font_size=12, showlegend=True,
                       legend=dict(orientation="h", yanchor="bottom", y=-0.2))
@@ -1125,7 +1487,7 @@ def grafica_ticket_promedio(datos):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['fecha'], y=df['ticket_promedio'],
-        mode='lines+markers',
+        mode=MODO_LINEAS,
         line=dict(color='#8b5cf6', width=3),
         fill='tozeroy', fillcolor='rgba(139,92,246,0.1)'
     ))
@@ -1294,7 +1656,7 @@ def render_historial():
     # Cargar tickets
     db = DatabaseAccess()
     try:
-        tickets_db = db.get_tickets(limite=200)
+        tickets_db = db.get_tickets(limite=LIMITE_TICKETS_FAVORITOS)
         tickets = [_obj_to_dict(t) for t in tickets_db]
         
         if filtro_cajero != "Todos":

@@ -9,8 +9,14 @@ from app.utils.helpers import to_excel
 from app.utils.validators import validar_sku, validar_email_proveedor
 from app.logic.inventario import (
     preparar_datos_inventario,
-    ordenar_inventario
+    ordenar_inventario,
+    get_color_estado,
 )
+
+SIN_PROVEEDOR = "Sin proveedor"
+NUEVO_PROVEEDOR = "➕ Nuevo proveedor"
+DIV_CLOSE = "</div>"
+DIV_CLOSE_2 = "</div></div>"
 
 
 def _obj_to_dict(obj):
@@ -218,14 +224,14 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     """Renderiza una tarjeta de producto individual."""
     prod = d["producto"]
     pid = prod.get("id")
-    prov_nombre = prod.get("proveedor", {}).get("nombre") if prod.get("proveedor") else "Sin proveedor"
+    prov_nombre = prod.get("proveedor", {}).get("nombre") if prod.get("proveedor") else SIN_PROVEEDOR
     estado = d["estado"]
     stock = d["stock"]
     max_s = d["max_s"]
     
     pct = min(100, int((stock / max_s) * 100)) if max_s > 0 else 0
     color_barra = "#ef4444" if pct <= 20 else "#f59e0b" if pct <= 50 else "#10b981"
-    color_estado = {"Agotado": "#6b7280", "Crítico": "#ef4444", "Bajo": "#f59e0b", "Saludable": "#10b981"}.get(estado, "#10b981")
+    color_estado = get_color_estado(estado)
     ganancia = (prod.get('precio_venta') or 0) - (prod.get('precio_coste') or 0)
     ganancia_color = "#10b981" if ganancia > 0 else "#ef4444"
     
@@ -253,8 +259,8 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     card_html = '<div style="background: linear-gradient(145deg, ' + bg_color + ', rgba(15,23,42,0.98)); border: 2px solid ' + border_color + '; border-radius: 12px; padding: 16px; margin-bottom: 8px; box-shadow: ' + shadow + ';">'
     card_html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">'
     card_html += '<div><div style="font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 2px;">' + nombre + '</div>'
-    card_html += '<div style="font-size: 15px; color: #64748b;">' + sku + ' | ' + unidad + '</div></div>'
-    card_html += '<div style="background: ' + color_estado + '; padding: 3px 8px; border-radius: 12px; font-size: 15px; font-weight: 700; color: white;">' + estado + '</div></div>'
+    card_html += '<div style="font-size: 15px; color: #64748b;">' + sku + ' | ' + unidad + DIV_CLOSE_2
+    card_html += '<div style="background: ' + color_estado + '; padding: 3px 8px; border-radius: 12px; font-size: 15px; font-weight: 700; color: white;">' + estado + DIV_CLOSE_2
     card_html += '<div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>'
     card_html += '<div style="font-size: 15px; color: #f8fafc; margin-bottom: 6px;">🏢 ' + prov_nombre + '</div>'
     card_html += '<div style="margin-bottom: 12px;">'
@@ -262,17 +268,17 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     card_html += '<span style="color: #64748b;">Stock</span>'
     card_html += '<span style="color: #e2e8f0; font-weight: 600;">' + str(stock) + ' / ' + str(max_s) + '</span></div>'
     card_html += '<div style="width: 100%; height: 10px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">'
-    card_html += '<div style="width: ' + str(pct) + '%; height: 100%; background: ' + color_barra + '; border-radius: 2px;"></div></div></div>'
+    card_html += '<div style="width: ' + str(pct) + '%; height: 100%; background: ' + color_barra + '; border-radius: 2px;"></div>' + DIV_CLOSE_2 + DIV_CLOSE
     card_html += '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">'
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">COSTE</div>'
-    card_html += '<div style="font-size: 20px; color: #f59e0b; font-weight: 700;">€' + f'{precio_coste:.2f}' + '</div></div>'
+    card_html += '<div style="font-size: 20px; color: #f59e0b; font-weight: 700;">€' + f'{precio_coste:.2f}' + '</div>' + DIV_CLOSE_2
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">VENTA</div>'
-    card_html += '<div style="font-size: 20px; color: #3b82f6; font-weight: 700;">€' + f'{precio_venta:.2f}' + '</div></div>'
+    card_html += '<div style="font-size: 20px; color: #3b82f6; font-weight: 700;">€' + f'{precio_venta:.2f}' + '</div>' + DIV_CLOSE_2
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">GANANCIA</div>'
-    card_html += '<div style="font-size: 20px; color: ' + ganancia_color + '; font-weight: 700;">€' + f'{ganancia:.2f}' + '</div></div></div>'
+    card_html += '<div style="font-size: 20px; color: ' + ganancia_color + '; font-weight: 700;">€' + f'{ganancia:.2f}' + '</div>' + DIV_CLOSE_2 + DIV_CLOSE
     card_html += '<div style="display: flex; justify-content: space-between; font-size: 15px; color: #f8fafc;">'
     card_html += '<span>📍 ' + ubicacion + '</span>'
-    card_html += '<span>#' + codigo_barras + '</span></div></div>'
+    card_html += '<span>#' + codigo_barras + '</span></div>' + DIV_CLOSE_2
     
     st.markdown(card_html, unsafe_allow_html=True)
     
@@ -313,6 +319,74 @@ def _render_paginacion(total_paginas, pagina_actual, inicio, fin, total_items):
                 st.rerun()
 
 
+def _selector_proveedor_edicion(prod_a_editar, proveedores, editable_id):
+    """Renderiza el selector de proveedor del formulario de edicion.
+
+    Returns:
+        Tupla (nuevo_proveedor, prov_actual_nombre).
+    """
+    prov_actual_id = prod_a_editar["producto"].get("proveedor_id")
+    prov_actual_nombre = next(
+        (p.get("nombre") for p in proveedores if p.get("id") == prov_actual_id),
+        SIN_PROVEEDOR,
+    )
+    all_prov_nombres = (
+        [SIN_PROVEEDOR] + [p.get("nombre") for p in proveedores] + [NUEVO_PROVEEDOR]
+    )
+    prov_index = all_prov_nombres.index(prov_actual_nombre) if prov_actual_nombre in all_prov_nombres else 0
+    nuevo_proveedor = st.selectbox("Proveedor", all_prov_nombres, index=prov_index, key="edit_prov_inv")
+
+    if nuevo_proveedor == NUEVO_PROVEEDOR:
+        _render_formulario_nuevo_proveedor(editable_id, proveedores)
+        return prov_actual_nombre, prov_actual_nombre
+
+    return nuevo_proveedor, prov_actual_nombre
+
+
+def _bloque_confirmacion_cambios(sku_actual, nuevo_sku, prov_actual_nombre, nuevo_proveedor):
+    """Muestra el resumen de cambios y pide confirmacion. True si esta confirmada."""
+    if nuevo_sku == sku_actual and nuevo_proveedor == prov_actual_nombre:
+        return True
+
+    st.markdown("<div style='background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 15px 0;'>", unsafe_allow_html=True)
+    st.markdown("**⚠️ Cambios detectados:**")
+    if nuevo_sku != sku_actual:
+        st.markdown(f"- SKU: `{sku_actual}` → `{nuevo_sku}`")
+    if nuevo_proveedor != prov_actual_nombre:
+        st.markdown(f"- Proveedor: `{prov_actual_nombre}` → `{nuevo_proveedor}`")
+    st.markdown(DIV_CLOSE, unsafe_allow_html=True)
+
+    return st.checkbox("✅ He revisado y confirmo los cambios", key="confirmar_cambios_inv")
+
+
+def _render_botones_edicion(errores_edit, cambios_realizados, confirmar_cambios):
+    """Renderiza los botones de guardar/cancelar. True si se pulsa guardar."""
+    col_btn_guardar, col_btn_cancel = st.columns([1, 4])
+    btn_guardar = False
+
+    with col_btn_guardar:
+        btn_guardar = st.button(
+            "💾 Guardar cambios",
+            type="primary",
+            width="stretch",
+            disabled=len(errores_edit) > 0 or (cambios_realizados and not confirmar_cambios),
+            key="btn_save_edit_inv",
+        )
+        if errores_edit:
+            st.caption(f"⚠️ {', '.join(errores_edit)}")
+        elif cambios_realizados and not confirmar_cambios:
+            st.caption("⚠️ Confirma los cambios para guardar")
+
+    with col_btn_cancel:
+        if st.button("❌ Cancelar", width="stretch", key="btn_cancel_edit_inv"):
+            del st.session_state['editando_producto_id']
+            if 'confirmar_cambios_inv' in st.session_state:
+                del st.session_state['confirmar_cambios_inv']
+            st.rerun()
+
+    return btn_guardar
+
+
 def _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_id, prov_options_by_name):
     """Renderiza el formulario de edición de producto."""
     sku_actual = prod_a_editar["producto"].get("sku", "")
@@ -324,63 +398,47 @@ def _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_i
     with col_e1:
         nuevo_sku = st.text_input("SKU", value=sku_actual, key="edit_sku_inv")
     with col_e2:
-        prov_actual_id = prod_a_editar["producto"].get("proveedor_id")
-        prov_actual_nombre = next((p.get("nombre") for p in proveedores if p.get("id") == prov_actual_id), "Sin proveedor")
-        all_prov_nombres = ["Sin proveedor"] + [p.get("nombre") for p in proveedores] + ["➕ Nuevo proveedor"]
-        prov_index = all_prov_nombres.index(prov_actual_nombre) if prov_actual_nombre in all_prov_nombres else 0
-        nuevo_proveedor = st.selectbox("Proveedor", all_prov_nombres, index=prov_index, key="edit_prov_inv")
-        
-        if nuevo_proveedor == "➕ Nuevo proveedor":
-            _render_formulario_nuevo_proveedor(editable_id, proveedores)
-            nuevo_proveedor = prov_actual_nombre
-    
-    # Validaciones
-    errores_edit = []
-    if nuevo_sku != sku_actual:
-        errores_edit = validar_sku(nuevo_sku, productos, editable_id)
-    
-    # 🔧 NUEVO: Checkbox de confirmación antes de guardar
+        nuevo_proveedor, prov_actual_nombre = _selector_proveedor_edicion(
+            prod_a_editar, proveedores, editable_id
+        )
+
+    errores_edit = validar_sku(nuevo_sku, productos, editable_id) if nuevo_sku != sku_actual else []
     cambios_realizados = (nuevo_sku != sku_actual) or (nuevo_proveedor != prov_actual_nombre)
-    
-    if cambios_realizados and not errores_edit:
-        st.markdown("<div style='background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 15px 0;'>", unsafe_allow_html=True)
-        st.markdown("**⚠️ Cambios detectados:**")
-        if nuevo_sku != sku_actual:
-            st.markdown(f"- SKU: `{sku_actual}` → `{nuevo_sku}`")
-        if nuevo_proveedor != prov_actual_nombre:
-            st.markdown(f"- Proveedor: `{prov_actual_nombre}` → `{nuevo_proveedor}`")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        confirmar_cambios = st.checkbox("✅ He revisado y confirmo los cambios", key="confirmar_cambios_inv")
-    else:
-        confirmar_cambios = True
-    
-    col_btn_guardar, col_btn_cancel = st.columns([1, 4])
-    with col_btn_guardar:
-        btn_guardar = st.button("💾 Guardar cambios", type="primary", width="stretch", 
-                            disabled=len(errores_edit) > 0 or (cambios_realizados and not confirmar_cambios), 
-                            key="btn_save_edit_inv")
-        if errores_edit:
-            st.caption(f"⚠️ {', '.join(errores_edit)}")
-        elif cambios_realizados and not confirmar_cambios:
-            st.caption("⚠️ Confirma los cambios para guardar")
-    with col_btn_cancel:
-        if st.button("❌ Cancelar", width="stretch", key="btn_cancel_edit_inv"):
-            del st.session_state['editando_producto_id']
-            if 'confirmar_cambios_inv' in st.session_state:
-                del st.session_state['confirmar_cambios_inv']
-            st.rerun()
+    confirmar_cambios = _bloque_confirmacion_cambios(
+        sku_actual, nuevo_sku, prov_actual_nombre, nuevo_proveedor
+    )
+
+    btn_guardar = _render_botones_edicion(errores_edit, cambios_realizados, confirmar_cambios)
     
     if btn_guardar:
         # 🔧 FIX: Validar explícitamente que se confirmaron los cambios antes de guardar
         if cambios_realizados and not confirmar_cambios:
             st.error("❌ Por favor, marca la casilla 'He revisado y confirmo los cambios' antes de guardar")
             st.stop()
-        else:
-            _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_options_by_name)
+        _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_options_by_name)
     
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(DIV_CLOSE, unsafe_allow_html=True)
     st.markdown("---")
+
+
+def _crear_proveedor_y_asignar(editable_id, nombre, email, telefono):
+    """Crea el proveedor y lo asigna al producto. Devuelve (ok, mensaje_error)."""
+    db = DatabaseAccess()
+    try:
+        result = db.crear_proveedor({
+            "nombre": nombre,
+            "email": email,
+            "telefono": telefono or None,
+        })
+        if not result or not hasattr(result, 'id'):
+            return False, "❌ Error al crear proveedor"
+
+        if not db.actualizar_producto(editable_id, {"proveedor_id": result.id}):
+            return False, "❌ Error al asignar proveedor al producto"
+    finally:
+        db.close()
+
+    return True, None
 
 
 def _render_formulario_nuevo_proveedor(editable_id, proveedores):
@@ -393,44 +451,35 @@ def _render_formulario_nuevo_proveedor(editable_id, proveedores):
     email_valido, email_error = validar_email_proveedor(nuevo_prov_email, proveedores)
     if not email_valido:
         st.caption(f"⚠️ {email_error}")
-        btn_crear_disabled = True
-    else:
-        btn_crear_disabled = False
     
-    if st.button("💾 Crear y usar", key="btn_new_prov_inv", width="stretch", type="secondary", disabled=btn_crear_disabled):
-        if nuevo_prov_nombre and nuevo_prov_email:
-            with st.spinner("⏳ Creando proveedor..."):
-                try:
-                    db = DatabaseAccess()
-                    try:
-                        prov_data = {"nombre": nuevo_prov_nombre, "email": nuevo_prov_email, "telefono": nuevo_prov_telefono or None}
-                        result = db.crear_proveedor(prov_data)
-                        
-                        if result and hasattr(result, 'id'):
-                            nuevo_prov_id = result.id
-                            datos_actualizar = {"proveedor_id": nuevo_prov_id}
-                            resultado_asignacion = db.actualizar_producto(editable_id, datos_actualizar)
-                            
-                            if resultado_asignacion:
-                                _get_inventario_data.clear()
-                                st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado y asignado")
-                                del st.session_state['editando_producto_id']
-                                st.rerun()
-                            else:
-                                st.error("❌ Error al asignar proveedor al producto")
-                                st.warning("⚠️ El proveedor se creó pero no se pudo asignar.")
-                        else:
-                            st.error("❌ Error al crear proveedor")
-                    finally:
-                        db.close()
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-    st.markdown("</div>", unsafe_allow_html=True)
+    if st.button(
+        "💾 Crear y usar",
+        key="btn_new_prov_inv",
+        width="stretch",
+        type="secondary",
+        disabled=not email_valido,
+    ) and nuevo_prov_nombre and nuevo_prov_email:
+        with st.spinner("⏳ Creando proveedor..."):
+            try:
+                ok, error_msg = _crear_proveedor_y_asignar(
+                    editable_id, nuevo_prov_nombre, nuevo_prov_email, nuevo_prov_telefono
+                )
+                if ok:
+                    _get_inventario_data.clear()
+                    st.success(f"✅ Proveedor '{nuevo_prov_nombre}' creado y asignado")
+                    del st.session_state['editando_producto_id']
+                    st.rerun()
+                else:
+                    st.error(error_msg)
+                    st.warning("⚠️ El proveedor se creó pero no se pudo asignar.")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+    st.markdown(DIV_CLOSE, unsafe_allow_html=True)
 
 
 def _guardar_cambios_producto(editable_id, nuevo_sku, nuevo_proveedor, prov_options_by_name):
     """Guarda los cambios de un producto editado."""
-    nuevo_prov_id = prov_options_by_name.get(nuevo_proveedor) if nuevo_proveedor != "Sin proveedor" else None
+    nuevo_prov_id = prov_options_by_name.get(nuevo_proveedor) if nuevo_proveedor != SIN_PROVEEDOR else None
     
     datos_actualizar = {
         "sku": nuevo_sku,

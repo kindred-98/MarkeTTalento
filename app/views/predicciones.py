@@ -285,82 +285,63 @@ def _render_estacionalidad():
         st.info("Sin datos de fecha en tickets.")
 
 
+COLOR_STOCK_AGOTADO = "#ef4444"
+COLOR_STOCK_BAJO = "#f59e0b"
+STOCK_MAX_POR_DEFECTO = 100
+UMBRAL_STOCK_CRITICO = 0.2
+
+
+def _cargar_datos_alertas():
+    """Carga productos e inventario como diccionarios."""
+    db = DatabaseAccess()
+    try:
+        productos = [_obj_to_dict(p) for p in db.get_productos()]
+        inventarios = [_obj_to_dict(i) for i in db.get_inventario()]
+    finally:
+        db.close()
+    return productos, inventarios
+
+
+def _detectar_alertas(productos, inventarios):
+    """Devuelve los productos cuyo stock esta por debajo del umbral critico."""
+    inv_by_prod = {i["producto_id"]: i for i in inventarios}
+    alertas = []
+
+    for p in productos:
+        inv = inv_by_prod.get(p["id"])
+        if not inv:
+            continue
+        stock = inv.get("cantidad", 0)
+        stock_max = p.get("stock_maximo") or STOCK_MAX_POR_DEFECTO
+        if stock <= stock_max * UMBRAL_STOCK_CRITICO:
+            alertas.append({
+                "nombre": p.get("nombre", "N/A"),
+                "stock": stock,
+                "stock_max": stock_max,
+            })
+
+    return alertas
+
+
+def _render_alerta(alerta):
+    """Dibuja una alerta de reposicion."""
+    color = COLOR_STOCK_AGOTADO if alerta["stock"] == 0 else COLOR_STOCK_BAJO
+    st.markdown(f"""
+    <div style="padding:12px; margin-bottom:8px; background:rgba(239,68,68,0.1); border-radius:10px; border-left:4px solid {color};">
+        <strong>⚠️ {alerta['nombre']}</strong> — Stock: {alerta['stock']} / {alerta['stock_max']}
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def _render_alertas():
     st.markdown("#### Alertas de Reposición")
 
-    db = DatabaseAccess()
-    try:
-        productos = db.get_productos()
-        inventarios = db.get_inventario()
-        productos = [_obj_to_dict(p) for p in productos]
-        inventarios = [_obj_to_dict(i) for i in inventarios]
-    finally:
-        db.close()
+    productos, inventarios = _cargar_datos_alertas()
+    alertas = _detectar_alertas(productos, inventarios)
 
-    inv_by_prod = {i["producto_id"]: i for i in inventarios}
-    alertas = []
-    for p in productos:
-        inv = inv_by_prod.get(p["id"])
-        if inv:
-            stock = inv.get("cantidad", 0)
-            stock_max = p.get("stock_maximo", 100) or 100
-            if stock <= stock_max * 0.2:
-                alertas.append({
-                    "nombre": p.get("nombre", "N/A"),
-                    "stock": stock,
-                    "stock_max": stock_max
-                })
-    
     if not alertas:
         st.success("✅ No hay alertas de reposición. Todo el stock está en niveles adecuados.")
-    else:
-        for a in alertas:
-            color = "#ef4444" if a["stock"] == 0 else "#f59e0b"
-            st.markdown(f"""
-            <div style="padding:12px; margin-bottom:8px; background:rgba(239,68,68,0.1); border-radius:10px; border-left:4px solid {color};">
-                <strong>⚠️ {a['nombre']}</strong> — Stock: {a['stock']} / {a['stock_max']}
-            </div>
-            """, unsafe_allow_html=True)
         return
 
-    # Resumen
-    urgente = len([a for a in alertas if a["nivel"] == "URGENTE"])
-    atencion = len([a for a in alertas if a["nivel"] == "ATENCION"])
-    oportunidad = len([a for a in alertas if a["nivel"] == "OPORTUNIDAD"])
-
-    cols = st.columns(4)
-    cols[0].metric("Total Alertas", len(alertas))
-    cols[1].metric("🔴 Urgentes", urgente)
-    cols[2].metric("🟠 Atención", atencion)
-    cols[3].metric("🔵 Oportunidad", oportunidad)
-
-    st.markdown("---")
-
-    # Filtro
-    nivel_filtro = st.multiselect("Filtrar por nivel:", ["URGENTE", "ATENCION", "OPORTUNIDAD"],
-                                   default=["URGENTE", "ATENCION", "OPORTUNIDAD"])
-
-    for a in alertas:
-        if a["nivel"] not in nivel_filtro:
-            continue
-
-        badge_class = {
-            "URGENTE": "badge-urgente",
-            "ATENCION": "badge-atencion",
-            "OPORTUNIDAD": "badge-oportunidad"
-        }.get(a["nivel"], "badge-oportunidad")
-
-        st.markdown(f"""
-        <div style="padding:12px; margin-bottom:8px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:4px solid {'#ef4444' if a['nivel']=='URGENTE' else ('#f59e0b' if a['nivel']=='ATENCION' else '#3b82f6')};">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div><span class="{badge_class}">{a['nivel']}</span> <strong>{a['nombre']}</strong></div>
-                <div style="text-align:right; font-size:0.85rem;">
-                    <div>Stock: <strong>{a['stock_actual']}</strong> uds</div>
-                    <div style="color:#ef4444;">Agotamiento: <strong>{a['dias_hasta_agotarse']:.1f} días</strong></div>
-                </div>
-            </div>
-            <div style="margin-top:6px; font-size:0.8rem; color:#94a3b8;">
-                Cantidad recomendada de reposición: <strong>{a['cantidad_recomendada']} uds</strong>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    for alerta in alertas:
+        _render_alerta(alerta)

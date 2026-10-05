@@ -4,12 +4,12 @@ Reemplaza las llamadas HTTP por acceso directo a SQLite
 """
 import os
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from src.core.utils.fechas import utcnow_naive
 from src.dominio.entidades.entidades import (
     Categoria, Proveedor, Producto, Inventario, Ticket, TicketLinea, Usuario
 )
@@ -143,7 +143,7 @@ class DatabaseAccess:
             inv = self.session.query(Inventario).filter_by(producto_id=linea_data["producto_id"]).first()
             if inv:
                 inv.cantidad -= linea_data["cantidad"]
-                inv.fecha_ultima_actualizacion = datetime.utcnow()
+                inv.fecha_ultima_actualizacion = utcnow_naive()
         self.session.commit()
         self.session.refresh(ticket)
         return ticket

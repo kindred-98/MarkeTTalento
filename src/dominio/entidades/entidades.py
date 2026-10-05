@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from src.core.database.base import Base
+from src.core.utils.fechas import utcnow_naive
 
 
 class Categoria(Base):
@@ -11,7 +11,7 @@ class Categoria(Base):
     nombre = Column(String(100), unique=True, nullable=False)
     descripcion = Column(String(500), nullable=True)
     activo = Column(Boolean, default=True)
-    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    fecha_creacion = Column(DateTime, default=utcnow_naive)
 
     productos = relationship("Producto", back_populates="categoria")
 
@@ -25,7 +25,7 @@ class Proveedor(Base):
     email = Column(String(200), unique=True, nullable=False)
     telefono = Column(String(20), nullable=True)
     activo = Column(Boolean, default=True)
-    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    fecha_creacion = Column(DateTime, default=utcnow_naive)
 
     productos = relationship("Producto", back_populates="proveedor")
 
@@ -50,7 +50,7 @@ class Producto(Base):
 
     imagen_url = Column(String(500), nullable=True)
     activo = Column(Boolean, default=True)
-    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    fecha_creacion = Column(DateTime, default=utcnow_naive)
 
     categoria = relationship("Categoria", back_populates="productos")
     proveedor = relationship("Proveedor", back_populates="productos")
@@ -67,7 +67,7 @@ class Inventario(Base):
     producto_id = Column(Integer, ForeignKey("productos.id"), unique=True, nullable=False)
     cantidad = Column(Integer, default=0)
     ubicacion = Column(String(100), nullable=True)
-    fecha_ultima_actualizacion = Column(DateTime, default=datetime.utcnow)
+    fecha_ultima_actualizacion = Column(DateTime, default=utcnow_naive)
 
     producto = relationship("Producto", back_populates="inventario")
 
@@ -81,7 +81,7 @@ class Venta(Base):
     cantidad = Column(Integer, nullable=False)
     precio_unitario = Column(Float, nullable=False)
     tipo_operacion = Column(String(20), default="venta")
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=utcnow_naive)
 
     producto = relationship("Producto", back_populates="ventas")
 
@@ -92,7 +92,7 @@ class Ticket(Base):
     id = Column(Integer, primary_key=True, index=True)
     numero_ticket = Column(String(20), unique=True, nullable=False, index=True)
     cajero = Column(String(100), nullable=False)
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=utcnow_naive)
     total = Column(Float, nullable=False)
     metodo_pago = Column(String(50), nullable=False)  # efectivo, tarjeta, transferencia
     entrega_efectivo = Column(Float, nullable=True)
@@ -124,7 +124,7 @@ class ProductoImagenReferencia(Base):
     producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
     ruta_imagen = Column(String(500), nullable=False)
     embedding = Column(String(2000), nullable=True)  # JSON array de floats serializado
-    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    fecha_creacion = Column(DateTime, default=utcnow_naive)
 
     producto = relationship("Producto", back_populates="imagenes_referencia")
 
@@ -140,5 +140,5 @@ class Usuario(Base):
     nombre_completo = Column(String(200), nullable=True)
     rol = Column(String(20), default="cajero")  # admin, cajero, almacen
     activo = Column(Boolean, default=True)
-    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    fecha_creacion = Column(DateTime, default=utcnow_naive)
     ultimo_login = Column(DateTime, nullable=True)

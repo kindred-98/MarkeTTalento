@@ -29,6 +29,11 @@ def get_estado_info(estado: str) -> Dict[str, str]:
     return ESTADOS_STOCK.get(estado, ESTADOS_STOCK["Saludable"])
 
 
+def get_color_estado(estado: str) -> str:
+    """Obtiene el color hexadecimal asociado a un estado de stock."""
+    return get_estado_info(estado)["color"]
+
+
 def filtrar_por_estado(datos: List[Dict], estado_filtro: str) -> List[Dict]:
     """Filtra productos por estado."""
     if estado_filtro == "Todos":

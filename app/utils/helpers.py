@@ -10,20 +10,58 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 
+ANCHO_MAXIMO_COLUMNA = 30
+MARGEN_ANCHO_COLUMNA = 2
+
+
+def _aplicar_estilos_header(ws, fill: PatternFill, font: Font, border: Border) -> None:
+    """Aplica el estilo de cabecera a la primera fila de la hoja."""
+    for cell in ws[1]:
+        cell.fill = fill
+        cell.font = font
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = border
+
+
+def _aplicar_bordes_datos(ws, border: Border) -> None:
+    """Aplica el borde a todas las celdas de datos."""
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+        for cell in row:
+            cell.border = border
+
+
+def _longitud_celda(cell) -> int:
+    """Longitud en caracteres del valor de una celda (0 si no es representable)."""
+    try:
+        return len(str(cell.value))
+    except Exception:
+        return 0
+
+
+def _autoajustar_columnas(ws) -> None:
+    """Ajusta el ancho de cada columna al contenido, con un máximo acotado."""
+    for col in ws.columns:
+        column = col[0].column_letter
+        max_length = max(_longitud_celda(cell) for cell in col)
+        ws.column_dimensions[column].width = min(
+            max_length + MARGEN_ANCHO_COLUMNA, ANCHO_MAXIMO_COLUMNA
+        )
+
+
 def to_excel(df: Optional[pd.DataFrame]) -> bytes:
     """Convierte un DataFrame a formato Excel con estilos."""
     if df is None or df.empty:
         return b""
-    
+
     output = BytesIO()
     wb = openpyxl.Workbook()
     ws = wb.active
-    
+
     try:
         ws.title = "Datos"
     except Exception:
         pass
-    
+
     # Estilos
     header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
     header_font = Font(bold=True, color="000000")
@@ -33,35 +71,15 @@ def to_excel(df: Optional[pd.DataFrame]) -> bytes:
         top=Side(style='thin'),
         bottom=Side(style='thin')
     )
-    
+
     # Escribir datos
     for r in dataframe_to_rows(df, index=False, header=True):
         ws.append(r)
-    
-    # Estilo header
-    for cell in ws[1]:
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal='center')
-        cell.border = thin_border
-    
-    # Estilo celdas
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
-        for cell in row:
-            cell.border = thin_border
-    
-    # Auto-ajustar columnas
-    for col in ws.columns:
-        max_length = 0
-        column = col[0].column_letter
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except Exception:
-                pass
-        ws.column_dimensions[column].width = min(max_length + 2, 30)
-    
+
+    _aplicar_estilos_header(ws, header_fill, header_font, thin_border)
+    _aplicar_bordes_datos(ws, thin_border)
+    _autoajustar_columnas(ws)
+
     wb.save(output)
     return output.getvalue()
 

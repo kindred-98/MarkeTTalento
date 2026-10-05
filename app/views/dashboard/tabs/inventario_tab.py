@@ -3,24 +3,22 @@ import html
 import streamlit as st
 from app.views.dashboard.data.getters import get_dashboard_data
 from app.views.dashboard.components.grafica_pie import grafica_pie
-from app.views.dashboard.config import get_stock_status
+from app.views.dashboard.config import get_stock_status, STOCK_AGOTADO, STOCK_STATUS_ALERTA, STOCK_STATUS_ORDEN
 
 
 def render():
     data = get_dashboard_data()
 
-    estados = {"Agotado": 0, "Crítico": 0, "Bajo": 0, "Saludable": 0}
+    estados = dict.fromkeys(STOCK_STATUS_ORDEN, 0)
     for p in data["productos"]:
         stock = data["inv_map"].get(p.get("id"), 0)
         estados[get_stock_status(stock, p.get("stock_maximo"))] += 1
 
     stock_data = [
-        {"label": "Saludable", "value": estados["Saludable"]},
-        {"label": "Bajo", "value": estados["Bajo"]},
-        {"label": "Crítico", "value": estados["Crítico"]},
-        {"label": "Agotado", "value": estados["Agotado"]},
+        {"label": estado, "value": estados[estado]}
+        for estado in STOCK_STATUS_ORDEN
+        if estados[estado] > 0
     ]
-    stock_data = [d for d in stock_data if d["value"] > 0]
 
     col_pie, col_alertas = st.columns(2)
 
@@ -42,7 +40,7 @@ def _render_alertas(data):
     for p in data["productos"]:
         stock = data["inv_map"].get(p.get("id"), 0)
         status = get_stock_status(stock, p.get("stock_maximo"))
-        if status in ["Crítico", "Agotado"]:
+        if status in STOCK_STATUS_ALERTA:
             alertas.append(
                 {
                     "nombre": p.get("nombre", ""),
@@ -58,7 +56,7 @@ def _render_alertas(data):
         return
 
     for a in alertas:
-        mod = "dash-alert-tile--crit" if a["status"] == "Agotado" else "dash-alert-tile--warn"
+        mod = "dash-alert-tile--crit" if a["status"] == STOCK_AGOTADO else "dash-alert-tile--warn"
         nombre = html.escape(a["nombre"])
         st.markdown(
             f"""<div class="dash-alert-tile {mod}">
