@@ -1,6 +1,24 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr, model_validator
 from datetime import datetime
-from typing import Optional, List, Literal
+from typing import Any, Dict, Optional, List, Literal
+
+
+class ErrorResponse(BaseModel):
+    """Cuerpo que devuelve FastAPI en los HTTPException."""
+    detail: str
+
+
+def respuesta_error(codigo: int, descripcion: str) -> Dict[int, Dict[str, Any]]:
+    """Construye la entrada del parámetro `responses` de un endpoint.
+
+    Permite documentar los errores lanzados con `raise HTTPException(...)`.
+    """
+    return {
+        codigo: {
+            "model": ErrorResponse,
+            "description": descripcion,
+        }
+    }
 
 
 class CategoriaBase(BaseModel):

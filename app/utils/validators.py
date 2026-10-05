@@ -59,14 +59,13 @@ def validar_email_proveedor(email: str, proveedores_existentes: List[Dict]) -> t
     return True, None
 
 
-def validar_proveedor_nuevo(nombre: str, email: str, telefono: str) -> List[str]:
+def validar_proveedor_nuevo(nombre: str, email: str) -> List[str]:
     """
     Valida datos de un nuevo proveedor.
     
     Args:
         nombre: Nombre del proveedor
         email: Email del proveedor
-        telefono: Teléfono del proveedor (opcional)
     
     Returns:
         Lista de mensajes de error

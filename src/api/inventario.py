@@ -15,7 +15,7 @@ from src.implementaciones.repositorios_impl import (
     SQLAlchemyInventarioRepositorio,
     SQLAlchemyVentaRepositorio,
 )
-from src.aplicacion.schemas.schemas import InventarioCreate, InventarioResponse
+from src.aplicacion.schemas.schemas import InventarioCreate, InventarioResponse, respuesta_error
 from src.aplicacion.servicios.inventario_servicio import InventarioServicio
 from src.aplicacion.utils.estado_stock import clasificar_resumen_inventario
 
@@ -38,7 +38,10 @@ def get_venta_repo() -> VentaRepositorio:
 # RUTAS ESTATICAS PRIMERO (para que FastAPI no interprete "resumen" como ID)
 # ============================================================================
 
-@router.get("/resumen")
+@router.get(
+    "/resumen",
+    responses=respuesta_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error interno al obtener el resumen de inventario"),
+)
 async def resumen_inventario(db: Session = Depends(get_db)):
     """Obtiene resumen completo del inventario."""
     try:
@@ -54,7 +57,7 @@ async def resumen_inventario(db: Session = Depends(get_db)):
         for inv in inventarios:
             prod = next((p for p in productos if p.id == inv.producto_id), None)
             if prod:
-                estado = clasificar_resumen_inventario(inv.cantidad, prod.stock_minimo, prod.stock_maximo)
+                estado = clasificar_resumen_inventario(inv.cantidad, prod.stock_maximo)
                 if estado == "critico":
                     productos_criticos += 1
                 elif estado == "bajo":

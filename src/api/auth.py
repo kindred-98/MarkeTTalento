@@ -5,6 +5,7 @@ Endpoints para login, registro y gestion de usuarios
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from src.aplicacion.schemas.schemas import respuesta_error
 from sqlalchemy.orm import Session
 
 from src.core.database.database import get_db
@@ -72,7 +73,11 @@ async def login(
     }
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+    responses=respuesta_error(status.HTTP_400_BAD_REQUEST, "El nombre de usuario ya está registrado"),
+)
 async def register(
     username: str,
     password: str,

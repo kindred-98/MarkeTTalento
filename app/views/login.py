@@ -39,7 +39,7 @@ def render():
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 2, 1])
+    _, col2, _ = st.columns([1, 2, 1])
     with col2:
         username = st.text_input("👤 Usuario", placeholder="admin", key="login_user")
         password = st.text_input("🔒 Contraseña", type="password", placeholder="••••••", key="login_pass")

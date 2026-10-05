@@ -11,6 +11,7 @@ from app.logic.inventario import (
     preparar_datos_inventario,
     ordenar_inventario,
     get_color_estado,
+    color_barra_stock,
 )
 
 SIN_PROVEEDOR = "Sin proveedor"
@@ -57,7 +58,7 @@ def _aplicar_filtros(datos_inv, busqueda, filtro_estado):
     return datos_inv
 
 
-def _render_filtros(productos):
+def _render_filtros():
     """Renderiza filtros y controles de búsqueda."""
     col_f1, col_f2, col_f3 = st.columns([2, 1, 1])
     
@@ -220,7 +221,7 @@ def _exportar_json(datos_inv):
     )
 
 
-def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_options_by_name):
+def _render_tarjeta_producto(d, is_editing):
     """Renderiza una tarjeta de producto individual."""
     prod = d["producto"]
     pid = prod.get("id")
@@ -230,7 +231,7 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     max_s = d["max_s"]
     
     pct = min(100, int((stock / max_s) * 100)) if max_s > 0 else 0
-    color_barra = "#ef4444" if pct <= 20 else "#f59e0b" if pct <= 50 else "#10b981"
+    color_barra = color_barra_stock(pct)
     color_estado = get_color_estado(estado)
     ganancia = (prod.get('precio_venta') or 0) - (prod.get('precio_coste') or 0)
     ganancia_color = "#10b981" if ganancia > 0 else "#ef4444"
@@ -258,11 +259,11 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     
     card_html = '<div style="background: linear-gradient(145deg, ' + bg_color + ', rgba(15,23,42,0.98)); border: 2px solid ' + border_color + '; border-radius: 12px; padding: 16px; margin-bottom: 8px; box-shadow: ' + shadow + ';">'
     card_html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">'
-    card_html += '<div><div style="font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 2px;">' + nombre + '</div>'
+    card_html += '<div><div style="font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 2px;">' + nombre + DIV_CLOSE
     card_html += '<div style="font-size: 15px; color: #64748b;">' + sku + ' | ' + unidad + DIV_CLOSE_2
     card_html += '<div style="background: ' + color_estado + '; padding: 3px 8px; border-radius: 12px; font-size: 15px; font-weight: 700; color: white;">' + estado + DIV_CLOSE_2
     card_html += '<div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>'
-    card_html += '<div style="font-size: 15px; color: #f8fafc; margin-bottom: 6px;">🏢 ' + prov_nombre + '</div>'
+    card_html += '<div style="font-size: 15px; color: #f8fafc; margin-bottom: 6px;">🏢 ' + prov_nombre + DIV_CLOSE
     card_html += '<div style="margin-bottom: 12px;">'
     card_html += '<div style="display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 4px;">'
     card_html += '<span style="color: #64748b;">Stock</span>'
@@ -271,11 +272,11 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
     card_html += '<div style="width: ' + str(pct) + '%; height: 100%; background: ' + color_barra + '; border-radius: 2px;"></div>' + DIV_CLOSE_2 + DIV_CLOSE
     card_html += '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">'
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">COSTE</div>'
-    card_html += '<div style="font-size: 20px; color: #f59e0b; font-weight: 700;">€' + f'{precio_coste:.2f}' + '</div>' + DIV_CLOSE_2
+    card_html += '<div style="font-size: 20px; color: #f59e0b; font-weight: 700;">€' + f'{precio_coste:.2f}' + DIV_CLOSE + DIV_CLOSE_2
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">VENTA</div>'
-    card_html += '<div style="font-size: 20px; color: #3b82f6; font-weight: 700;">€' + f'{precio_venta:.2f}' + '</div>' + DIV_CLOSE_2
+    card_html += '<div style="font-size: 20px; color: #3b82f6; font-weight: 700;">€' + f'{precio_venta:.2f}' + DIV_CLOSE + DIV_CLOSE_2
     card_html += '<div style="text-align: center;"><div style="font-size: 12px; color: #f8fafc; margin-bottom: 2px;">GANANCIA</div>'
-    card_html += '<div style="font-size: 20px; color: ' + ganancia_color + '; font-weight: 700;">€' + f'{ganancia:.2f}' + '</div>' + DIV_CLOSE_2 + DIV_CLOSE
+    card_html += '<div style="font-size: 20px; color: ' + ganancia_color + '; font-weight: 700;">€' + f'{ganancia:.2f}' + DIV_CLOSE + DIV_CLOSE_2 + DIV_CLOSE
     card_html += '<div style="display: flex; justify-content: space-between; font-size: 15px; color: #f8fafc;">'
     card_html += '<span>📍 ' + ubicacion + '</span>'
     card_html += '<span>#' + codigo_barras + '</span></div>' + DIV_CLOSE_2
@@ -289,7 +290,7 @@ def _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_optio
         st.rerun()
 
 
-def _render_grid_productos(datos_inv_pagina, editable_id, proveedores, prov_options_by_name):
+def _render_grid_productos(datos_inv_pagina, editable_id):
     """Renderiza el grid de tarjetas de productos."""
     num_cols = 4
     for i in range(0, len(datos_inv_pagina), num_cols):
@@ -299,7 +300,7 @@ def _render_grid_productos(datos_inv_pagina, editable_id, proveedores, prov_opti
         for idx, d in enumerate(row_items):
             with cols[idx]:
                 is_editing = (d["producto"].get("id") == editable_id)
-                _render_tarjeta_producto(d, is_editing, proveedores, editable_id, prov_options_by_name)
+                _render_tarjeta_producto(d, is_editing)
 
 
 def _render_paginacion(total_paginas, pagina_actual, inicio, fin, total_items):
@@ -391,7 +392,7 @@ def _render_formulario_edicion(prod_a_editar, proveedores, productos, editable_i
     """Renderiza el formulario de edición de producto."""
     sku_actual = prod_a_editar["producto"].get("sku", "")
     
-    st.markdown(f"<div style='background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(0, 200, 255, 0.05)); border: 1px solid #3b82f6; border-radius: 12px; padding: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(0, 200, 255, 0.05)); border: 1px solid #3b82f6; border-radius: 12px; padding: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
     st.markdown(f"<h4 style='color: #3b82f6; margin: 0 0 15px 0;'>✏️ Editando: {prod_a_editar['producto'].get('nombre', '')}</h4>", unsafe_allow_html=True)
     
     col_e1, col_e2 = st.columns([1, 1])
@@ -514,7 +515,7 @@ def render():
     prov_options_by_name = {p.get("nombre"): p.get("id") for p in proveedores}
     
     # Filtros
-    busqueda, filtro_estado, ordenar = _render_filtros(productos)
+    busqueda, filtro_estado, ordenar = _render_filtros()
     datos_inv = _aplicar_filtros(datos_inv, busqueda, filtro_estado)
     datos_inv = ordenar_inventario(datos_inv, ordenar)
     
@@ -563,7 +564,7 @@ def render():
     datos_inv_pagina = datos_inv[inicio:fin]
     
     # Grid de productos
-    _render_grid_productos(datos_inv_pagina, editable_id, proveedores, prov_options_by_name)
+    _render_grid_productos(datos_inv_pagina, editable_id)
     
     # Paginación
     _render_paginacion(total_paginas, pagina_actual, inicio, fin, len(datos_inv))

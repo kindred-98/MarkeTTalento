@@ -10,13 +10,19 @@ def get_categoria_emoji(nombre_categoria: str) -> str:
     return CATEGORIA_EMOJIS.get(nombre_categoria, "📦")
 
 
+DESCRIPCION_POR_DEFECTO = (
+    "Producto de alta calidad, elaborado con los mejores ingredientes para "
+    "garantizar frescura y sabor excepcional en cada consumo"
+)
+
+
 def get_descripcion_default(nombre_producto: str) -> str:
     """Obtiene una descripción por defecto basada en el nombre."""
     nombre_lower = nombre_producto.lower()
     for key, desc in DESCRIPCIONES_DEFAULT.items():
         if key in nombre_lower:
             return desc
-    return f"Producto de alta calidad, elaborado con los mejores ingredientes para garantizar frescura y sabor excepcional en cada consumo"
+    return DESCRIPCION_POR_DEFECTO
 
 
 def validar_producto(data: Dict[str, Any], productos_existentes: List[Dict]) -> Dict[str, Any]:

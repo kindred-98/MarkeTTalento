@@ -129,6 +129,146 @@ class SugerenciaPrecio:
         }
 
 
+FACTORES_TENDENCIA = {"ALZA": 1.05, "BAJA": 0.95, "ESTABLE": 1.0}
+VENTANA_TENDENCIA_DIAS = 7
+DIAS_MINIMOS_TENDENCIA = 14
+DIAS_CONSUMO_PROMEDIO = 30
+UMBRAL_TENDENCIA_ALZA = 1.2
+UMBRAL_TENDENCIA_BAJA = 0.8
+DIAS_FIN_DE_SEMANA = 4
+FACTOR_FIN_DE_SEMANA = 1.2
+CONSUMO_MINIMO_PRODUCTO = 0.1
+CONSUMO_MINIMO_CATEGORIA = 0.5
+
+# (umbral acumulado de ingresos, clase ABC)
+CLASES_ABC = ((0.80, "A"), (0.95, "B"))
+CLASE_ABC_FINAL = "C"
+
+# (demanda mínima, rotación)
+NIVELES_ROTACION = ((5, "ALTA"), (2, "MEDIA"))
+ROTACION_FINAL = "BAJA"
+
+# (rotación, operador de stock, umbral, sugerencia, ajuste %)
+REGLAS_SUGERENCIA = (
+    ("ALTA", "<", 10, "SUBIR", 8.0),
+    ("ALTA", ">", 50, "MANTENER", 0.0),
+    ("BAJA", ">", 30, "BAJAR", -10.0),
+    ("MEDIA", "<", 5, "SUBIR", 5.0),
+)
+COMPARADORES_STOCK = {
+    "<": lambda stock, umbral: stock < umbral,
+    ">": lambda stock, umbral: stock > umbral,
+}
+DIAS_IMPACTO_PRESUPUESTO = 30
+AUMENTO_VENTAS_BAJADA_PRECIO = 1.15
+REDUCCION_PRECIO_BAJADA = 0.85
+TOP_SUGERENCIAS = 20
+
+UMBRAL_ESTACIONALIDAD_ALZA = 10
+UMBRAL_ESTACIONALIDAD_BAJA = -10
+
+
+def _calcular_tendencia(serie: List[Tuple[str, float]]) -> str:
+    """Compara las dos últimas semanas completas (con ceros incluidos)."""
+    if len(serie) < DIAS_MINIMOS_TENDENCIA:
+        return "ESTABLE"
+
+    ultima = float(np.mean([c for _, c in serie[-VENTANA_TENDENCIA_DIAS:]]))
+    anterior = float(np.mean([
+        c for _, c in serie[-2 * VENTANA_TENDENCIA_DIAS:-VENTANA_TENDENCIA_DIAS]
+    ]))
+
+    if anterior <= 0:
+        return "ESTABLE"
+    if ultima > anterior * UMBRAL_TENDENCIA_ALZA:
+        return "ALZA"
+    if ultima < anterior * UMBRAL_TENDENCIA_BAJA:
+        return "BAJA"
+    return "ESTABLE"
+
+
+def _consumo_promedio(serie: List[Tuple[str, float]], minimo: float) -> float:
+    """Consumo medio diario de los últimos 30 días, nunca cero."""
+    valores = [c for _, c in serie[-DIAS_CONSUMO_PROMEDIO:]]
+    consumo = float(sum(valores) / DIAS_CONSUMO_PROMEDIO) if valores else minimo
+    return consumo if consumo > 0 else minimo
+
+
+def _clasificacion_abc(porcentaje_acumulado: float) -> str:
+    """Clase ABC segun el porcentaje de ingresos acumulados."""
+    for umbral, clase in CLASES_ABC:
+        if porcentaje_acumulado <= umbral:
+            return clase
+    return CLASE_ABC_FINAL
+
+
+def _tendencia_por_variacion(variacion_pct: float) -> str:
+    """Tendencia estacional segun la variación de ingresos en porcentaje."""
+    if variacion_pct > UMBRAL_ESTACIONALIDAD_ALZA:
+        return "ALZA"
+    if variacion_pct < UMBRAL_ESTACIONALIDAD_BAJA:
+        return "BAJA"
+    return "ESTABLE"
+
+
+def _factor_dia(fecha) -> float:
+    """Multiplicador por día de semana: fines de semana +20%."""
+    if fecha.weekday() >= DIAS_FIN_DE_SEMANA:
+        return FACTOR_FIN_DE_SEMANA
+    return 1.0
+
+
+def _rotacion(demanda: float) -> str:
+    """Clasifica la rotación de un producto según su demanda diaria."""
+    for umbral, nivel in NIVELES_ROTACION:
+        if demanda >= umbral:
+            return nivel
+    return ROTACION_FINAL
+
+
+def _sugerencia_precio(rotacion: str, stock: int) -> Optional[tuple]:
+    """Devuelve (sugerencia, ajuste %) según rotación y stock, o None si no aplica."""
+    for rot, operador, umbral, sugerencia, ajuste in REGLAS_SUGERENCIA:
+        if rotacion == rot and COMPARADORES_STOCK[operador](stock, umbral):
+            return sugerencia, ajuste
+    return None
+
+
+def _impacto_estimado(sugerencia: str, ajuste: float, precio: float, demanda: float) -> float:
+    """Impacto estimado en ingresos a 30 días del ajuste de precio."""
+    ingresos_actuales = precio * demanda * DIAS_IMPACTO_PRESUPUESTO
+
+    if sugerencia == "SUBIR":
+        return ingresos_actuales * (ajuste / 100)
+
+    if sugerencia == "BAJAR":
+        precio_nuevo = precio * REDUCCION_PRECIO_BAJADA
+        ventas_nuevas = demanda * AUMENTO_VENTAS_BAJADA_PRECIO
+        return precio_nuevo * ventas_nuevas * DIAS_IMPACTO_PRESUPUESTO - ingresos_actuales
+
+    return 0.0
+
+
+def _metricas_tickets(tickets) -> Dict:
+    """Ingresos, nº de tickets y unidades de una lista de tickets."""
+    total = 0.0
+    unidades = 0
+    for t in tickets:
+        total += t.total
+        for l in t.lineas:
+            unidades += l.cantidad
+    return {"ingresos": total, "tickets": len(tickets), "unidades": unidades}
+
+
+def _variacion_pct(actual: Dict, anterior: Dict, claves: List[str]) -> Dict:
+    """Variación porcentual entre dos Metricas, 0 cuando el periodo anterior es 0."""
+    variacion = {}
+    for k in claves:
+        base = anterior[k]
+        variacion[k] = round(((actual[k] - base) / base) * 100, 1) if base > 0 else 0.0
+    return variacion
+
+
 class PrediccionServicioML:
     """Servicio de Machine Learning para predicción de demanda."""
 
@@ -174,7 +314,7 @@ class PrediccionServicioML:
         for fecha_str, cantidad in serie:
             fecha = datetime.strptime(fecha_str, "%Y-%m-%d")
             X.append([
-                fecha.weekday(),  # 0=Lunes
+                fecha.weekday(),  # Lunes es el día 0
                 fecha.day,
                 fecha.month,
             ])
@@ -202,48 +342,11 @@ class PrediccionServicioML:
         # Preparar datos
         X, y = self._preparar_features(serie)
 
-        # Consumo promedio (total últimos 30 días / 30)
-        ultimos_30_vals = [c for _, c in serie[-30:]]
-        consumo_promedio = float(sum(ultimos_30_vals) / 30.0) if ultimos_30_vals else 0.0
-        if consumo_promedio == 0:
-            consumo_promedio = 0.1  # Evitar división por cero
+        consumo_promedio = _consumo_promedio(serie, CONSUMO_MINIMO_PRODUCTO)
+        tendencia = _calcular_tendencia(serie)
 
-        # Tendencia (comparar semanas completas con ceros incluidos)
-        if len(serie) >= 14:
-            ultima_semana = float(np.mean([c for _, c in serie[-7:]]))
-            semana_anterior = float(np.mean([c for _, c in serie[-14:-7]]))
-            if semana_anterior > 0 and ultima_semana > semana_anterior * 1.2:
-                tendencia = "ALZA"
-            elif semana_anterior > 0 and ultima_semana < semana_anterior * 0.8:
-                tendencia = "BAJA"
-            else:
-                tendencia = "ESTABLE"
-        else:
-            tendencia = "ESTABLE"
-
-        # Entrenar modelo
-        pronostico = []
-        if SKLEARN_AVAILABLE and len(serie) >= 14:
-            try:
-                model = LinearRegression()
-                model.fit(X, y)
-
-                # Generar predicciones futuras
-                hoy = hoy_utc()
-                for i in range(1, dias_futuro + 1):
-                    fecha_futura = hoy + timedelta(days=i)
-                    x_futuro = np.array([[fecha_futura.weekday(), fecha_futura.day, fecha_futura.month]])
-                    pred = float(max(0, model.predict(x_futuro)[0]))
-                    pronostico.append({
-                        "fecha": fecha_futura.strftime("%Y-%m-%d"),
-                        "cantidad": round(pred, 1),
-                    })
-            except Exception:
-                # Fallback si sklearn falla
-                pronostico = self._pronostico_simple(consumo_promedio, tendencia, dias_futuro)
-        else:
-            # Fallback sin sklearn
-            pronostico = self._pronostico_simple(consumo_promedio, tendencia, dias_futuro)
+        # Pronóstico con regresión lineal, o fallback si no hay sklearn
+        pronostico = self._pronostico_ml(X, y, consumo_promedio, tendencia, dias_futuro)
 
         # Construir histórico para gráfica
         historico = [{"fecha": f, "cantidad": c} for f, c in serie]
@@ -270,16 +373,38 @@ class PrediccionServicioML:
             stock_actual=stock_actual,
         )
 
+    def _pronostico_ml(self, X, y, consumo_promedio: float,
+                       tendencia: str, dias_futuro: int) -> List[Dict]:
+        """Predicción con regresión lineal; cae al heurístico si sklearn no está o falla."""
+        if not (SKLEARN_AVAILABLE and len(y) >= DIAS_MINIMOS_TENDENCIA):
+            return self._pronostico_simple(consumo_promedio, tendencia, dias_futuro)
+
+        try:
+            model = LinearRegression()
+            model.fit(X, y)
+        except Exception:
+            return self._pronostico_simple(consumo_promedio, tendencia, dias_futuro)
+
+        hoy = hoy_utc()
+        pronostico = []
+        for i in range(1, dias_futuro + 1):
+            fecha_futura = hoy + timedelta(days=i)
+            x_futuro = np.array([[fecha_futura.weekday(), fecha_futura.day, fecha_futura.month]])
+            pred = float(max(0, model.predict(x_futuro)[0]))
+            pronostico.append({
+                "fecha": fecha_futura.strftime("%Y-%m-%d"),
+                "cantidad": round(pred, 1),
+            })
+        return pronostico
+
     def _pronostico_simple(self, consumo_promedio: float, tendencia: str, dias: int) -> List[Dict]:
         """Fallback de pronóstico sin sklearn."""
         hoy = hoy_utc()
-        factor = {"ALZA": 1.05, "BAJA": 0.95, "ESTABLE": 1.0}.get(tendencia, 1.0)
+        factor = FACTORES_TENDENCIA.get(tendencia, 1.0)
         resultado = []
         for i in range(1, dias + 1):
             fecha = hoy + timedelta(days=i)
-            # Variación por día de semana
-            factor_dia = 1.2 if fecha.weekday() >= 4 else 1.0  # Fin de semana +20%
-            cantidad = float(consumo_promedio * factor * factor_dia)
+            cantidad = float(consumo_promedio * factor * _factor_dia(fecha))
             resultado.append({
                 "fecha": fecha.strftime("%Y-%m-%d"),
                 "cantidad": round(max(0, cantidad), 1),
@@ -300,34 +425,11 @@ class PrediccionServicioML:
         if len(serie) < 7:
             return None
 
-        X, y = self._preparar_features(serie)
-        ultimos_30_vals = [c for _, c in serie[-30:]]
-        consumo_promedio = float(sum(ultimos_30_vals) / 30.0) if ultimos_30_vals else 0.5
-        if consumo_promedio == 0:
-            consumo_promedio = 0.5
-
-        tendencia = "ESTABLE"
-        if len(serie) >= 14:
-            ultima_sem = float(np.mean([c for _, c in serie[-7:]]))
-            sem_ant = float(np.mean([c for _, c in serie[-14:-7]]))
-            if sem_ant > 0 and ultima_sem > sem_ant * 1.2:
-                tendencia = "ALZA"
-            elif sem_ant > 0 and ultima_sem < sem_ant * 0.8:
-                tendencia = "BAJA"
+        consumo_promedio = _consumo_promedio(serie, CONSUMO_MINIMO_CATEGORIA)
+        tendencia = _calcular_tendencia(serie)
 
         historico = [{"fecha": f, "cantidad": c} for f, c in serie]
-
-        # Pronóstico
-        hoy = hoy_utc()
-        factor = {"ALZA": 1.05, "BAJA": 0.95, "ESTABLE": 1.0}.get(tendencia, 1.0)
-        pronostico = []
-        for i in range(1, dias_futuro + 1):
-            fecha = hoy + timedelta(days=i)
-            factor_dia = 1.2 if fecha.weekday() >= 4 else 1.0
-            pronostico.append({
-                "fecha": fecha.strftime("%Y-%m-%d"),
-                "cantidad": round(max(0, float(consumo_promedio * factor * factor_dia)), 1),
-            })
+        pronostico = self._pronostico_simple(consumo_promedio, tendencia, dias_futuro)
 
         return PrediccionDemandaResultado(
             producto_id=categoria_id,
@@ -395,6 +497,21 @@ class PrediccionServicioML:
     # MODELO 3: ANÁLISIS ABC
     # =====================================================================
 
+    def _ingresos_por_producto(self, tickets) -> Dict:
+        """Acumula ingresos, unidades, nombre y categoría por producto."""
+        ingresos = defaultdict(lambda: {"ingresos": 0.0, "unidades": 0, "nombre": "", "categoria": ""})
+        for ticket in tickets:
+            for linea in ticket.lineas:
+                if not linea.producto:
+                    continue
+                pid = linea.producto_id
+                ingresos[pid]["ingresos"] += linea.subtotal
+                ingresos[pid]["unidades"] += linea.cantidad
+                ingresos[pid]["nombre"] = linea.producto.nombre
+                cat = linea.producto.categoria
+                ingresos[pid]["categoria"] = cat.nombre if cat else ""
+        return ingresos
+
     def analisis_abc(self, dias: int = 90) -> List[ProductoABC]:
         """Clasifica productos por método ABC (Pareto 80/20) en los últimos N días."""
         tickets = self.ticket_repo.obtener_todos_completados(limite=500)
@@ -404,45 +521,27 @@ class PrediccionServicioML:
         if not tickets:
             return []
 
-        # Agregar ingresos por producto
-        ingresos = defaultdict(lambda: {"ingresos": 0.0, "unidades": 0, "nombre": "", "categoria": ""})
-        for ticket in tickets:
-            for linea in ticket.lineas:
-                if linea.producto:
-                    pid = linea.producto_id
-                    ingresos[pid]["ingresos"] += linea.subtotal
-                    ingresos[pid]["unidades"] += linea.cantidad
-                    ingresos[pid]["nombre"] = linea.producto.nombre
-                    cat = linea.producto.categoria
-                    ingresos[pid]["categoria"] = cat.nombre if cat else ""
-
-        # Ordenar por ingresos
-        items = sorted(ingresos.items(), key=lambda x: x[1]["ingresos"], reverse=True)
-        total_ingresos = sum(i["ingresos"] for _, i in items)
+        items = sorted(
+            self._ingresos_por_producto(tickets).items(),
+            key=lambda x: x[1]["ingresos"],
+            reverse=True,
+        )
+        total_ingresos = sum(datos["ingresos"] for _, datos in items)
 
         if total_ingresos == 0:
             return []
 
-        # Clasificar A/B/C
         acumulado = 0.0
         resultado = []
         for pid, datos in items:
             acumulado += datos["ingresos"]
-            pct = acumulado / total_ingresos
-            if pct <= 0.80:
-                clas = "A"
-            elif pct <= 0.95:
-                clas = "B"
-            else:
-                clas = "C"
-
             resultado.append(ProductoABC(
                 producto_id=pid,
                 nombre=datos["nombre"],
                 categoria=datos["categoria"],
                 ingresos_totales=datos["ingresos"],
                 unidades_vendidas=datos["unidades"],
-                clasificacion=clas,
+                clasificacion=_clasificacion_abc(acumulado / total_ingresos),
             ))
 
         return resultado
@@ -451,108 +550,64 @@ class PrediccionServicioML:
     # MODELO 4: SUGERENCIAS DE PRECIO
     # =====================================================================
 
+    def _construir_sugerencia(self, prod, pred) -> Optional[SugerenciaPrecio]:
+        """Genera la sugerencia de precio de un producto, o None si no aplica."""
+        rotacion = _rotacion(pred.consumo_promedio)
+        regla = _sugerencia_precio(rotacion, pred.stock_actual)
+        if regla is None:
+            return None
+
+        sugerencia, ajuste = regla
+        return SugerenciaPrecio(
+            producto_id=prod.id,
+            nombre=prod.nombre,
+            precio_actual=prod.precio_venta,
+            demanda_diaria=pred.consumo_promedio,
+            rotacion=rotacion,
+            sugerencia=sugerencia,
+            ajuste_pct=ajuste,
+            impacto_estimado=_impacto_estimado(sugerencia, ajuste, prod.precio_venta, pred.consumo_promedio),
+        )
+
     def sugerencias_precio(self, dias: int = 60) -> List[SugerenciaPrecio]:
         """Genera sugerencias de ajuste de precio basado en demanda y rotación."""
-        productos = self.producto_repo.obtener_todos()
         sugerencias = []
 
-        for prod in productos:
+        for prod in self.producto_repo.obtener_todos():
             pred = self.predecir_demanda_producto(prod.id, dias_historia=dias, dias_futuro=7)
             if not pred:
                 continue
+            sugerencia = self._construir_sugerencia(prod, pred)
+            if sugerencia:
+                sugerencias.append(sugerencia)
 
-            demanda = pred.consumo_promedio
-            stock = pred.stock_actual
-            precio = prod.precio_venta
-
-            # Rotación
-            if demanda >= 5:
-                rotacion = "ALTA"
-            elif demanda >= 2:
-                rotacion = "MEDIA"
-            else:
-                rotacion = "BAJA"
-
-            # Lógica de sugerencia
-            if rotacion == "ALTA" and stock < 10:
-                sugerencia = "SUBIR"
-                ajuste = 8.0
-            elif rotacion == "ALTA" and stock > 50:
-                sugerencia = "MANTENER"
-                ajuste = 0.0
-            elif rotacion == "BAJA" and stock > 30:
-                sugerencia = "BAJAR"
-                ajuste = -10.0
-            elif rotacion == "MEDIA" and stock < 5:
-                sugerencia = "SUBIR"
-                ajuste = 5.0
-            else:
-                continue  # Sin sugerencia
-
-            # Impacto estimado
-            if sugerencia == "SUBIR":
-                impacto = precio * (ajuste / 100) * demanda * 30  # 30 días
-            elif sugerencia == "BAJAR":
-                # Asumimos +15% en ventas por bajar precio
-                impacto = (precio * 0.85) * (demanda * 1.15 * 30) - (precio * demanda * 30)
-            else:
-                impacto = 0.0
-
-            sugerencias.append(SugerenciaPrecio(
-                producto_id=prod.id,
-                nombre=prod.nombre,
-                precio_actual=precio,
-                demanda_diaria=demanda,
-                rotacion=rotacion,
-                sugerencia=sugerencia,
-                ajuste_pct=ajuste,
-                impacto_estimado=impacto,
-            ))
-
-        # Ordenar por impacto
         sugerencias.sort(key=lambda s: abs(s.impacto_estimado), reverse=True)
-        return sugerencias[:20]  # Top 20
+        return sugerencias[:TOP_SUGERENCIAS]
 
     # =====================================================================
     # MODELO 5: ESTACIONALIDAD
     # =====================================================================
 
+    METRICAS_ESTACIONALIDAD = ["ingresos", "tickets", "unidades"]
+
     def analisis_estacionalidad(self) -> Dict:
         """Analiza patrones estacionales comparando meses."""
         hoy = utcnow_naive()
-        mes_actual = hoy.month
-        mes_anterior = (hoy.replace(day=1) - timedelta(days=1)).month
-
-        # Obtener tickets del mes actual y anterior
         inicio_actual = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        if mes_actual == 1:
+
+        if inicio_actual.month == 1:
             inicio_anterior = inicio_actual.replace(year=inicio_actual.year - 1, month=12)
         else:
-            inicio_anterior = inicio_actual.replace(month=mes_actual - 1)
+            inicio_anterior = inicio_actual.replace(month=inicio_actual.month - 1)
 
         fin_anterior = inicio_actual - timedelta(microseconds=1)
 
         tickets_actual = self.ticket_repo.obtener_por_fecha(inicio_actual, hoy)
         tickets_anterior = self.ticket_repo.obtener_por_fecha(inicio_anterior, fin_anterior)
 
-        def calcular_metricas(tickets):
-            total = 0.0
-            unidades = 0
-            for t in tickets:
-                total += t.total
-                for l in t.lineas:
-                    unidades += l.cantidad
-            return {"ingresos": total, "tickets": len(tickets), "unidades": unidades}
-
-        actual = calcular_metricas(tickets_actual)
-        anterior = calcular_metricas(tickets_anterior)
-
-        variacion = {}
-        for k in ["ingresos", "tickets", "unidades"]:
-            if anterior[k] > 0:
-                variacion[k] = round(((actual[k] - anterior[k]) / anterior[k]) * 100, 1)
-            else:
-                variacion[k] = 0.0
+        actual = _metricas_tickets(tickets_actual)
+        anterior = _metricas_tickets(tickets_anterior)
+        variacion = _variacion_pct(actual, anterior, self.METRICAS_ESTACIONALIDAD)
 
         return {
             "mes_actual": inicio_actual.strftime("%B %Y"),
@@ -560,7 +615,7 @@ class PrediccionServicioML:
             "metricas_actual": {k: round(v, 2) for k, v in actual.items()},
             "metricas_anterior": {k: round(v, 2) for k, v in anterior.items()},
             "variacion_pct": variacion,
-            "tendencia": "ALZA" if variacion.get("ingresos", 0) > 10 else ("BAJA" if variacion.get("ingresos", 0) < -10 else "ESTABLE"),
+            "tendencia": _tendencia_por_variacion(variacion.get("ingresos", 0)),
         }
 
     # =====================================================================

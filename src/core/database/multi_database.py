@@ -69,8 +69,8 @@ def get_sessionmaker(db_name: str = None):
 
 def get_db(db_name: str = None):
     """Obtiene una sesión de base de datos."""
-    SessionLocal = get_sessionmaker(db_name)
-    db = SessionLocal()
+    sessionmaker_local = get_sessionmaker(db_name)
+    db = sessionmaker_local()
     try:
         yield db
     finally:

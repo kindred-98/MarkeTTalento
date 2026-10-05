@@ -19,7 +19,7 @@ def _porcentaje_stock(cantidad: int, stock_maximo: int) -> float:
     return (cantidad / maximo) * 100
 
 
-def calcular_estado_stock(cantidad: int, stock_minimo: int, stock_maximo: int) -> str:
+def calcular_estado_stock(cantidad: int, stock_maximo: int) -> str:
     """
     Calcula el estado del stock basado en porcentaje del stock máximo.
 
@@ -44,17 +44,17 @@ def calcular_estado_stock(cantidad: int, stock_minimo: int, stock_maximo: int) -
     return "ADECUADO"
 
 
-def calcular_necesita_reposicion(cantidad: int, stock_minimo: int, stock_maximo: int) -> bool:
+def calcular_necesita_reposicion(cantidad: int, stock_maximo: int) -> bool:
     """Determina si el producto necesita reposición."""
-    return calcular_estado_stock(cantidad, stock_minimo, stock_maximo) in ESTADOS_AGOTADO
+    return calcular_estado_stock(cantidad, stock_maximo) in ESTADOS_AGOTADO
 
 
-def clasificar_resumen_inventario(cantidad: int, stock_minimo: int, stock_maximo: int) -> str:
+def clasificar_resumen_inventario(cantidad: int, stock_maximo: int) -> str:
     """
     Clasificación simplificada para el resumen del dashboard.
     Retorna: critico, bajo, adecuado
     """
-    estado = calcular_estado_stock(cantidad, stock_minimo, stock_maximo)
+    estado = calcular_estado_stock(cantidad, stock_maximo)
 
     if estado in ESTADOS_AGOTADO:
         return "critico"

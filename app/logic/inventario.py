@@ -8,6 +8,12 @@ from app.config import ESTADOS_STOCK
 UMBRAL_CRITICO = 25
 UMBRAL_BAJO = 59
 
+COLOR_CRITICO = "#ef4444"
+COLOR_BAJO = "#f59e0b"
+COLOR_SALUDABLE = "#10b981"
+PORC_CRITICO = 20
+PORC_BAJO = 50
+
 
 def calcular_estado_stock(stock: int, stock_maximo: int) -> str:
     """Calcula el estado del stock basado en el porcentaje del máximo."""
@@ -32,6 +38,15 @@ def get_estado_info(estado: str) -> Dict[str, str]:
 def get_color_estado(estado: str) -> str:
     """Obtiene el color hexadecimal asociado a un estado de stock."""
     return get_estado_info(estado)["color"]
+
+
+def color_barra_stock(pct: float) -> str:
+    """Devuelve el color de la barra de progreso segun el porcentaje de stock."""
+    if pct <= PORC_CRITICO:
+        return COLOR_CRITICO
+    if pct <= PORC_BAJO:
+        return COLOR_BAJO
+    return COLOR_SALUDABLE
 
 
 def filtrar_por_estado(datos: List[Dict], estado_filtro: str) -> List[Dict]:

@@ -3,6 +3,10 @@ from sqlalchemy.orm import relationship
 from src.core.database.base import Base
 from src.core.utils.fechas import utcnow_naive
 
+# Claves foráneas reutilizadas por varias tablas.
+FK_PRODUCTO = "productos.id"
+FK_TICKET = "tickets.id"
+
 
 class Categoria(Base):
     __tablename__ = "categorias"
@@ -64,7 +68,7 @@ class Inventario(Base):
     __tablename__ = "inventario"
 
     id = Column(Integer, primary_key=True, index=True)
-    producto_id = Column(Integer, ForeignKey("productos.id"), unique=True, nullable=False)
+    producto_id = Column(Integer, ForeignKey(FK_PRODUCTO), unique=True, nullable=False)
     cantidad = Column(Integer, default=0)
     ubicacion = Column(String(100), nullable=True)
     fecha_ultima_actualizacion = Column(DateTime, default=utcnow_naive)
@@ -77,7 +81,7 @@ class Venta(Base):
     __tablename__ = "ventas"
 
     id = Column(Integer, primary_key=True, index=True)
-    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    producto_id = Column(Integer, ForeignKey(FK_PRODUCTO), nullable=False)
     cantidad = Column(Integer, nullable=False)
     precio_unitario = Column(Float, nullable=False)
     tipo_operacion = Column(String(20), default="venta")
@@ -106,8 +110,8 @@ class TicketLinea(Base):
     __tablename__ = "ticket_lineas"
 
     id = Column(Integer, primary_key=True, index=True)
-    ticket_id = Column(Integer, ForeignKey("tickets.id"), nullable=False)
-    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    ticket_id = Column(Integer, ForeignKey(FK_TICKET), nullable=False)
+    producto_id = Column(Integer, ForeignKey(FK_PRODUCTO), nullable=False)
     cantidad = Column(Integer, nullable=False)
     precio_unitario = Column(Float, nullable=False)
     subtotal = Column(Float, nullable=False)
@@ -121,7 +125,7 @@ class ProductoImagenReferencia(Base):
     __tablename__ = "producto_imagenes_referencia"
 
     id = Column(Integer, primary_key=True, index=True)
-    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    producto_id = Column(Integer, ForeignKey(FK_PRODUCTO), nullable=False)
     ruta_imagen = Column(String(500), nullable=False)
     embedding = Column(String(2000), nullable=True)  # JSON array de floats serializado
     fecha_creacion = Column(DateTime, default=utcnow_naive)

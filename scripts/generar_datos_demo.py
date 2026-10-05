@@ -85,71 +85,75 @@ def generar_ticket(conn, fecha, productos):
     return ticket_id
 
 
-def calcular_probabilidad_ticket(fecha, productos):
+def calcular_probabilidad_ticket(fecha):
     """Calcula probabilidad de generar un ticket en un día dado con estacionalidad."""
     base = 0.6  # 60% base de generar al menos 1 ticket
 
-    mes = fecha.month
-    dia_semana = fecha.weekday()
-
     # Fin de semana +30%
-    if dia_semana >= 5:
-        base += 0.25
+    if fecha.weekday() >= MESES_FIN_DE_SEMANA_MIN:
+        base += BONO_FIN_DE_SEMANA
 
     # Estacionalidad por mes
-    if mes in [12, 1]:  # Navidad / Reyes
-        base += 0.2
-    elif mes in [7, 8]:  # Verano (si hubiera)
-        base += 0.1
+    mes = fecha.month
+    if mes in MESES_NAVIDAD:  # Navidad / Reyes
+        base += BONO_NAVIDAD
+    elif mes in MESES_VERANO:  # Verano (si hubiera)
+        base += BONO_VERANO
 
     return min(base, 1.0)
 
 
+MESES_FIN_DE_SEMANA_MIN = 5
+DIAS_CERVEZA_MIN = 4
+BONO_FIN_DE_SEMANA = 0.25
+BONO_NAVIDAD = 0.2
+BONO_VERANO = 0.1
+MESES_NAVIDAD = (12, 1)
+MESES_VERANO = (7, 8)
+
+# Reglas de estacionalidad por producto.
+# (terminos, meses en temporada, dia_semana_min, peso_base, peso_temporada)
+REGLAS_ESTACIONALIDAD = (
+    (("cerveza", "aquarius", "fuze", "coca", "agua"), (3, 4, 5, 6, 7, 8, 9), None, 0.5, 1.0),
+    (("cafe", "cortado", "americano", "solo"), (10, 11, 12, 1, 2), None, 0.8, 1.2),
+    (("leche", "pan", "harina", "desayuno"), (11, 12, 1, 2), None, 1.0, 0.3),
+    (("vino", "pagos", "estrella"), (), DIAS_CERVEZA_MIN, 0.3, 0.7),
+)
+# Categorias de alimentos basicos (aceites, etc.): venta constante.
+CATEGORIAS_BASICAS = (5, 6)
+PESO_CATEGORIA_BASICA = 0.8
+
+
+def _regla_en_temporada(regla, mes, dia_semana):
+    """Indica si una regla de estacionalidad aplica en la fecha dada."""
+    terminos, meses, dia_min, _, _ = regla
+    en_meses = bool(meses) and mes in meses
+    en_dias = dia_min is not None and dia_semana >= dia_min
+    return en_meses or en_dias
+
+
+def _peso_producto(producto, mes, dia_semana):
+    """Calcula el peso estacional de un producto concreto."""
+    nombre = producto["nombre"].lower()
+    peso = 1.0
+
+    for regla in REGLAS_ESTACIONALIDAD:
+        terminos, _, _, peso_base, peso_temporada = regla
+        if not any(termino in nombre for termino in terminos):
+            continue
+        peso += peso_base
+        if _regla_en_temporada(regla, mes, dia_semana):
+            peso += peso_temporada
+
+    if producto["categoria_id"] in CATEGORIAS_BASICAS:
+        peso += PESO_CATEGORIA_BASICA
+
+    return peso
+
+
 def aplicar_estacionalidad_productos(fecha, productos):
     """Aplica pesos estacionales a productos para que ciertos productos se vendan más en ciertas épocas."""
-    mes = fecha.month
-    dia_semana = fecha.weekday()
-
-    pesos = []
-    for p in productos:
-        peso = 1.0
-        cat = p["categoria_id"]
-        nombre = p["nombre"].lower()
-
-        # Bebidas frías / cerveza / verano-primavera
-        if any(x in nombre for x in ["cerveza", "aquarius", "fuze", "coca", "agua"]):
-            if mes in [3, 4, 5, 6, 7, 8, 9]:
-                peso += 1.5
-            else:
-                peso += 0.5
-
-        # Café / caliente -> invierno
-        if any(x in nombre for x in ["cafe", "cortado", "americano", "solo"]):
-            if mes in [10, 11, 12, 1, 2]:
-                peso += 2.0
-            else:
-                peso += 0.8
-
-        # Leche / desayuno -> todo el año, ligeramente más en invierno
-        if any(x in nombre for x in ["leche", "pan", "harina", "desayuno"]):
-            peso += 1.0
-            if mes in [11, 12, 1, 2]:
-                peso += 0.3
-
-        # Vino / alcohol -> fines de semana
-        if any(x in nombre for x in ["vino", "pagos", "estrella"]):
-            if dia_semana >= 4:
-                peso += 1.0
-            else:
-                peso += 0.3
-
-        # Aceites / alimentos básicos -> constantes
-        if cat == 5 or cat == 6:
-            peso += 0.8
-
-        pesos.append(peso)
-
-    return pesos
+    return [_peso_producto(p, fecha.month, fecha.weekday()) for p in productos]
 
 
 def main():
@@ -173,7 +177,7 @@ def main():
 
     for i in range(180, -1, -1):
         fecha_dia = hoy - timedelta(days=i)
-        prob = calcular_probabilidad_ticket(fecha_dia, productos)
+        prob = calcular_probabilidad_ticket(fecha_dia)
 
         # Número de tickets en este día (0-3)
         if random.random() < prob:

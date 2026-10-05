@@ -62,7 +62,7 @@ def _selector_categoria(form_version, categorias):
     return cat_options.get(categoria_nombre, CATEGORIA_ID_POR_DEFECTO)
 
 
-def _crear_proveedor(form_version, nombre, email, telefono):
+def _crear_proveedor(nombre, email, telefono):
     """Crea un proveedor nuevo. Devuelve True si se creó."""
     if not nombre or not email:
         st.warning("⚠️ Nombre y email son obligatorios")
@@ -94,14 +94,14 @@ def _render_formulario_nuevo_proveedor(form_version):
     telefono = st.text_input("Teléfono", key=f"new_prov_telefono_{form_version}", label_visibility="collapsed", placeholder="600 000 000")
 
     if st.button("💾 Guardar proveedor", key=f"btnGuardarProv_{form_version}", width="stretch", type="secondary"):
-        if _crear_proveedor(form_version, nombre, email, telefono):
+        if _crear_proveedor(nombre, email, telefono):
             st.session_state['form_version'] = form_version + 1
             st.rerun()
 
     st.markdown(DIV_CLOSE, unsafe_allow_html=True)
 
 
-def _seccion_clasificacion(form_version, categorias, proveedores):
+def _seccion_clasificacion(form_version, categorias):
     """Unidad, categoría, código de barras y días de reposición."""
     c5, c6, c7, c8 = st.columns(4)
     with c5:
@@ -296,7 +296,7 @@ def render():
     existentes = _valores_existentes(productos)
 
     sku, nombre, precio, precio_coste = _seccion_identificacion(form_version)
-    unidad, categoria_id, codigo_barras, tiempo_repo = _seccion_clasificacion(form_version, categorias, proveedores)
+    unidad, categoria_id, codigo_barras, tiempo_repo = _seccion_clasificacion(form_version, categorias)
     proveedor_id, unidad_ingreso, stock_max = _seccion_stock(form_version, proveedores)
     descripcion, imagen_subida = _seccion_descripcion_e_imagen(form_version)
 

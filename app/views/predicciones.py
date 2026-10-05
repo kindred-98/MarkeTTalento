@@ -72,29 +72,16 @@ def render():
 def _render_demanda():
     st.markdown("#### Predicción de Demanda")
 
-    col1, col2 = st.columns([1, 3])
+    _, col1, _ = st.columns([1, 3])
     with col1:
         modo = st.radio("Analizar por:", ["Producto", "Categoría"], horizontal=True)
 
-    db = DatabaseAccess()
-    try:
-        productos = db.get_productos()
-        categorias = db.get_categorias()
-        productos = [_obj_to_dict(p) for p in productos]
-        categorias = [_obj_to_dict(c) for c in categorias]
-    finally:
-        db.close()
+    productos, categorias = _cargar_productos_y_categorias()
 
     if modo == "Producto":
-        opciones = {p["nombre"]: p["id"] for p in productos}
-        sel = st.selectbox("Selecciona producto:", list(opciones.keys()))
-        pid = opciones.get(sel)
-        endpoint = f"/api/v1/prediccion/producto/{pid}"
+        st.selectbox("Selecciona producto:", [p["nombre"] for p in productos])
     else:
-        opciones = {c["nombre"]: c["id"] for c in categorias}
-        sel = st.selectbox("Selecciona categoría:", list(opciones.keys()))
-        cid = opciones.get(sel)
-        endpoint = f"/api/v1/prediccion/categoria/{cid}"
+        st.selectbox("Selecciona categoría:", [c["nombre"] for c in categorias])
 
     if st.button("🔮 Generar Pronóstico", type="primary"):
         st.info("🔮 Las predicciones ML requieren iniciar la API: uvicorn src.api:app --port 8002")
@@ -119,7 +106,7 @@ def _mostrar_grafico_demanda(data):
     fig.add_trace(go.Scatter(
         x=fechas_hist, y=vals_hist,
         mode='lines', name='Histórico',
-        line=dict(color='#0ea5e9', width=2),
+        line={"color": '#0ea5e9', "width": 2},
         fill='tozeroy', fillcolor='rgba(14,165,233,0.1)'
     ))
 
@@ -135,7 +122,7 @@ def _mostrar_grafico_demanda(data):
         fig.add_trace(go.Scatter(
             x=fechas_pron, y=vals_pron,
             mode='lines', name='Pronóstico ML',
-            line=dict(color='#8b5cf6', width=2, dash='dash'),
+            line={"color": '#8b5cf6', "width": 2, "dash": 'dash'},
             fill='tozeroy', fillcolor='rgba(139,92,246,0.1)'
         ))
 
@@ -143,14 +130,50 @@ def _mostrar_grafico_demanda(data):
         title=f"Demanda: {data.get('producto_nombre', '')}",
         paper_bgcolor="#0f172a",
         plot_bgcolor="#0f172a",
-        font=dict(color="#e2e8f0"),
-        xaxis=dict(gridcolor="rgba(255,255,255,0.05)", showgrid=True),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.05)", showgrid=True),
+        font={"color": "#e2e8f0"},
+        xaxis={"gridcolor": "rgba(255,255,255,0.05)", "showgrid": True},
+        yaxis={"gridcolor": "rgba(255,255,255,0.05)", "showgrid": True},
         height=420,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(l=40, r=40, t=60, b=40)
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
+        margin={"l": 40, "r": 40, "t": 60, "b": 40}
     )
     st.plotly_chart(fig, width="stretch")
+
+
+COLOR_ESTADO_STOCK = {
+    "CRITICO": "#ef4444",
+    "BAJO": "#f59e0b",
+    "MODERADO": "#3b82f6",
+    "ADECUADO": "#10b981",
+}
+COLOR_ESTADO_STOCK_POR_DEFECTO = "#94a3b8"
+RECOMENDACION_ESTADO_STOCK = {
+    "CRITICO": " — ¡Reponer urgentemente!",
+    "BAJO": " — Considerar reposición",
+}
+LIMITE_TICKETS_ESTACIONALIDAD = 100
+
+
+def _cargar_productos_y_categorias():
+    """Carga productos y categorías como diccionarios."""
+    db = DatabaseAccess()
+    try:
+        return (
+            [_obj_to_dict(p) for p in db.get_productos()],
+            [_obj_to_dict(c) for c in db.get_categorias()],
+        )
+    finally:
+        db.close()
+
+
+def _color_estado_stock(estado):
+    """Color asociado al estado de stock previsto."""
+    return COLOR_ESTADO_STOCK.get(estado, COLOR_ESTADO_STOCK_POR_DEFECTO)
+
+
+def _recomendacion_estado_stock(estado):
+    """Texto de recomendación segun el estado de stock previsto."""
+    return RECOMENDACION_ESTADO_STOCK.get(estado, "")
 
 
 def _mostrar_metricas_demanda(data):
@@ -170,11 +193,11 @@ def _mostrar_metricas_demanda(data):
         """, unsafe_allow_html=True)
 
     estado = data.get("estado_stock", "ADECUADO")
-    color_estado = {"CRITICO": "#ef4444", "BAJO": "#f59e0b", "MODERADO": "#3b82f6", "ADECUADO": "#10b981"}.get(estado, "#94a3b8")
+    color_estado = _color_estado_stock(estado)
     st.markdown(f"""
     <div style="margin-top:1rem; padding:10px; background:{color_estado}15; border-left:4px solid {color_estado}; border-radius:0 8px 8px 0;">
         <strong style="color:{color_estado};">Estado de stock: {estado}</strong>
-        {" — ¡Reponer urgentemente!" if estado == "CRITICO" else (" — Considerar reposición" if estado == "BAJO" else "")}
+        {_recomendacion_estado_stock(estado)}
     </div>
     """, unsafe_allow_html=True)
 
@@ -195,40 +218,69 @@ def _render_inteligencia():
 def _render_abc():
     st.info("📊 Análisis ABC requiere iniciar la API con: uvicorn src.api:app --port 8002")
     st.markdown("O inicia con `python start_api.py` para ver predicciones ML.")
-    
-    db = DatabaseAccess()
-    try:
-        productos = db.get_productos()
-        productos = [_obj_to_dict(p) for p in productos]
-        tickets = db.get_tickets(limite=500)
-        tickets = [_obj_to_dict(t) for t in tickets]
-    finally:
-        db.close()
-    
+
+    productos, _ = _cargar_productos_y_categorias()
+
     if not productos:
         st.warning("No hay productos registrados.")
         return
-    
+
     st.markdown("### Top 10 Productos por Nombre")
     nombres = [p["nombre"] for p in productos[:15]]
     precios = [p.get("precio_venta", 0) for p in productos[:15]]
-    
+
     fig = go.Figure()
     fig.add_trace(go.Bar(x=nombres, y=precios, marker_color="#10b981"))
-    fig.update_layout(title="Productos (demostración)", paper_bgcolor="#0f172a", plot_bgcolor="#0f172a", font=dict(color="#e2e8f0"), height=400)
+    fig.update_layout(title="Productos (demostración)", paper_bgcolor="#0f172a", plot_bgcolor="#0f172a", font={"color": "#e2e8f0"}, height=400)
     st.plotly_chart(fig, width="stretch")
+
+
+UMBRAL_MARGEN_BUENO = 20
+UMBRAL_MARGEN_MEDIO = 10
+
+
+def _margen_porcentaje(precio, coste):
+    """Margen porcentual sobre el precio de venta (0 si el precio es 0)."""
+    if precio <= 0:
+        return 0
+    return ((precio - coste) / precio) * 100
+
+
+def _color_margen(margen):
+    """Color segun el margen porcentual."""
+    if margen > UMBRAL_MARGEN_BUENO:
+        return "#10b981"
+    if margen > UMBRAL_MARGEN_MEDIO:
+        return "#f59e0b"
+    return "#ef4444"
+
+
+def _render_tarjeta_precio(p):
+    """Renderiza la tarjeta de un producto con su margen."""
+    precio = p.get("precio_venta", 0)
+    coste = p.get("precio_coste", 0) or 0
+    margen = _margen_porcentaje(precio, coste)
+    color = _color_margen(margen)
+
+    st.markdown(f"""
+    <div style="padding:12px; margin-bottom:8px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:4px solid {color};">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>{p.get("nombre", "N/A")}</strong>
+            <span style="color:{color}; font-weight:700;">Margen: {margen:.1f}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; color:#94a3b8;">
+            <span>Precio: <strong>€{precio:.2f}</strong></span>
+            <span>Coste: <strong>€{coste:.2f}</strong></span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def _render_precios():
     st.info("💰 Precio óptimo requiere iniciar la API con: uvicorn src.api:app --port 8002")
     st.markdown("Las predicciones ML avanzadas necesitan el backend FastAPI.")
 
-    db = DatabaseAccess()
-    try:
-        productos = db.get_productos()
-        productos = [_obj_to_dict(p) for p in productos]
-    finally:
-        db.close()
+    productos, _ = _cargar_productos_y_categorias()
 
     if not productos:
         st.warning("No hay productos.")
@@ -236,22 +288,7 @@ def _render_precios():
 
     st.markdown(f"**{len(productos)} productos disponibles**")
     for p in productos[:10]:
-        precio = p.get("precio_venta", 0)
-        coste = p.get("precio_coste", 0) or 0
-        margen = ((precio - coste) / precio * 100) if precio > 0 else 0
-        color = "#10b981" if margen > 20 else "#f59e0b" if margen > 10 else "#ef4444"
-        st.markdown(f"""
-        <div style="padding:12px; margin-bottom:8px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:4px solid {color};">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>{p.get("nombre", "N/A")}</strong>
-                <span style="color:{color}; font-weight:700;">Margen: {margen:.1f}%</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; color:#94a3b8;">
-                <span>Precio: <strong>€{precio:.2f}</strong></span>
-                <span>Coste: <strong>€{coste:.2f}</strong></span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        _render_tarjeta_precio(p)
 
 
 def _render_estacionalidad():
@@ -259,7 +296,7 @@ def _render_estacionalidad():
     
     db = DatabaseAccess()
     try:
-        tickets = db.get_tickets(limite=100)
+        tickets = db.get_tickets(limite=LIMITE_TICKETS_ESTACIONALIDAD)
         tickets = [_obj_to_dict(t) for t in tickets]
     finally:
         db.close()
@@ -279,7 +316,7 @@ def _render_estacionalidad():
     if meses:
         fig = go.Figure()
         fig.add_trace(go.Bar(x=list(meses.keys()), y=list(meses.values()), marker_color="#0ea5e9"))
-        fig.update_layout(title="Tickets por Mes", paper_bgcolor="#0f172a", plot_bgcolor="#0f172a", font=dict(color="#e2e8f0"), height=300)
+        fig.update_layout(title="Tickets por Mes", paper_bgcolor="#0f172a", plot_bgcolor="#0f172a", font={"color": "#e2e8f0"}, height=300)
         st.plotly_chart(fig, width="stretch")
     else:
         st.info("Sin datos de fecha en tickets.")

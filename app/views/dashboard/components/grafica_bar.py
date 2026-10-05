@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from app.views.dashboard.config import COLORS
 
 
-def grafica_bar(data, title="", color=None):
+def grafica_bar(data, color=None):
     if not data:
         return
     
@@ -21,9 +21,9 @@ def grafica_bar(data, title="", color=None):
         height=350,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e2e8f0'),
-        margin=dict(l=30, r=30, t=20, b=70),
-        xaxis=dict(tickangle=-45, color='#94a3b8'),
-        yaxis=dict(color='#94a3b8', gridcolor='rgba(255,255,255,.1)')
+        font={"color": '#e2e8f0'},
+        margin={"l": 30, "r": 30, "t": 20, "b": 70},
+        xaxis={"tickangle": -45, "color": '#94a3b8'},
+        yaxis={"color": '#94a3b8', "gridcolor": 'rgba(255,255,255,.1)'}
     )
     return fig

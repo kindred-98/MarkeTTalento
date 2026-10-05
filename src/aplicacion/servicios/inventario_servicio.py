@@ -32,7 +32,6 @@ class InventarioAnalisis:
         """Calcula el estado del stock de forma unificada."""
         return calcular_estado_stock(
             self.stock_actual,
-            self.producto.stock_minimo,
             self.producto.stock_maximo
         )
 
@@ -41,7 +40,6 @@ class InventarioAnalisis:
         """Determina si necesita reposición."""
         return calcular_necesita_reposicion(
             self.stock_actual,
-            self.producto.stock_minimo,
             self.producto.stock_maximo
         )
     

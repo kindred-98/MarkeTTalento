@@ -2,8 +2,9 @@
 Router de Administración de Bases de Datos
 Endpoints para gestionar múltiples bases de datos
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, List
+from src.aplicacion.schemas.schemas import respuesta_error
 from src.core.database.multi_database import (
     list_databases,
     set_active_database,
@@ -26,7 +27,10 @@ async def obtener_bases_de_datos(current_user: Usuario = Depends(get_current_act
     }
 
 
-@router.post("/bases-de-datos/cambiar/{db_name}")
+@router.post(
+    "/bases-de-datos/cambiar/{db_name}",
+    responses=respuesta_error(status.HTTP_400_BAD_REQUEST, "La base de datos solicitada no existe"),
+)
 async def cambiar_base_de_datos(db_name: str, current_user: Usuario = Depends(get_current_active_admin)):
     """Cambia la base de datos activa."""
     try:
@@ -39,7 +43,10 @@ async def cambiar_base_de_datos(db_name: str, current_user: Usuario = Depends(ge
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/bases-de-datos/inicializar-todas")
+@router.post(
+    "/bases-de-datos/inicializar-todas",
+    responses=respuesta_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al inicializar las bases de datos"),
+)
 async def inicializar_todas(current_user: Usuario = Depends(get_current_active_admin)):
     """Inicializa todas las bases de datos (crea tablas)."""
     try:
@@ -52,7 +59,10 @@ async def inicializar_todas(current_user: Usuario = Depends(get_current_active_a
         raise HTTPException(status_code=500, detail="Error interno al inicializar bases de datos")
 
 
-@router.post("/bases-de-datos/migrar")
+@router.post(
+    "/bases-de-datos/migrar",
+    responses=respuesta_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error durante la migración"),
+)
 async def migrar_entre_bases(
     source_db: str,
     target_db: str,

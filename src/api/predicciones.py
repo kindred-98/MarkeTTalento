@@ -3,18 +3,26 @@ Router de Predicciones ML
 Endpoints de Machine Learning para predicción de demanda e inteligencia de negocio
 """
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
+from src.aplicacion.schemas.schemas import respuesta_error
 from src.aplicacion.servicios.prediccion_ml import PrediccionServicioML
 
 router = APIRouter()
+
+SIN_DATOS_PRODUCTO = respuesta_error(
+    status.HTTP_404_NOT_FOUND, "No hay datos suficientes para predecir este producto"
+)
+SIN_DATOS_CATEGORIA = respuesta_error(
+    status.HTTP_404_NOT_FOUND, "No hay datos suficientes para predecir esta categoría"
+)
 
 
 def _get_servicio() -> PrediccionServicioML:
     return PrediccionServicioML()
 
 
-@router.get("/producto/{producto_id}")
+@router.get("/producto/{producto_id}", responses=SIN_DATOS_PRODUCTO)
 async def predecir_demanda_producto(producto_id: int, dias_historia: int = 90, dias_futuro: int = 30):
     """Predice la demanda futura para un producto específico."""
     servicio = _get_servicio()
@@ -24,7 +32,7 @@ async def predecir_demanda_producto(producto_id: int, dias_historia: int = 90, d
     return resultado.to_dict()
 
 
-@router.get("/categoria/{categoria_id}")
+@router.get("/categoria/{categoria_id}", responses=SIN_DATOS_CATEGORIA)
 async def predecir_demanda_categoria(categoria_id: int, dias_historia: int = 90, dias_futuro: int = 30):
     """Predice la demanda agregada para una categoría."""
     servicio = _get_servicio()

@@ -39,69 +39,107 @@ def _calcular_total_lineas(lineas_data: list) -> float:
 # CRUD TICKETS
 # ============================================================================
 
+def _validar_lineas_no_vacias(lineas) -> None:
+    """El ticket debe incluir al menos una línea."""
+    if not lineas:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El ticket debe tener al menos una línea"
+        )
+
+
+def _cargar_y_validar_productos(db: Session, productos_ids: list) -> dict:
+    """Carga los productos del ticket y verifica que todos existan."""
+    productos = db.query(Producto).filter(Producto.id.in_(productos_ids)).all()
+    productos_dict = {p.id: p for p in productos}
+
+    for pid in productos_ids:
+        if pid not in productos_dict:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Producto {pid} no encontrado"
+            )
+
+    return productos_dict
+
+
+def _bloquear_inventarios(db: Session, productos_ids: list) -> dict:
+    """Bloquea los inventarios (FOR UPDATE) para evitar ventas simultáneas."""
+    inventarios = db.query(Inventario).filter(
+        Inventario.producto_id.in_(productos_ids)
+    ).with_for_update().all()
+    return {inv.producto_id: inv for inv in inventarios}
+
+
+def _validar_stock(lineas, inv_dict: dict, productos_dict: dict) -> None:
+    """Verifica que cada línea tenga inventario registrado y stock suficiente."""
+    for linea in lineas:
+        inv = inv_dict.get(linea.producto_id)
+        if not inv:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Producto {linea.producto_id} sin inventario registrado"
+            )
+        if inv.cantidad < linea.cantidad:
+            prod = productos_dict[linea.producto_id]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Stock insuficiente para '{prod.nombre}'. Disponible: {inv.cantidad}, Solicitado: {linea.cantidad}"
+            )
+
+
+def _calcular_cambio(ticket_data, total: float):
+    """Devuelve el cambio a devolver, o None si el pago no es en efectivo."""
+    if ticket_data.metodo_pago != "efectivo" or ticket_data.entrega_efectivo is None:
+        return None
+
+    cambio = round(ticket_data.entrega_efectivo - total, 2)
+    if cambio < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El monto entregado (€{ticket_data.entrega_efectivo}) es menor al total (€{total})"
+        )
+    return cambio
+
+
+def _crear_lineas_y_descontar_stock(db: Session, db_ticket, lineas, inv_dict: dict) -> None:
+    """Crea las líneas del ticket y descuenta el stock de cada producto."""
+    ahora = datetime.now(timezone.utc)
+
+    for linea in lineas:
+        db.add(TicketLinea(
+            ticket_id=db_ticket.id,
+            producto_id=linea.producto_id,
+            cantidad=linea.cantidad,
+            precio_unitario=linea.precio_unitario,
+            subtotal=round(linea.cantidad * linea.precio_unitario, 2)
+        ))
+
+        inv = inv_dict[linea.producto_id]
+        inv.cantidad -= linea.cantidad
+        inv.fecha_ultima_actualizacion = ahora
+
+
 @router.post("", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
 async def crear_ticket(ticket_data: TicketCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Crea un ticket completo con transacción atómica.
     Bloquea filas de inventario para evitar race conditions.
     """
-    if not ticket_data.lineas:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El ticket debe tener al menos una línea"
-        )
+    _validar_lineas_no_vacias(ticket_data.lineas)
 
     try:
         # Iniciar transacción manualmente
         db.begin_nested()
 
-        # 1. Validar que todos los productos existen y hay stock suficiente
         productos_ids = [linea.producto_id for linea in ticket_data.lineas]
-        productos = db.query(Producto).filter(Producto.id.in_(productos_ids)).all()
-        productos_dict = {p.id: p for p in productos}
+        productos_dict = _cargar_y_validar_productos(db, productos_ids)
+        inv_dict = _bloquear_inventarios(db, productos_ids)
+        _validar_stock(ticket_data.lineas, inv_dict, productos_dict)
 
-        for linea in ticket_data.lineas:
-            if linea.producto_id not in productos_dict:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Producto {linea.producto_id} no encontrado"
-                )
-
-        # 2. Bloquear inventarios para evitar ventas simultáneas (FOR UPDATE)
-        inventarios = db.query(Inventario).filter(
-            Inventario.producto_id.in_(productos_ids)
-        ).with_for_update().all()
-        inv_dict = {inv.producto_id: inv for inv in inventarios}
-
-        # 3. Validar stock suficiente
-        for linea in ticket_data.lineas:
-            inv = inv_dict.get(linea.producto_id)
-            if not inv:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Producto {linea.producto_id} sin inventario registrado"
-                )
-            if inv.cantidad < linea.cantidad:
-                prod = productos_dict[linea.producto_id]
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Stock insuficiente para '{prod.nombre}'. Disponible: {inv.cantidad}, Solicitado: {linea.cantidad}"
-                )
-
-        # 4. Calcular totales
         total = _calcular_total_lineas(ticket_data.lineas)
+        cambio = _calcular_cambio(ticket_data, total)
 
-        # 5. Calcular cambio si es efectivo
-        cambio = None
-        if ticket_data.metodo_pago == "efectivo" and ticket_data.entrega_efectivo is not None:
-            cambio = round(ticket_data.entrega_efectivo - total, 2)
-            if cambio < 0:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El monto entregado (€{ticket_data.entrega_efectivo}) es menor al total (€{total})"
-                )
-
-        # 6. Crear cabecera del ticket
         db_ticket = Ticket(
             numero_ticket=_generar_numero_ticket(db),
             cajero=ticket_data.cajero,
@@ -115,24 +153,8 @@ async def crear_ticket(ticket_data: TicketCreate, db: Session = Depends(get_db),
         db.add(db_ticket)
         db.flush()  # Para obtener el ID del ticket
 
-        # 7. Crear líneas del ticket y actualizar inventario
-        for linea in ticket_data.lineas:
-            subtotal = round(linea.cantidad * linea.precio_unitario, 2)
-            db_linea = TicketLinea(
-                ticket_id=db_ticket.id,
-                producto_id=linea.producto_id,
-                cantidad=linea.cantidad,
-                precio_unitario=linea.precio_unitario,
-                subtotal=subtotal
-            )
-            db.add(db_linea)
+        _crear_lineas_y_descontar_stock(db, db_ticket, ticket_data.lineas, inv_dict)
 
-            # Descontar stock
-            inv = inv_dict[linea.producto_id]
-            inv.cantidad -= linea.cantidad
-            inv.fecha_ultima_actualizacion = datetime.now(timezone.utc)
-
-        # 8. Commit de toda la transacción
         db.commit()
         db.refresh(db_ticket)
 
@@ -153,6 +175,20 @@ async def crear_ticket(ticket_data: TicketCreate, db: Session = Depends(get_db),
         )
 
 
+SUFIJO_UTC_ISO = "+00:00"
+
+
+def _parsear_fecha_iso(valor: str, nombre_campo: str) -> datetime:
+    """Parsea una fecha ISO 8601 aceptando el sufijo 'Z' de UTC."""
+    try:
+        return datetime.fromisoformat(valor.replace("Z", SUFIJO_UTC_ISO))
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Formato de {nombre_campo} invalido: {valor}. Use ISO 8601"
+        )
+
+
 @router.get("", response_model=List[TicketResponse])
 async def listar_tickets(
     limite: int = Query(100, ge=1, le=500),
@@ -168,24 +204,10 @@ async def listar_tickets(
     query = db.query(Ticket)
 
     if fecha_desde:
-        try:
-            fd = datetime.fromisoformat(fecha_desde.replace("Z", "+00:00"))
-            query = query.filter(Ticket.fecha >= fd)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Formato de fecha_desde invalido: {fecha_desde}. Use ISO 8601"
-            )
+        query = query.filter(Ticket.fecha >= _parsear_fecha_iso(fecha_desde, "fecha_desde"))
 
     if fecha_hasta:
-        try:
-            fh = datetime.fromisoformat(fecha_hasta.replace("Z", "+00:00"))
-            query = query.filter(Ticket.fecha <= fh)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Formato de fecha_hasta invalido: {fecha_hasta}. Use ISO 8601"
-            )
+        query = query.filter(Ticket.fecha <= _parsear_fecha_iso(fecha_hasta, "fecha_hasta"))
 
     if cajero:
         query = query.filter(Ticket.cajero == cajero)
@@ -278,6 +300,16 @@ async def anular_ticket(ticket_id: int, db: Session = Depends(get_db), current_u
 # ESTADÍSTICAS Y DASHBOARD
 # ============================================================================
 
+def _parsear_fecha_iso_opcional(valor: Optional[str]):
+    """Como _parsear_fecha_iso, pero devuelve None si la fecha no es válida."""
+    if not valor:
+        return None
+    try:
+        return datetime.fromisoformat(valor.replace("Z", SUFIJO_UTC_ISO))
+    except Exception:
+        return None
+
+
 @router.get("/estadisticas/resumen")
 async def resumen_estadisticas(
     fecha_desde: Optional[str] = Query(None),
@@ -287,19 +319,13 @@ async def resumen_estadisticas(
     """Resumen de métricas clave para el dashboard."""
     query = db.query(Ticket).filter(Ticket.estado == "completado")
 
-    if fecha_desde:
-        try:
-            fd = datetime.fromisoformat(fecha_desde.replace("Z", "+00:00"))
-            query = query.filter(Ticket.fecha >= fd)
-        except Exception:
-            pass
+    fd = _parsear_fecha_iso_opcional(fecha_desde)
+    if fd:
+        query = query.filter(Ticket.fecha >= fd)
 
-    if fecha_hasta:
-        try:
-            fh = datetime.fromisoformat(fecha_hasta.replace("Z", "+00:00"))
-            query = query.filter(Ticket.fecha <= fh)
-        except Exception:
-            pass
+    fh = _parsear_fecha_iso_opcional(fecha_hasta)
+    if fh:
+        query = query.filter(Ticket.fecha <= fh)
 
     tickets = query.all()
 

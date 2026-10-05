@@ -413,7 +413,7 @@ def _procesar_barcode(texto: str):
     texto = texto.strip().lower()
     if not texto:
         return
-    productos, inventarios, tickets = _get_ventas_data()
+    productos, _, _ = _get_ventas_data()
     for prod in productos:
         sku = (prod.get('sku') or '').lower()
         cod = (prod.get('codigo_barras') or '').lower()
@@ -428,7 +428,7 @@ def _procesar_barcode(texto: str):
 
 def _render_alerta_stock_bajo(carrito: list):
     """Muestra alerta si algún producto del carrito queda con stock < 5."""
-    productos, inventarios, tickets = _get_ventas_data()
+    _, inventarios, _ = _get_ventas_data()
     inv_dict = {i['producto_id']: i['cantidad'] for i in inventarios}
     alertas = []
     for linea in carrito:
@@ -790,28 +790,51 @@ def render_ticket_post_cobro():
         st.rerun()
 
 
+SEPARADOR_TICKET = "-" * 42
+
+
+def _linea_producto_txt(linea: dict) -> str:
+    """Una línea de producto formateada para el ticket en texto plano."""
+    nombre = linea.get('producto', {}).get('nombre')
+    if not nombre:
+        nombre = "Prod %s" % linea['producto_id']
+    return "%s x %-20s %7.2f €" % (linea['cantidad'], nombre, linea['subtotal'])
+
+
+def _lineas_ticket_txt(ticket: dict) -> list:
+    """Cabecera, líneas de producto y pie del ticket en texto plano."""
+    cabecera = [
+        SEPARADOR_TICKET,
+        "           MARKE TTALENTO",
+        f"         Ticket N° {ticket['numero_ticket']}",
+        f"    {ticket['fecha'][:16].replace('T', ' ')}",
+        f"    Cajero: {ticket['cajero']}",
+        SEPARADOR_TICKET,
+    ]
+
+    detalle = [_linea_producto_txt(linea) for linea in ticket['lineas']]
+
+    pie = [
+        SEPARADOR_TICKET,
+        f"TOTAL:{'':>28} {ticket['total']:>7.2f} €",
+        f"Metodo: {ticket['metodo_pago'].upper()}",
+    ]
+    if ticket.get('entrega_efectivo'):
+        pie += [
+            f"Entrega:{'':>27} {ticket['entrega_efectivo']:>7.2f} €",
+            f"Cambio:{'':>28} {ticket['cambio']:>7.2f} €",
+        ]
+
+    return cabecera + detalle + pie + [
+        SEPARADOR_TICKET,
+        "      ¡Gracias por su visita!",
+        SEPARADOR_TICKET,
+    ]
+
+
 def generar_ticket_txt(ticket: dict) -> str:
     """Genera el contenido del ticket en formato texto."""
-    lineas = []
-    lineas.append("-" * 42)
-    lineas.append("           MARKE TTALENTO")
-    lineas.append(f"         Ticket N° {ticket['numero_ticket']}")
-    lineas.append(f"    {ticket['fecha'][:16].replace('T', ' ')}")
-    lineas.append(f"    Cajero: {ticket['cajero']}")
-    lineas.append("-" * 42)
-    for linea in ticket['lineas']:
-        nombre = linea.get('producto', {}).get('nombre', f"Prod {linea['producto_id']}")
-        lineas.append(f"{linea['cantidad']} x {nombre:<20} {linea['subtotal']:>7.2f} €")
-    lineas.append("-" * 42)
-    lineas.append(f"TOTAL:{'':>28} {ticket['total']:>7.2f} €")
-    lineas.append(f"Metodo: {ticket['metodo_pago'].upper()}")
-    if ticket.get('entrega_efectivo'):
-        lineas.append(f"Entrega:{'':>27} {ticket['entrega_efectivo']:>7.2f} €")
-        lineas.append(f"Cambio:{'':>28} {ticket['cambio']:>7.2f} €")
-    lineas.append("-" * 42)
-    lineas.append("      ¡Gracias por su visita!")
-    lineas.append("-" * 42)
-    return "\n".join(lineas)
+    return "\n".join(_lineas_ticket_txt(ticket))
 
 
 COLORES_CAT = {
@@ -1042,7 +1065,7 @@ def _render_tarjeta_producto(prod, stock, es_favorito, col):
 
 def render_panel_productos():
     """Panel derecho: Categorías y productos con búsqueda, colores, badges y favoritos."""
-    productos, inventarios, tickets = _get_ventas_data()
+    productos, inventarios, _ = _get_ventas_data()
     categorias = _cargar_categorias()
 
     inventarios = _comprobar_datos_tpv(productos, inventarios)
@@ -1112,6 +1135,7 @@ def _render_modal_cantidad(productos, inventarios):
 # ============================================================================
 
 SIN_DATOS = "sin datos"
+MSG_SIN_DATOS = "Sin datos"
 SIN_CATEGORIA = "Sin categoría"
 MODO_LINEAS = 'lines+markers'
 DIAS_TENDENCIA = 15
@@ -1121,15 +1145,15 @@ LIMITE_TICKETS_FAVORITOS = 200
 COLOR_FONDO_TRANSPARENTE = 'rgba(0,0,0,0)'
 COLOR_TEXTO_GRAFICA = '#94a3b8'
 ALTURA_GRAFICA = 280
-MARGEN_GRAFICA = dict(l=0, r=0, t=30, b=0)
+MARGEN_GRAFICA = {"l": 0, "r": 0, "t": 30, "b": 0}
 
-LAYOUT_DASHBOARD = dict(
-    plot_bgcolor=COLOR_FONDO_TRANSPARENTE,
-    paper_bgcolor=COLOR_FONDO_TRANSPARENTE,
-    font_color=COLOR_TEXTO_GRAFICA,
-    height=ALTURA_GRAFICA,
-    margin=MARGEN_GRAFICA,
-)
+LAYOUT_DASHBOARD = {
+    "plot_bgcolor": COLOR_FONDO_TRANSPARENTE,
+    "paper_bgcolor": COLOR_FONDO_TRANSPARENTE,
+    "font_color": COLOR_TEXTO_GRAFICA,
+    "height": ALTURA_GRAFICA,
+    "margin": MARGEN_GRAFICA,
+}
 
 # (etiqueta, limite superior inclusivo; None = sin limite)
 RANGOS_IMPORTE = (
@@ -1190,7 +1214,7 @@ def _grafica_tendencia_ventas(tickets):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=fechas, y=[ventas_dia[f] for f in fechas], mode=MODO_LINEAS,
-        line=dict(color='#3b82f6', width=2), fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)',
+        line={"color": '#3b82f6', "width": 2}, fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)',
     ))
     st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
 
@@ -1320,7 +1344,7 @@ def _grafica_ticket_promedio(tickets):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=fechas, y=promedios, mode=MODO_LINEAS,
-        line=dict(color='#ef4444', width=2), fill='tozeroy', fillcolor='rgba(239,68,68,0.1)',
+        line={"color": '#ef4444', "width": 2}, fill='tozeroy', fillcolor='rgba(239,68,68,0.1)',
     ))
     st.plotly_chart(_aplicar_layout_dashboard(fig), width="stretch")
 
@@ -1395,7 +1419,7 @@ def _plotly_config(fig, height=ALTURA_GRAFICA):
 def grafica_tendencia(datos):
     st.markdown("#### 📈 Tendencia de Ventas")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     df = pd.DataFrame(datos)
     fig = go.Figure()
@@ -1403,7 +1427,7 @@ def grafica_tendencia(datos):
         x=df['fecha'], y=df['ingresos'],
         mode=MODO_LINEAS,
         name='Ingresos',
-        line=dict(color='#3b82f6', width=3),
+        line={"color": '#3b82f6', "width": 3},
         fill='tozeroy', fillcolor='rgba(59, 130, 246,0.1)'
     ))
     fig.update_layout(title_text="Ingresos por día", title_font_size=12)
@@ -1413,7 +1437,7 @@ def grafica_tendencia(datos):
 def grafica_top_productos_unidades(datos):
     st.markdown("#### 🥇 Top Productos (Unidades)")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     df = pd.DataFrame(datos)
     fig = go.Figure(data=[go.Bar(
@@ -1427,7 +1451,7 @@ def grafica_top_productos_unidades(datos):
 def grafica_ventas_por_hora(datos):
     st.markdown("#### ⏰ Ventas por Hora")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     df = pd.DataFrame(datos)
     fig = go.Figure(data=[go.Bar(
@@ -1438,7 +1462,7 @@ def grafica_ventas_por_hora(datos):
     st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
-def grafica_distribucion_ingresos(resumen):
+def grafica_distribucion_ingresos():
     st.markdown("#### 📊 Distribución Ingresos")
     db = DatabaseAccess()
     try:
@@ -1448,7 +1472,7 @@ def grafica_distribucion_ingresos(resumen):
         db.close()
     
     if not tickets:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
 
     rangos = _contar_por_rango_importe(tickets)
@@ -1458,14 +1482,14 @@ def grafica_distribucion_ingresos(resumen):
         marker_colors=COLORES_RANGOS
     )])
     fig.update_layout(title_text="Por rango de ticket", title_font_size=12, showlegend=True,
-                      legend=dict(orientation="h", yanchor="bottom", y=-0.2))
+                      legend={"orientation": "h", "yanchor": "bottom", "y": -0.2})
     st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_ventas_por_categoria(datos):
     st.markdown("#### 🏷️ Ventas por Categoría")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     df = pd.DataFrame(datos)
     fig = go.Figure(data=[go.Pie(
@@ -1474,21 +1498,21 @@ def grafica_ventas_por_categoria(datos):
         marker_colors=px.colors.sequential.Plasma
     )])
     fig.update_layout(title_text="Ingresos por categoría", title_font_size=12,
-                      legend=dict(orientation="h", yanchor="bottom", y=-0.2))
+                      legend={"orientation": "h", "yanchor": "bottom", "y": -0.2})
     st.plotly_chart(_plotly_config(fig), width="stretch")
 
 
 def grafica_ticket_promedio(datos):
     st.markdown("#### 📉 Ticket Promedio")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     df = pd.DataFrame(datos)
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['fecha'], y=df['ticket_promedio'],
         mode=MODO_LINEAS,
-        line=dict(color='#8b5cf6', width=3),
+        line={"color": '#8b5cf6', "width": 3},
         fill='tozeroy', fillcolor='rgba(139,92,246,0.1)'
     ))
     fig.update_layout(title_text="Evolución del ticket promedio", title_font_size=12)
@@ -1498,7 +1522,7 @@ def grafica_ticket_promedio(datos):
 def grafica_top_productos_ingresos(datos):
     st.markdown("#### 💶 Top Productos (Ingresos)")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     df = pd.DataFrame(datos)
     fig = go.Figure(data=[go.Bar(
@@ -1512,7 +1536,7 @@ def grafica_top_productos_ingresos(datos):
 def grafica_mapa_calor(datos):
     st.markdown("#### 🔥 Mapa de Calor (Día/Hora)")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     # Construir matriz
     horas = list(range(24))
@@ -1537,7 +1561,7 @@ def grafica_metodos_pago(resumen):
     st.markdown("#### 💳 Métodos de Pago")
     metodos = resumen.get('metodos_pago', {})
     if not metodos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     fig = go.Figure(data=[go.Bar(
         x=list(metodos.keys()), y=list(metodos.values()),
@@ -1550,7 +1574,7 @@ def grafica_metodos_pago(resumen):
 def grafica_comparativa_mes(datos):
     st.markdown("#### 📅 Mes Actual vs Anterior")
     if not datos:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     actual = datos.get('mes_actual', {})
     anterior = datos.get('mes_anterior', {})
@@ -1568,7 +1592,7 @@ def grafica_comparativa_mes(datos):
 def grafica_objetivos(resumen, meta):
     """Gráfica de meta diaria vs ventas reales."""
     if not resumen:
-        st.info("Sin datos")
+        st.info(MSG_SIN_DATOS)
         return
     ingresos_hoy = resumen.get('total_ingresos', 0)
     pct = min((ingresos_hoy / meta * 100), 100) if meta > 0 else 0
@@ -1580,7 +1604,7 @@ def grafica_objetivos(resumen, meta):
         marker_color=['#64748b', '#3b82f6'],
         text=[f"€{meta:.0f}", f"€{ingresos_hoy:.2f}"],
         textposition='auto',
-        textfont=dict(size=14, color='white')
+        textfont={"size": 14, "color": 'white'}
     ))
     fig.add_hline(y=meta, line_dash="dash", line_color="#f59e0b", annotation_text="🎯 Meta")
     fig.update_layout(title_text=f"Progreso: {pct:.0f}%", title_font_size=12, showlegend=False)
@@ -1588,177 +1612,259 @@ def grafica_objetivos(resumen, meta):
     if restante > 0:
         st.markdown(f"<p style='text-align:center; color:#94a3b8; font-size:0.8rem;'>Faltan €{restante:.2f} para la meta</p>", unsafe_allow_html=True)
     else:
-        st.markdown(f"<p style='text-align:center; color:#10b981; font-size:0.85rem; font-weight:600;'>🎉 ¡Meta alcanzada!</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; color:#10b981; font-size:0.85rem; font-weight:600;'>🎉 ¡Meta alcanzada!</p>", unsafe_allow_html=True)
 
 
 # ============================================================================
 # TAB HISTORIAL
 # ============================================================================
 
-def render_historial():
-    """Historial de tickets con filtros rápidos y anulación."""
-    st.markdown("### 📋 Historial de Tickets")
+FILTRO_TODOS = "Todos"
+LIMITE_TICKETS_HISTORIAL = 200
+TICKETS_POR_PAGINA_HISTORIAL = 10
+COLOR_ESTADO_COMPLETADO = "#10b981"
+COLOR_ESTADO_ANULADO = "#ef4444"
+ESTADO_COMPLETADO = 'completado'
+ESTADO_ANULADO = 'anulado'
 
-    # Botones de filtro rápido de fecha
+# (etiqueta, días hacia atrás, días hacia atrás del extremo "hasta")
+FILTROS_FECHA_RAPIDOS = (
+    ("Hoy", 0, 0),
+    ("Ayer", 1, 1),
+    ("Últimos 7 días", 7, 0),
+    ("Este mes", 30, 0),
+    ("Todo", 365, 0),
+)
+DIAS_TODO_HISTORIAL = 365
+
+
+def _aplicar_filtro_rapido(dias_atras, dias_fin):
+    """Fija el rango de fechas del historial. 365 días significa 'todo' (sin rango)."""
+    if dias_atras == DIAS_TODO_HISTORIAL:
+        st.session_state['hist_fecha_desde'] = None
+        st.session_state['hist_fecha_hasta'] = None
+    else:
+        hoy = datetime.now().date()
+        st.session_state['hist_fecha_desde'] = (hoy - timedelta(days=dias_atras)).isoformat()
+        st.session_state['hist_fecha_hasta'] = (hoy - timedelta(days=dias_fin)).isoformat()
+    st.rerun()
+
+
+def _render_filtro_rapido():
+    """Renderiza los botones de filtro rápido por fecha."""
     st.markdown("<p style='color: #64748b; font-size: 0.85rem; margin-bottom: 5px;'>📅 Filtro rápido:</p>", unsafe_allow_html=True)
-    cols_fecha = st.columns(5)
-    opciones_fecha = [
-        ("Hoy", 0, 0), ("Ayer", 1, 1), ("Últimos 7 días", 7, 0),
-        ("Este mes", 30, 0), ("Todo", 365, 0)
-    ]
-    fecha_desde = None
-    fecha_hasta = None
-    for col, (label, dias_atras, dias_fin) in zip(cols_fecha, opciones_fecha):
+
+    for col, (label, dias_atras, dias_fin) in zip(st.columns(len(FILTROS_FECHA_RAPIDOS)), FILTROS_FECHA_RAPIDOS):
         with col:
             if st.button(label, width="stretch", key=f"hist_fecha_{label.replace(' ', '_')}"):
-                hoy = datetime.now().date()
-                if dias_atras == 365:
-                    st.session_state['hist_fecha_desde'] = None
-                    st.session_state['hist_fecha_hasta'] = None
-                else:
-                    st.session_state['hist_fecha_desde'] = (hoy - timedelta(days=dias_atras)).isoformat()
-                    st.session_state['hist_fecha_hasta'] = (hoy - timedelta(days=dias_fin)).isoformat()
-                st.rerun()
+                _aplicar_filtro_rapido(dias_atras, dias_fin)
 
-    # Filtros avanzados
-    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
 
-    with col1:
-        cajeros_opciones = ["Todos"] + CAJEROS
-        filtro_cajero = st.selectbox("Cajero", cajeros_opciones, key="hist_cajero")
+def _fecha_desde_session(key):
+    """Convierte un valor ISO del session_state en date, o None."""
+    valor = st.session_state.get(key)
+    return datetime.fromisoformat(valor).date() if valor else None
 
-    with col2:
-        default_desde = None
-        if st.session_state.get('hist_fecha_desde'):
-            default_desde = datetime.fromisoformat(st.session_state['hist_fecha_desde']).date()
-        fecha_desde = st.date_input("Desde", value=default_desde, key="hist_desde")
 
-    with col3:
-        default_hasta = None
-        if st.session_state.get('hist_fecha_hasta'):
-            default_hasta = datetime.fromisoformat(st.session_state['hist_fecha_hasta']).date()
-        fecha_hasta = st.date_input("Hasta", value=default_hasta, key="hist_hasta")
+def _render_filtros_avanzados():
+    """Renderiza los filtros de cajero y rango de fechas. Devuelve (cajero, desde, hasta)."""
+    col_cajero, col_desde, col_hasta, col_refrescar = st.columns([2, 2, 2, 1])
 
-    with col4:
+    with col_cajero:
+        filtro_cajero = st.selectbox("Cajero", [FILTRO_TODOS] + CAJEROS, key="hist_cajero")
+    with col_desde:
+        fecha_desde = st.date_input("Desde", value=_fecha_desde_session('hist_fecha_desde'), key="hist_desde")
+    with col_hasta:
+        fecha_hasta = st.date_input("Hasta", value=_fecha_desde_session('hist_fecha_hasta'), key="hist_hasta")
+    with col_refrescar:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🔄 Actualizar", width="stretch"):
             st.rerun()
 
-    # Construir query params
-    params = {"limite": 200}
-    if filtro_cajero != "Todos":
-        params["cajero"] = filtro_cajero
-    if fecha_desde:
-        params["fecha_desde"] = fecha_desde.isoformat()
-    if fecha_hasta:
-        params["fecha_hasta"] = fecha_hasta.isoformat()
+    return filtro_cajero, fecha_desde, fecha_hasta
 
-    # Cargar tickets
+
+def _filtrar_tickets(tickets, filtro_cajero, fecha_desde, fecha_hasta):
+    """Aplica los filtros de cajero y rango de fechas sobre los tickets."""
+    if filtro_cajero != FILTRO_TODOS:
+        tickets = [t for t in tickets if t.get('cajero') == filtro_cajero]
+    if fecha_desde:
+        tickets = [t for t in tickets if str(t.get('fecha', '')) >= str(fecha_desde)]
+    if fecha_hasta:
+        tickets = [t for t in tickets if str(t.get('fecha', ''))[:10] <= str(fecha_hasta)]
+    return tickets
+
+
+def _cargar_tickets_historial(filtro_cajero, fecha_desde, fecha_hasta):
+    """Carga y filtra los tickets del historial."""
     db = DatabaseAccess()
     try:
-        tickets_db = db.get_tickets(limite=LIMITE_TICKETS_FAVORITOS)
-        tickets = [_obj_to_dict(t) for t in tickets_db]
-        
-        if filtro_cajero != "Todos":
-            tickets = [t for t in tickets if t.get('cajero') == filtro_cajero]
-        if fecha_desde:
-            tickets = [t for t in tickets if str(t.get('fecha', '')) >= str(fecha_desde)]
-        if fecha_hasta:
-            tickets = [t for t in tickets if str(t.get('fecha', ''))[:10] <= str(fecha_hasta)]
+        tickets = [_obj_to_dict(t) for t in db.get_tickets(limite=LIMITE_TICKETS_HISTORIAL)]
     finally:
         db.close()
+
+    return _filtrar_tickets(tickets, filtro_cajero, fecha_desde, fecha_hasta)
+
+
+def _nombre_linea(linea):
+    """Nombre del producto de una línea de ticket, o su id si no viene resuelto."""
+    nombre = linea.get('producto', {}).get('nombre')
+    return nombre or f"Producto {linea.get('producto_id', 'N/A')}"
+
+
+def _filas_exportacion(tickets):
+    """Aplana los tickets a filas para la exportación a Excel."""
+    filas = []
+    for t in tickets:
+        for linea in t.get('lineas', []):
+            filas.append({
+                "ticket": t['numero_ticket'],
+                "fecha": t['fecha'][:16].replace('T', ' '),
+                "cajero": t['cajero'],
+                "estado": t['estado'],
+                "metodo_pago": t['metodo_pago'],
+                "producto": _nombre_linea(linea),
+                "cantidad": linea['cantidad'],
+                "precio_unitario": linea['precio_unitario'],
+                "subtotal": linea['subtotal'],
+                "total_ticket": t['total'],
+            })
+    return filas
+
+
+def _render_exportar_historial(tickets):
+    """Muestra el botón de exportación a Excel del historial."""
+    filas = _filas_exportacion(tickets)
+    if not filas:
+        return
+
+    st.download_button(
+        "📥 Exportar Excel",
+        data=to_excel(pd.DataFrame(filas)),
+        file_name=f"historial_tickets_{datetime.now().strftime('%Y%m%d')}.xlsx",
+        width="stretch",
+    )
+
+
+def _render_lineas_ticket(ticket):
+    """Muestra la tabla de líneas de un ticket."""
+    filas = [
+        {
+            "Producto": _nombre_linea(linea),
+            "Cantidad": linea.get('cantidad', 0),
+            "P. Unitario": f"€{linea.get('precio_unitario', 0):.2f}",
+            "Subtotal": f"€{linea.get('subtotal', 0):.2f}",
+        }
+        for linea in ticket.get('lineas', [])
+    ]
+    if filas:
+        st.table(pd.DataFrame(filas))
+
+
+def _anular_ticket(ticket_id):
+    """Marca un ticket como anulado. Muestra el resultado."""
+    from src.dominio.entidades.entidades import Ticket
+
+    db = DatabaseAccess()
+    try:
+        ticket_db = db.session.query(Ticket).get(ticket_id)
+        if not ticket_db:
+            st.error("Ticket no encontrado")
+            return
+        ticket_db.estado = ESTADO_ANULADO
+        db.session.commit()
+        st.success("Ticket anulado correctamente")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+        db.session.rollback()
+    finally:
+        db.close()
+
+
+def _render_boton_anular(ticket):
+    """Muestra el botón de anulación para tickets completados."""
+    if ticket['estado'] != ESTADO_COMPLETADO:
+        return
+
+    col_anular, _ = st.columns([1, 3])
+    with col_anular:
+        if st.button("❌ Anular Ticket", key=f"anular_{ticket['id']}", width="stretch"):
+            with st.spinner("Anulando..."):
+                _anular_ticket(ticket['id'])
+
+
+def _render_ticket_historial(ticket):
+    """Renderiza un ticket completo dentro de su expander."""
+    titulo = (
+        f"🎫 Ticket N° {ticket.get('numero_ticket', 'N/A')} | "
+        f"€{ticket.get('total', 0):.2f} | {ticket.get('cajero', 'N/A')} | "
+        f"{_format_fecha(ticket.get('fecha', ''))}"
+    )
+    with st.expander(titulo):
+        color = COLOR_ESTADO_COMPLETADO if ticket['estado'] == ESTADO_COMPLETADO else COLOR_ESTADO_ANULADO
+        st.markdown(f"<p style='color: {color}; font-weight: 600;'>Estado: {ticket['estado'].upper()}</p>", unsafe_allow_html=True)
+        st.markdown(f"**Método de pago:** {ticket['metodo_pago'].upper()}")
+
+        if ticket.get('entrega_efectivo'):
+            st.markdown(f"**Entrega:** €{ticket['entrega_efectivo']:.2f} | **Cambio:** €{ticket['cambio']:.2f}")
+
+        _render_lineas_ticket(ticket)
+        _render_boton_anular(ticket)
+
+
+def _paginar_tickets(tickets):
+    """Devuelve (tickets_de_la_pagina, pagina, total_paginas)."""
+    pagina = min(
+        st.session_state.get('tpv_pagina_historial', 1),
+        max(1, (len(tickets) + TICKETS_POR_PAGINA_HISTORIAL - 1) // TICKETS_POR_PAGINA_HISTORIAL),
+    )
+    inicio = (pagina - 1) * TICKETS_POR_PAGINA_HISTORIAL
+    fin = min(inicio + TICKETS_POR_PAGINA_HISTORIAL, len(tickets))
+    total_paginas = max(1, (len(tickets) + TICKETS_POR_PAGINA_HISTORIAL - 1) // TICKETS_POR_PAGINA_HISTORIAL)
+    return tickets[inicio:fin], pagina, total_paginas
+
+
+def _ir_a_pagina_historial(pagina):
+    """Cambia de página en el historial."""
+    st.session_state['tpv_pagina_historial'] = pagina
+    st.rerun()
+
+
+def _render_paginacion_historial(pagina, total_paginas):
+    """Muestra los controles de paginación del historial."""
+    if total_paginas <= 1:
+        return
+
+    col_ant, col_info, col_sig = st.columns([1, 2, 1])
+    with col_ant:
+        if st.button("⬅️ Anterior", disabled=pagina <= 1, key="hist_ant"):
+            _ir_a_pagina_historial(pagina - 1)
+    with col_info:
+        st.markdown(f"<p style='text-align: center;'>Página {pagina} de {total_paginas}</p>", unsafe_allow_html=True)
+    with col_sig:
+        if st.button("Siguiente ➡️", disabled=pagina >= total_paginas, key="hist_sig"):
+            _ir_a_pagina_historial(pagina + 1)
+
+
+def render_historial():
+    """Historial de tickets con filtros rápidos y anulación."""
+    st.markdown("### 📋 Historial de Tickets")
+
+    _render_filtro_rapido()
+    filtro_cajero, fecha_desde, fecha_hasta = _render_filtros_avanzados()
+
+    tickets = _cargar_tickets_historial(filtro_cajero, fecha_desde, fecha_hasta)
 
     if not tickets:
         st.info("📭 No hay tickets en el período seleccionado")
         return
 
-    # Exportar
-    if tickets:
-        df_export = []
-        for t in tickets:
-            for linea in t.get('lineas', []):
-                df_export.append({
-                    "ticket": t['numero_ticket'],
-                    "fecha": t['fecha'][:16].replace('T', ' '),
-                    "cajero": t['cajero'],
-                    "estado": t['estado'],
-                    "metodo_pago": t['metodo_pago'],
-                    "producto": linea.get('producto', {}).get('nombre', ''),
-                    "cantidad": linea['cantidad'],
-                    "precio_unitario": linea['precio_unitario'],
-                    "subtotal": linea['subtotal'],
-                    "total_ticket": t['total']
-                })
-        if df_export:
-            excel_data = to_excel(pd.DataFrame(df_export))
-            st.download_button("📥 Exportar Excel", data=excel_data,
-                               file_name=f"historial_tickets_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                               width="stretch")
+    _render_exportar_historial(tickets)
 
-    # Paginación
-    pagina = st.session_state.get('tpv_pagina_historial', 1)
-    por_pagina = 10
-    total_paginas = max(1, (len(tickets) + por_pagina - 1) // por_pagina)
-    pagina = min(pagina, total_paginas)
-    inicio = (pagina - 1) * por_pagina
-    fin = min(inicio + por_pagina, len(tickets))
+    tickets_pagina, pagina, total_paginas = _paginar_tickets(tickets)
 
-    # Mostrar tickets
-    for t in tickets[inicio:fin]:
-        estado_color = "#10b981" if t['estado'] == 'completado' else "#ef4444"
-        with st.expander(f"🎫 Ticket N° {t.get('numero_ticket', 'N/A')} | €{t.get('total', 0):.2f} | {t.get('cajero', 'N/A')} | {_format_fecha(t.get('fecha', ''))}"):
-            st.markdown(f"<p style='color: {estado_color}; font-weight: 600;'>Estado: {t['estado'].upper()}</p>", unsafe_allow_html=True)
-            st.markdown(f"**Método de pago:** {t['metodo_pago'].upper()}")
-            if t.get('entrega_efectivo'):
-                st.markdown(f"**Entrega:** €{t['entrega_efectivo']:.2f} | **Cambio:** €{t['cambio']:.2f}")
+    for ticket in tickets_pagina:
+        _render_ticket_historial(ticket)
 
-            # Tabla de líneas
-            lineas_data = []
-            for linea in t.get('lineas', []):
-                prod_id = linea.get('producto_id', 'N/A')
-                nombre = f"Producto {prod_id}"
-                lineas_data.append({
-                    "Producto": nombre,
-                    "Cantidad": linea.get('cantidad', 0),
-                    "P. Unitario": f"€{linea.get('precio_unitario', 0):.2f}",
-                    "Subtotal": f"€{linea.get('subtotal', 0):.2f}"
-                })
-            if lineas_data:
-                st.table(pd.DataFrame(lineas_data))
-
-            # Botón anular (solo si está completado)
-            if t['estado'] == 'completado':
-                col_a, _ = st.columns([1, 3])
-                with col_a:
-                    if st.button("❌ Anular Ticket", key=f"anular_{t['id']}", width="stretch"):
-                        with st.spinner("Anulando..."):
-                            db = DatabaseAccess()
-                            try:
-                                from src.dominio.entidades.entidades import Ticket
-                                ticket_db = db.session.query(Ticket).get(t['id'])
-                                if ticket_db:
-                                    ticket_db.estado = 'anulado'
-                                    db.session.commit()
-                                    st.success("Ticket anulado correctamente")
-                                    st.rerun()
-                                else:
-                                    st.error("Ticket no encontrado")
-                            except Exception as e:
-                                st.error(f"Error: {str(e)}")
-                                db.session.rollback()
-                            finally:
-                                db.close()
-
-    # Controles paginación
-    if total_paginas > 1:
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c1:
-            if st.button("⬅️ Anterior", disabled=pagina <= 1, key="hist_ant"):
-                st.session_state['tpv_pagina_historial'] = pagina - 1
-                st.rerun()
-        with c2:
-            st.markdown(f"<p style='text-align: center;'>Página {pagina} de {total_paginas}</p>", unsafe_allow_html=True)
-        with c3:
-            if st.button("Siguiente ➡️", disabled=pagina >= total_paginas, key="hist_sig"):
-                st.session_state['tpv_pagina_historial'] = pagina + 1
-                st.rerun()
+    _render_paginacion_historial(pagina, total_paginas)

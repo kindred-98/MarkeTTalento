@@ -91,27 +91,27 @@ class TestValidarProveedorNuevo:
     
     def test_nombre_vacio(self):
         """Nombre vacío debe retornar error."""
-        errores = validar_proveedor_nuevo("", "email@test.com", "123456")
+        errores = validar_proveedor_nuevo("", "email@test.com")
         assert "Nombre obligatorio" in errores
     
     def test_nombre_muy_corto(self):
         """Nombre muy corto debe retornar error."""
-        errores = validar_proveedor_nuevo("A", "email@test.com", "123456")
+        errores = validar_proveedor_nuevo("A", "email@test.com")
         assert "Nombre muy corto" in errores
     
     def test_email_vacio(self):
         """Email vacío debe retornar error."""
-        errores = validar_proveedor_nuevo("Proveedor", "", "123456")
+        errores = validar_proveedor_nuevo("Proveedor", "")
         assert "Email obligatorio" in errores
     
     def test_email_invalido(self):
         """Email sin @ o . debe retornar error."""
-        errores = validar_proveedor_nuevo("Proveedor", "emailinvalido", "123456")
+        errores = validar_proveedor_nuevo("Proveedor", "emailinvalido")
         assert "Email inválido" in errores
     
     def test_proveedor_valido(self):
         """Datos válidos no deben retornar errores."""
-        errores = validar_proveedor_nuevo("Proveedor Test", "test@test.com", "123456789")
+        errores = validar_proveedor_nuevo("Proveedor Test", "test@test.com")
         assert len(errores) == 0
 
 

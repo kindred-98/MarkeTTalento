@@ -17,7 +17,7 @@ def init_session_state():
         
         # Productos
         'form_version': 0,
-        'producto_tab_activo': 0,  # 0 = Catálogo, 1 = Nuevo, 2 = Edición
+        'producto_tab_activo': 0,  # Catálogo | Nuevo | Edición
         'producto_actualizado': False,
         'editar_producto': None,
         
